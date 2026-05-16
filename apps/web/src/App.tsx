@@ -826,7 +826,11 @@ export default function App() {
 
         <div className="top-actions">
           <button
-            onClick={organizePieces}
+            onClick={() => {
+              if (window.confirm("未固定ピースをすべて並べ直します。この操作は元に戻せません。続けますか？")) {
+                organizePieces();
+              }
+            }}
             disabled={!layout || !pieces.some((piece) => !piece.locked)}
             title="未固定ピースを盤面の下に並べる"
           >
