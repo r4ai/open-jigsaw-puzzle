@@ -127,29 +127,12 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    imageDataRef.current = imageDataUrl;
-  }, [imageDataUrl]);
-
-  useEffect(() => {
-    imageSizeRef.current = imageSize;
-  }, [imageSize]);
-
-  useEffect(() => {
-    roomRef.current = room;
-  }, [room]);
-
-  useEffect(() => {
-    layoutRef.current = layout;
-  }, [layout]);
-
-  useEffect(() => {
-    myIdRef.current = myId;
-  }, [myId]);
-
-  useEffect(() => {
-    piecesRef.current = pieces;
-  }, [pieces]);
+  useEffect(() => { imageDataRef.current = imageDataUrl; }, [imageDataUrl]);
+  useEffect(() => { imageSizeRef.current = imageSize; }, [imageSize]);
+  useEffect(() => { roomRef.current = room; }, [room]);
+  useEffect(() => { layoutRef.current = layout; }, [layout]);
+  useEffect(() => { myIdRef.current = myId; }, [myId]);
+  useEffect(() => { piecesRef.current = pieces; }, [pieces]);
 
   async function createRoom() {
     setError(null);
@@ -727,38 +710,57 @@ export default function App() {
 
   if (!viewingRoom) {
     return (
-      <main className="shell home">
+      <main className="home">
         <section className="intro">
-          <div>
-            <p className="eyebrow">Open Puzzle</p>
-            <h1>画像を保存しない、ブラウザ同士のジグソーパズル</h1>
-          </div>
-          <p>部屋を作って画像を選ぶだけで開始できます。画像はリサイズ後に WebRTC で参加者へ配布され、サーバーには保存されません。</p>
+          <p className="eyebrow">Open Puzzle</p>
+          <h1>
+            画像を保存しない、<br />
+            <em>ブラウザ同士</em>の<br />
+            ジグソーパズル。
+          </h1>
+          <p className="intro-desc">
+            部屋を作って画像を選ぶだけで開始できます。画像はリサイズ後に WebRTC で参加者へ配布され、サーバーには保存されません。
+          </p>
         </section>
 
         <section className="start-panel" aria-label="部屋の作成と参加">
+          <p className="panel-header">はじめる</p>
+
           <label>
             表示名
             <input value={name} maxLength={24} onChange={(event) => setName(event.target.value)} />
           </label>
 
-          <div className="difficulty" aria-label="難易度">
-            {DIFFICULTIES.map((value) => (
-              <button key={value} className={difficulty === value ? "selected" : ""} onClick={() => setDifficulty(value)}>
-                {value}
-              </button>
-            ))}
+          <div className="field-group">
+            <p className="field-label">難易度（ピース数）</p>
+            <div className="difficulty" aria-label="難易度">
+              {DIFFICULTIES.map((value) => (
+                <button key={value} className={difficulty === value ? "selected" : ""} onClick={() => setDifficulty(value)}>
+                  {value}
+                </button>
+              ))}
+            </div>
           </div>
 
           <button className="primary" onClick={() => void createRoom()}>
-            <Play size={18} />
+            <Play size={16} />
             部屋を作成
           </button>
 
+          <div className="divider"><span>または参加する</span></div>
+
           <div className="join-row">
-            <input aria-label="部屋ID" placeholder="部屋ID" value={joinId} onChange={(event) => setJoinId(event.target.value.toUpperCase())} />
-            <button onClick={() => void navigate({ to: "/rooms/$roomId", params: { roomId: joinId.trim().toUpperCase() } })} disabled={!joinId.trim()}>
-              <Link size={18} />
+            <input
+              aria-label="部屋ID"
+              placeholder="部屋ID を入力"
+              value={joinId}
+              onChange={(event) => setJoinId(event.target.value.toUpperCase())}
+            />
+            <button
+              onClick={() => void navigate({ to: "/rooms/$roomId", params: { roomId: joinId.trim().toUpperCase() } })}
+              disabled={!joinId.trim()}
+            >
+              <Link size={16} />
               参加
             </button>
           </div>
@@ -770,124 +772,146 @@ export default function App() {
   }
 
   return (
-    <main className="shell workspace">
+    <main className="workspace">
       <header className="topbar">
-        <div>
-          <p className="eyebrow">Room {room?.id}</p>
-          <h1>{room?.difficulty} pieces</h1>
+        <div className="topbar-left">
+          <span className="brand-mark">OP</span>
+          <div className="room-info">
+            <span className="room-id-label">Room</span>
+            <strong className="room-id">{room?.id ?? "–"}</strong>
+          </div>
         </div>
+
+        <span className="topbar-sep" />
+
+        <div className="topbar-stats">
+          <span className="stat-chip">
+            <Users size={11} />
+            {participants.length}/{MAX_PARTICIPANTS}
+          </span>
+          <span className="stat-chip">
+            <MousePointer2 size={11} />
+            {connectedPeers} P2P
+          </span>
+          <span className="stat-chip">
+            {lockedCount}/{pieces.length || room?.difficulty || 0} locked
+          </span>
+        </div>
+
+        <span className="topbar-spacer" />
+
         <div className="top-actions">
-          <button onClick={organizePieces} disabled={!layout || !pieces.some((piece) => !piece.locked)} title="未固定ピースを盤面の下に並べる">
-            <Rows3 size={18} />
+          <button
+            onClick={organizePieces}
+            disabled={!layout || !pieces.some((piece) => !piece.locked)}
+            title="未固定ピースを盤面の下に並べる"
+          >
+            <Rows3 size={15} />
             整理
           </button>
           <button onClick={() => void copyShareUrl()} title="共有リンクをコピー">
-            {copied ? <Check size={18} /> : <Copy size={18} />}
+            {copied ? <Check size={15} /> : <Copy size={15} />}
             {copied ? "コピー済み" : "共有"}
           </button>
           <label className="upload">
-            <ImagePlus size={18} />
+            <ImagePlus size={15} />
             画像
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileInputChange} />
           </label>
         </div>
       </header>
 
-      <section className="status-grid">
-        <div><Users size={16} /> {participants.length}/{MAX_PARTICIPANTS}</div>
-        <div><MousePointer2 size={16} /> P2P {connectedPeers}</div>
-        <div>{lockedCount}/{pieces.length || room?.difficulty || 0} locked</div>
-        <div className="status-detail" title={loadingSummary}>{complete ? "完成" : loadingSummary}</div>
-      </section>
-
-      <section className="tool-strip" aria-label="表示操作">
-        <button onClick={() => changeZoom(-ZOOM_STEP)} disabled={zoom <= MIN_ZOOM} title="縮小">
-          <Minus size={18} />
-        </button>
-        <span>{Math.round(zoom * 100)}%</span>
-        <button onClick={() => changeZoom(ZOOM_STEP)} disabled={zoom >= MAX_ZOOM} title="拡大">
-          <Plus size={18} />
-        </button>
-        <button onClick={resetZoom} title="表示をリセット">
-          <Maximize2 size={18} />
-        </button>
-      </section>
-
       <section className="board-wrap">
         {layout && imageDataUrl && workspaceMetrics ? (
-          <div
-            ref={viewportRef}
-            className={`board-viewport ${panning ? "panning" : ""}`}
-            style={{
-              backgroundPosition: `${pan.x}px ${pan.y}px`,
-              backgroundSize: `${48 * zoom}px ${48 * zoom}px`,
-            }}
-            onPointerDown={handleViewportPointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-            onPointerLeave={handleViewportPointerLeave}
-            onWheel={handleWheel}
-          >
-            <div className="board-stage">
-              <div
-                ref={worldRef}
-                className="board-world"
-                style={{
-                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                }}
-              >
+          <>
+            <div
+              ref={viewportRef}
+              className={`board-viewport ${panning ? "panning" : ""}`}
+              style={{
+                backgroundPosition: `${pan.x}px ${pan.y}px`,
+                backgroundSize: `${28 * zoom}px ${28 * zoom}px`,
+              }}
+              onPointerDown={handleViewportPointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              onPointerLeave={handleViewportPointerLeave}
+              onWheel={handleWheel}
+            >
+              <div className="board-stage">
                 <div
-                  className={`puzzle-frame ${complete ? "complete" : ""}`}
+                  ref={worldRef}
+                  className="board-world"
                   style={{
-                    left: `${workspaceMetrics.margin}px`,
-                    top: `${workspaceMetrics.margin}px`,
-                    width: `${layout.boardWidth}px`,
-                    height: `${layout.boardHeight}px`,
+                    transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
                   }}
-                />
-                {pieces.map((piece) => {
-                  const geometry = layout.pieces[piece.id];
-                  return (
-                    <button
-                      key={piece.id}
-                      className={`piece ${piece.locked ? "locked" : ""}`}
-                      style={{
-                        left: `${workspaceMetrics.margin + piece.x}px`,
-                        top: `${workspaceMetrics.margin + piece.y}px`,
-                        width: `${layout.pieceWidth}px`,
-                        height: `${layout.pieceHeight}px`,
-                        zIndex: piece.z,
-                      }}
-                      aria-label={`piece ${piece.id + 1}`}
-                      onPointerDown={(event) => handlePointerDown(event, piece)}
-                    >
-                      <JigsawPieceImage
-                        geometry={geometry}
-                        imageDataUrl={imageDataUrl}
-                        layout={layout}
-                        pieceId={piece.id}
-                      />
-                    </button>
-                  );
-                })}
-                {remoteCursors.map((cursor) => (
+                >
                   <div
-                    key={cursor.participantId}
-                    className="remote-cursor"
+                    className={`puzzle-frame ${complete ? "complete" : ""}`}
                     style={{
-                      left: `${cursor.x}px`,
-                      top: `${cursor.y}px`,
+                      left: `${workspaceMetrics.margin}px`,
+                      top: `${workspaceMetrics.margin}px`,
+                      width: `${layout.boardWidth}px`,
+                      height: `${layout.boardHeight}px`,
                     }}
-                    title={cursor.name}
-                  >
-                    <MousePointer2 size={18} />
-                    <span>{cursor.name}</span>
-                  </div>
-                ))}
+                  />
+                  {pieces.map((piece) => {
+                    const geometry = layout.pieces[piece.id];
+                    return (
+                      <button
+                        key={piece.id}
+                        className={`piece ${piece.locked ? "locked" : ""}`}
+                        style={{
+                          left: `${workspaceMetrics.margin + piece.x}px`,
+                          top: `${workspaceMetrics.margin + piece.y}px`,
+                          width: `${layout.pieceWidth}px`,
+                          height: `${layout.pieceHeight}px`,
+                          zIndex: piece.z,
+                        }}
+                        aria-label={`piece ${piece.id + 1}`}
+                        onPointerDown={(event) => handlePointerDown(event, piece)}
+                      >
+                        <JigsawPieceImage
+                          geometry={geometry}
+                          imageDataUrl={imageDataUrl}
+                          layout={layout}
+                          pieceId={piece.id}
+                        />
+                      </button>
+                    );
+                  })}
+                  {remoteCursors.map((cursor) => (
+                    <div
+                      key={cursor.participantId}
+                      className="remote-cursor"
+                      style={{ left: `${cursor.x}px`, top: `${cursor.y}px` }}
+                      title={cursor.name}
+                    >
+                      <MousePointer2 size={16} />
+                      <span>{cursor.name}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+
+            <div className="zoom-controls">
+              <button onClick={() => changeZoom(-ZOOM_STEP)} disabled={zoom <= MIN_ZOOM} title="縮小">
+                <Minus size={13} />
+              </button>
+              <span className="zoom-pct">{Math.round(zoom * 100)}%</span>
+              <button onClick={() => changeZoom(ZOOM_STEP)} disabled={zoom >= MAX_ZOOM} title="拡大">
+                <Plus size={13} />
+              </button>
+              <button onClick={resetZoom} title="表示をリセット">
+                <Maximize2 size={13} />
+              </button>
+            </div>
+
+            <div className={`canvas-status ${complete ? "complete" : ""}`}>
+              {complete ? "完成 ✓" : loadingSummary}
+            </div>
+          </>
         ) : (
           <div
             className={`empty-board ${isHost ? "drop-target" : ""}`}
@@ -897,15 +921,15 @@ export default function App() {
             {isHost ? (
               <>
                 <button className="empty-upload-button" onClick={openImagePicker}>
-                  <ImagePlus size={20} />
+                  <ImagePlus size={18} />
                   画像を選択
                 </button>
-                <span className="empty-upload-hint">ドラッグ&ドロップ可</span>
-                <span>{loadingSummary}</span>
+                <span className="empty-hint">ドラッグ&ドロップ可</span>
+                <span className="empty-sub">{loadingSummary}</span>
               </>
             ) : (
               <>
-                <Loader2 className="loading-icon" size={26} />
+                <Loader2 className="loading-icon" size={28} />
                 <div className="loading-copy">
                   <strong>ホストまたは画像を持つ参加者からの配布を待っています</strong>
                   <span>{loadingSummary}</span>
@@ -917,10 +941,12 @@ export default function App() {
       </section>
 
       <aside className="people">
+        <p className="people-header">参加者</p>
         {participants.map((participant) => (
           <div key={participant.id} className="person">
+            <div className="person-avatar">{participant.name.charAt(0)}</div>
             <span>{participant.name}</span>
-            {participant.isHost ? <strong>Host</strong> : null}
+            {participant.isHost ? <strong className="host-badge">Host</strong> : null}
           </div>
         ))}
       </aside>
