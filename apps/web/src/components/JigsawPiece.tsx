@@ -60,7 +60,7 @@ export const JigsawPiece = memo(function JigsawPiece({ geometry, imageDataUrl, l
           <path className={styles.selectionStroke} d={path} />
         </>
       )}
-      <path className={locked ? styles.pieceEdgeLocked : styles.pieceEdge} d={path} />
+      <path className={`${styles.pieceEdge} ${locked ? styles.pieceEdgeLocked : ""}`} d={path} />
     </svg>
   );
 });
