@@ -121,6 +121,7 @@ export function useImageTransfer({ send, broadcast, room, getPieces, onImageComp
       case "image-meta": {
         const incoming = createIncomingImage({
           imageId: msg.imageId,
+          mimeType: msg.mimeType,
           chunks: msg.chunks,
           byteLength: msg.byteLength,
           width: msg.width,

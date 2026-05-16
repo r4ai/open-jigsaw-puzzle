@@ -3,12 +3,15 @@ export type IncomingImage = {
   chunks: Array<string | undefined>;
   expected: number;
   byteLength: number;
+  receivedBytes: number;
+  mimeType: SafeImageMimeType;
   width: number;
   height: number;
 };
 
 export type IncomingImageMeta = {
   imageId: string;
+  mimeType: string;
   chunks: number;
   byteLength: number;
   width: number;
@@ -17,10 +20,16 @@ export type IncomingImageMeta = {
 
 const MAX_INCOMING_CHUNKS = 4096;
 const MAX_INCOMING_IMAGE_BYTES = 64 * 1024 * 1024;
+const MAX_INCOMING_CHUNK_BYTES = 20_000;
 const MAX_INCOMING_IMAGE_EDGE = 1280;
+const SAFE_IMAGE_MIME_TYPES = ["image/jpeg", "image/png"] as const;
+
+type SafeImageMimeType = (typeof SAFE_IMAGE_MIME_TYPES)[number];
 
 export function createIncomingImage(meta: IncomingImageMeta): IncomingImage | null {
   if (!meta.imageId) return null;
+  const mimeType = parseSafeImageMimeType(meta.mimeType);
+  if (!mimeType) return null;
   if (!isPositiveInteger(meta.chunks) || meta.chunks > MAX_INCOMING_CHUNKS) return null;
   if (!isPositiveInteger(meta.byteLength) || meta.byteLength > MAX_INCOMING_IMAGE_BYTES) return null;
   if (!isPositiveInteger(meta.width) || !isPositiveInteger(meta.height)) return null;
@@ -31,6 +40,8 @@ export function createIncomingImage(meta: IncomingImageMeta): IncomingImage | nu
     chunks: Array.from({ length: meta.chunks }),
     expected: meta.chunks,
     byteLength: meta.byteLength,
+    receivedBytes: 0,
+    mimeType,
     width: meta.width,
     height: meta.height,
   };
@@ -42,16 +53,23 @@ export function storeIncomingImageChunk(
   data: string,
 ): { chunksReceived: number; dataUrl: string | null } | null {
   if (!Number.isInteger(index) || index < 0 || index >= incoming.expected) return null;
-  if (!data) return null;
+  if (!data || data.length > MAX_INCOMING_CHUNK_BYTES) return null;
 
   const existing = incoming.chunks[index];
   if (existing !== undefined && existing !== data) return null;
+  if (existing === undefined) {
+    const nextReceivedBytes = incoming.receivedBytes + data.length;
+    if (nextReceivedBytes > incoming.byteLength) return null;
+    incoming.receivedBytes = nextReceivedBytes;
+  }
   incoming.chunks[index] = data;
 
   const chunksReceived = countReceivedChunks(incoming.chunks);
+  const dataUrl = chunksReceived === incoming.expected ? incoming.chunks.join("") : null;
+  if (dataUrl && !isSafeImageDataUrl(dataUrl, incoming.mimeType, incoming.byteLength)) return null;
   return {
     chunksReceived,
-    dataUrl: chunksReceived === incoming.expected ? incoming.chunks.join("") : null,
+    dataUrl,
   };
 }
 
@@ -65,4 +83,18 @@ function countReceivedChunks(chunks: Array<string | undefined>): number {
 
 function isPositiveInteger(value: number): boolean {
   return Number.isInteger(value) && value > 0;
+}
+
+function parseSafeImageMimeType(value: string): SafeImageMimeType | null {
+  return SAFE_IMAGE_MIME_TYPES.includes(value as SafeImageMimeType)
+    ? (value as SafeImageMimeType)
+    : null;
+}
+
+function isSafeImageDataUrl(dataUrl: string, mimeType: SafeImageMimeType, expectedLength: number): boolean {
+  if (dataUrl.length !== expectedLength) return false;
+  const prefix = `data:${mimeType};base64,`;
+  if (!dataUrl.startsWith(prefix)) return false;
+  const encoded = dataUrl.slice(prefix.length);
+  return encoded.length > 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(encoded);
 }
