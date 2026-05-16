@@ -95,7 +95,8 @@ export type ChannelMessage =
   | { type: "piece-front"; pieceId: number; z: number; by: string }
   | { type: "piece-move"; pieceId: number; x: number; y: number; z: number; by: string }
   | { type: "piece-lock"; pieceId: number; x: number; y: number; z: number; by: string }
-  | { type: "state-sync"; pieces: SyncedPiece[]; lockedCount: number };
+  | { type: "state-sync"; pieces: SyncedPiece[]; lockedCount: number }
+  | { type: "image-overlay"; x: number; y: number };
 
 export type SyncedPiece = {
   id: number;
@@ -157,6 +158,9 @@ export function parseChannelMessage(value: unknown): ChannelMessage | null {
         if (pieces.length !== value.pieces.length) return null;
         return { type: "state-sync", pieces, lockedCount: value.lockedCount };
       }
+    case "image-overlay":
+      if (!isCoordinate(value.x) || !isCoordinate(value.y)) return null;
+      return { type: "image-overlay", x: value.x, y: value.y };
     default:
       return null;
   }

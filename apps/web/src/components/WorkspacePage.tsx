@@ -9,6 +9,7 @@ import { useImageTransfer } from "../hooks/useImageTransfer";
 import { usePuzzle } from "../hooks/usePuzzle";
 import { useViewport, ZOOM_STEP } from "../hooks/useViewport";
 import { useRemoteCursors } from "../hooks/useRemoteCursors";
+import { useImageOverlay } from "../hooks/useImageOverlay";
 import { describeLoadingProgress } from "../utils/format";
 import { Topbar } from "./Topbar";
 import { PuzzleBoard } from "./PuzzleBoard";
@@ -97,6 +98,8 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
 
   const viewport = useViewport();
 
+  const imageOverlay = useImageOverlay({ broadcast: signaling.broadcast });
+
   // ── Wire dispatch refs (runs every render; always captures latest hook values) ────
 
   signalingHandlerRef.current = {
@@ -111,6 +114,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
       } else {
         imageTransfer.requestImageFromPeers(signaling.myId);
       }
+      imageOverlay.broadcastCurrentPosition();
     },
     onPeerLeft: (participantId) => cursors.removeCursor(participantId),
     onParticipantUpdated: (participant) => {
@@ -134,6 +138,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
     imageTransfer.handleMessage(from, msg);
     puzzle.handleMessage(from, msg);
     cursors.handleMessage(from, msg);
+    imageOverlay.handleMessage(from, msg);
   };
 
   // ── Effects ───────────────────────────────────────────────────────────────────────
@@ -146,6 +151,11 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
   useEffect(() => {
     if (puzzle.complete) setShowCompletion(true);
   }, [puzzle.complete]);
+
+  useEffect(() => {
+    if (layout) imageOverlay.initPosition(layout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layout]);
 
   // ── Derived values ────────────────────────────────────────────────────────────────
 
@@ -203,12 +213,14 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
     const cursor = viewport.getWorkspacePoint(e);
     if (cursor) cursors.publishCursor(cursor, Boolean(puzzle.draggingRef.current));
     if (viewport.handlePanMove(e)) return;
+    imageOverlay.handleDragMove(e, viewport.getWorkspacePoint);
     if (!layout) return;
     puzzle.handleDragMove(e, viewport.getWorkspacePoint, margin);
   }
 
   function handlePointerUp() {
     if (viewport.handlePanEnd()) return;
+    imageOverlay.handleDragEnd();
     if (!layout) return;
     const threshold = Math.min(layout.pieceWidth, layout.pieceHeight) * 0.22;
     puzzle.handleDragEnd(threshold);
@@ -260,6 +272,10 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
             myId={signaling.myId}
             viewportRef={viewport.viewportRef}
             worldRef={viewport.worldRef}
+            imageOverlayPosition={imageOverlay.position}
+            onImageOverlayPointerDown={(e) =>
+              imageOverlay.handlePointerDown(e, viewport.getWorkspacePoint)
+            }
             onPiecePointerDown={(e, piece) =>
               puzzle.handlePointerDown(e, piece, viewport.getWorkspacePoint, margin)
             }
@@ -321,6 +337,7 @@ export function isAuthorizedPeerMessage(from: string, msg: ChannelMessage, hostI
     case "piece-lock":
       return msg.by === from;
     case "state-sync":
+    case "image-overlay":
       return true;
     case "image-meta":
     case "image-chunk":

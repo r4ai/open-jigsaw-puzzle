@@ -21,6 +21,8 @@ type Props = {
   myId: string | null;
   viewportRef: React.RefObject<HTMLDivElement | null>;
   worldRef: React.RefObject<HTMLDivElement | null>;
+  imageOverlayPosition: { x: number; y: number } | null;
+  onImageOverlayPointerDown: (e: React.PointerEvent) => void;
   onPiecePointerDown: (e: React.PointerEvent, piece: BoardPiece) => void;
   onPointerMove: (e: React.PointerEvent) => void;
   onPointerUp: () => void;
@@ -47,6 +49,8 @@ export function PuzzleBoard({
   activeRemoteCursorIds,
   viewportRef,
   worldRef,
+  imageOverlayPosition,
+  onImageOverlayPointerDown,
   onPiecePointerDown,
   onPointerMove,
   onPointerUp,
@@ -89,6 +93,23 @@ export function PuzzleBoard({
                 height: `${layout.boardHeight}px`,
               }}
             />
+            {imageOverlayPosition && (
+              <div
+                className="image-overlay"
+                style={{
+                  left: `${margin + imageOverlayPosition.x}px`,
+                  top: `${margin + imageOverlayPosition.y}px`,
+                }}
+                onPointerDown={onImageOverlayPointerDown}
+              >
+                <img
+                  src={imageDataUrl}
+                  alt="元の画像"
+                  className="image-overlay-img"
+                  draggable={false}
+                />
+              </div>
+            )}
             {pieces.map((piece) => {
               const geometry = layout.pieces[piece.id];
               return (
