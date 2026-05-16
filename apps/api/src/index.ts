@@ -27,9 +27,39 @@ type SocketAttachment = {
   isHost: boolean;
 };
 
+type RateBucket = {
+  windowStartedAt: number;
+  count: number;
+};
+
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
+const MAX_CREATE_ROOM_BODY_BYTES = 1024;
+const MAX_SIGNALING_MESSAGE_BYTES = 64 * 1024;
+const MAX_WS_MESSAGES_PER_MINUTE = 1_800;
+const MAX_CREATE_ROOM_REQUESTS_PER_MINUTE = 20;
+const SECURITY_HEADERS = {
+  "content-security-policy": [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "connect-src 'self'",
+    "base-uri 'none'",
+    "frame-ancestors 'none'",
+  ].join("; "),
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+};
+
+const createRoomRateLimits = new Map<string, RateBucket>();
 
 const app = new Hono<{ Bindings: Env }>();
+
+app.use("*", async (c, next) => {
+  await next();
+  for (const [header, value] of Object.entries(SECURITY_HEADERS)) c.header(header, value);
+});
 
 app.post("/api/rooms", (c) => createRoom(c.req.raw, c.env));
 
@@ -57,6 +87,7 @@ export default app;
 
 export class PuzzleRoom implements DurableObject {
   private sessions = new Map<WebSocket, SocketAttachment>();
+  private messageRateLimits = new Map<WebSocket, RateBucket>();
 
   constructor(
     private readonly state: DurableObjectState,
@@ -129,6 +160,11 @@ export class PuzzleRoom implements DurableObject {
 
   async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
     if (typeof message !== "string") return;
+    if (message.length > MAX_SIGNALING_MESSAGE_BYTES || !consumeSocketMessage(this.messageRateLimits, socket)) {
+      socket.close(1008, "Message limit exceeded.");
+      await this.removeSocket(socket);
+      return;
+    }
     const sender = this.sessions.get(socket);
     if (!sender) return;
 
@@ -151,7 +187,7 @@ export class PuzzleRoom implements DurableObject {
       return;
     }
 
-    if (parsed.type !== "signal" || !parsed.to || !parsed.payload) return;
+    if (parsed.type !== "signal" || !parsed.to || !isPeerSignal(parsed.payload)) return;
 
     for (const [targetSocket, target] of this.sessions) {
       if (target.participantId !== parsed.to) continue;
@@ -178,6 +214,7 @@ export class PuzzleRoom implements DurableObject {
     if (!attachment) return;
 
     this.sessions.delete(socket);
+    this.messageRateLimits.delete(socket);
 
     if (attachment.isHost && this.sessions.size > 0) {
       const next = this.sessions.values().next().value as SocketAttachment | undefined;
@@ -225,7 +262,14 @@ export class PuzzleRoom implements DurableObject {
 }
 
 async function createRoom(request: Request, env: Env): Promise<Response> {
-  const body = parseJson<{ difficulty?: unknown }>(await request.text());
+  if (!consumeCreateRoomRequest(request)) return json({ error: "Too many room creation requests." }, 429);
+  const contentLength = Number(request.headers.get("content-length") ?? "0");
+  if (Number.isFinite(contentLength) && contentLength > MAX_CREATE_ROOM_BODY_BYTES) {
+    return json({ error: "Request body is too large." }, 413);
+  }
+  const text = await request.text();
+  if (text.length > MAX_CREATE_ROOM_BODY_BYTES) return json({ error: "Request body is too large." }, 413);
+  const body = parseJson<{ difficulty?: unknown }>(text);
   const difficulty = parseDifficulty(body?.difficulty);
   if (!difficulty) return json({ error: "Difficulty must be 48, 96, or 192." }, 400);
 
@@ -336,6 +380,66 @@ export function readEnvPositiveInteger(value: string | undefined, fallback: numb
   if (value === undefined || value.trim() === "") return fallback;
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function consumeCreateRoomRequest(request: Request): boolean {
+  const key = getClientKey(request);
+  const now = Date.now();
+  for (const [bucketKey, bucket] of createRoomRateLimits) {
+    if (now - bucket.windowStartedAt > 60_000) createRoomRateLimits.delete(bucketKey);
+  }
+  const bucket = createRoomRateLimits.get(key);
+  if (!bucket || now - bucket.windowStartedAt >= 60_000) {
+    createRoomRateLimits.set(key, { windowStartedAt: now, count: 1 });
+    return true;
+  }
+  if (bucket.count >= MAX_CREATE_ROOM_REQUESTS_PER_MINUTE) return false;
+  bucket.count += 1;
+  return true;
+}
+
+function consumeSocketMessage(buckets: Map<WebSocket, RateBucket>, socket: WebSocket): boolean {
+  const now = Date.now();
+  const bucket = buckets.get(socket);
+  if (!bucket || now - bucket.windowStartedAt >= 60_000) {
+    buckets.set(socket, { windowStartedAt: now, count: 1 });
+    return true;
+  }
+  if (bucket.count >= MAX_WS_MESSAGES_PER_MINUTE) return false;
+  bucket.count += 1;
+  return true;
+}
+
+function getClientKey(request: Request): string {
+  return request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+}
+
+function isPeerSignal(value: unknown): value is PeerSignal {
+  if (!isRecord(value) || typeof value.type !== "string") return false;
+  if (value.type === "offer" || value.type === "answer") return isSessionDescription(value.description, value.type);
+  if (value.type === "ice") return isIceCandidate(value.candidate);
+  return false;
+}
+
+function isSessionDescription(value: unknown, expectedType: "offer" | "answer"): boolean {
+  return isRecord(value) && value.type === expectedType && (value.sdp === undefined || (typeof value.sdp === "string" && value.sdp.length <= MAX_SIGNALING_MESSAGE_BYTES));
+}
+
+function isIceCandidate(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  if (value.candidate !== undefined && (typeof value.candidate !== "string" || value.candidate.length > 4096)) return false;
+  if (value.sdpMid !== undefined && value.sdpMid !== null && (typeof value.sdpMid !== "string" || value.sdpMid.length > 128)) return false;
+  if (
+    value.sdpMLineIndex !== undefined &&
+    value.sdpMLineIndex !== null &&
+    (typeof value.sdpMLineIndex !== "number" || !Number.isInteger(value.sdpMLineIndex) || value.sdpMLineIndex < 0 || value.sdpMLineIndex > 256)
+  ) return false;
+  if (value.usernameFragment !== undefined && value.usernameFragment !== null && (typeof value.usernameFragment !== "string" || value.usernameFragment.length > 256)) return false;
+  return true;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 async function serveAssetOrSpa(request: Request, env: Env): Promise<Response> {
