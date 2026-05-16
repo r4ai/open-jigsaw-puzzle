@@ -1,4 +1,4 @@
-import { Maximize2, Minus, MousePointer2, Plus } from "lucide-react";
+import { Lock, LockOpen, Maximize2, Minus, MousePointer2, Plus } from "lucide-react";
 import type { BoardPiece, PuzzleLayout } from "@open-puzzle/shared/puzzle";
 import type { RemoteSelection } from "../hooks/usePuzzle";
 import type { RemoteCursor } from "../hooks/useRemoteCursors";
@@ -28,6 +28,10 @@ type Props = {
   viewportRef: React.RefObject<HTMLDivElement | null>;
   worldRef: React.RefObject<HTMLDivElement | null>;
   imageOverlayPosition: { x: number; y: number } | null;
+  imageOverlayLocked: boolean;
+  imageOverlayOpacity: number;
+  onToggleImageLock: () => void;
+  onChangeImageOpacity: (value: number) => void;
   onImageOverlayPointerDown: (e: React.PointerEvent) => void;
   onPiecePointerDown: (e: React.PointerEvent, piece: BoardPiece) => void;
   onPointerMove: (e: React.PointerEvent) => void;
@@ -55,12 +59,16 @@ export function PuzzleBoard({
   activeRemoteCursorIds,
   selectedPieceIds,
   imageOverlaySelected,
+  imageOverlayLocked,
+  imageOverlayOpacity,
   selectionBox,
   remoteSelections,
   myId,
   viewportRef,
   worldRef,
   imageOverlayPosition,
+  onToggleImageLock,
+  onChangeImageOpacity,
   onImageOverlayPointerDown,
   onPiecePointerDown,
   onPointerMove,
@@ -120,12 +128,13 @@ export function PuzzleBoard({
             />
             {imageOverlayPosition && (
               <div
-                className={`${styles.imageOverlay} ${imageOverlaySelected ? styles.selected : ""} ${remoteImageOverlayColor ? styles.remoteSelected : ""}`}
+                className={`${styles.imageOverlay} ${imageOverlaySelected ? styles.selected : ""} ${remoteImageOverlayColor ? styles.remoteSelected : ""} ${imageOverlayLocked ? styles.overlayLocked : ""}`}
                 style={{
                   left: `${margin + imageOverlayPosition.x}px`,
                   top: `${margin + imageOverlayPosition.y}px`,
                   width: `${layout.boardWidth}px`,
                   height: `${layout.boardHeight}px`,
+                  opacity: imageOverlayOpacity,
                   "--my-selection-color": myColor ?? "transparent",
                   "--remote-selection-color": remoteImageOverlayColor ?? "transparent",
                 } as React.CSSProperties & Record<"--my-selection-color" | "--remote-selection-color", string>}
@@ -198,6 +207,41 @@ export function PuzzleBoard({
           </div>
         </div>
       </div>
+
+      {imageOverlaySelected && imageOverlayPosition && (
+        <div
+          className={styles.imageOverlayToolbar}
+          style={{
+            left: `${pan.x + (margin + imageOverlayPosition.x + layout.boardWidth / 2) * zoom}px`,
+            top: `${Math.max(8, pan.y + (margin + imageOverlayPosition.y) * zoom - 52)}px`,
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            className={`${styles.toolbarBtn} ${imageOverlayLocked ? styles.toolbarBtnActive : ""}`}
+            onClick={onToggleImageLock}
+            title={imageOverlayLocked ? "ロック解除" : "ロック"}
+          >
+            {imageOverlayLocked ? <Lock size={13} /> : <LockOpen size={13} />}
+          </button>
+          <div className={styles.toolbarDivider} />
+          <label className={styles.toolbarOpacityGroup}>
+            <span className={styles.toolbarLabel}>不透明度</span>
+            <input
+              className={styles.toolbarSlider}
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={imageOverlayOpacity}
+              style={{ "--pct": imageOverlayOpacity * 100 } as React.CSSProperties}
+              onChange={(e) => onChangeImageOpacity(Number(e.target.value))}
+            />
+            <span className={styles.toolbarVal}>{Math.round(imageOverlayOpacity * 100)}%</span>
+          </label>
+        </div>
+      )}
 
       <div className={styles.zoomControls}>
         <button onClick={onZoomOut} disabled={zoom <= MIN_ZOOM} title="縮小">

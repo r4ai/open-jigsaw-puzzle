@@ -303,17 +303,21 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
             activeRemoteCursorIds={cursors.activeRemoteCursorIds}
             selectedPieceIds={puzzle.selectedPieceIds}
             imageOverlaySelected={puzzle.imageOverlaySelected}
+            imageOverlayLocked={imageOverlay.locked}
+            imageOverlayOpacity={imageOverlay.opacity}
             selectionBox={puzzle.selectionBox}
             remoteSelections={puzzle.remoteSelections}
             myId={signaling.myId}
             viewportRef={viewport.viewportRef}
             worldRef={viewport.worldRef}
             imageOverlayPosition={imageOverlay.position}
+            onToggleImageLock={() => imageOverlay.toggleLock()}
+            onChangeImageOpacity={(v) => imageOverlay.changeOpacity(v)}
             onImageOverlayPointerDown={(e) => {
               if (e.button !== 0) return;
               puzzle.handleImageOverlayPointerDown(e, viewport.getWorkspacePoint);
               if (e.ctrlKey || e.metaKey) return;
-              imageOverlay.handlePointerDown(e, viewport.getWorkspacePoint);
+              if (!imageOverlay.locked) imageOverlay.handlePointerDown(e, viewport.getWorkspacePoint);
             }}
             onPiecePointerDown={(e, piece) =>
               puzzle.handlePointerDown(e, piece, viewport.getWorkspacePoint, margin)

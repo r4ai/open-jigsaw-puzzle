@@ -11,10 +11,18 @@ type Props = {
 
 export function useImageOverlay({ broadcast }: Props) {
   const [position, setPosition] = useState<Position | null>(null);
+  const [locked, setLocked] = useState(false);
+  const [opacity, setOpacity] = useState(1);
   const positionRef = useRef<Position | null>(null);
+  const lockedRef = useRef(false);
+  const opacityRef = useRef(1);
   const draggingRef = useRef<DragState | null>(null);
   const broadcastRef = useRef(broadcast);
   broadcastRef.current = broadcast;
+
+  function broadcast_({ x, y }: Position) {
+    broadcastRef.current({ type: "image-overlay", x, y, locked: lockedRef.current, opacity: opacityRef.current });
+  }
 
   function initPosition(layout: PuzzleLayout) {
     if (positionRef.current) return;
@@ -27,6 +35,7 @@ export function useImageOverlay({ broadcast }: Props) {
     event: React.PointerEvent,
     getPoint: (e: React.PointerEvent) => Position | null,
   ) {
+    if (lockedRef.current) return;
     const pointer = getPoint(event);
     if (!pointer || !positionRef.current) return;
     draggingRef.current = {
@@ -54,7 +63,7 @@ export function useImageOverlay({ broadcast }: Props) {
     };
     positionRef.current = pos;
     setPosition(pos);
-    broadcastRef.current({ type: "image-overlay", x: pos.x, y: pos.y });
+    broadcast_(pos);
   }
 
   function moveBy(deltaX: number, deltaY: number) {
@@ -63,11 +72,25 @@ export function useImageOverlay({ broadcast }: Props) {
     const pos = { x: current.x + deltaX, y: current.y + deltaY };
     positionRef.current = pos;
     setPosition(pos);
-    broadcastRef.current({ type: "image-overlay", x: pos.x, y: pos.y });
+    broadcast_(pos);
   }
 
   function handleDragEnd() {
     draggingRef.current = null;
+  }
+
+  function toggleLock() {
+    const next = !lockedRef.current;
+    lockedRef.current = next;
+    setLocked(next);
+    if (positionRef.current) broadcast_(positionRef.current);
+  }
+
+  function changeOpacity(value: number) {
+    const next = Math.max(0, Math.min(1, value));
+    opacityRef.current = next;
+    setOpacity(next);
+    if (positionRef.current) broadcast_(positionRef.current);
   }
 
   function handleMessage(_from: string, msg: ChannelMessage) {
@@ -75,22 +98,28 @@ export function useImageOverlay({ broadcast }: Props) {
     const pos = { x: msg.x, y: msg.y };
     positionRef.current = pos;
     setPosition(pos);
+    lockedRef.current = msg.locked;
+    setLocked(msg.locked);
+    opacityRef.current = msg.opacity;
+    setOpacity(msg.opacity);
   }
 
   function broadcastCurrentPosition() {
-    if (positionRef.current) {
-      broadcastRef.current({ type: "image-overlay", x: positionRef.current.x, y: positionRef.current.y });
-    }
+    if (positionRef.current) broadcast_(positionRef.current);
   }
 
   return {
     position,
+    locked,
+    opacity,
     draggingRef,
     initPosition,
     handlePointerDown,
     handleDragMove,
     moveBy,
     handleDragEnd,
+    toggleLock,
+    changeOpacity,
     handleMessage,
     broadcastCurrentPosition,
   };

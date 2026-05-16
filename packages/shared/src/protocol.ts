@@ -97,7 +97,7 @@ export type ChannelMessage =
   | { type: "piece-lock"; pieceId: number; x: number; y: number; z: number; by: string }
   | { type: "selection-presence"; participantId: string; pieceIds: number[]; imageOverlaySelected: boolean }
   | { type: "state-sync"; pieces: SyncedPiece[]; lockedCount: number }
-  | { type: "image-overlay"; x: number; y: number };
+  | { type: "image-overlay"; x: number; y: number; locked: boolean; opacity: number };
 
 export type SyncedPiece = {
   id: number;
@@ -168,9 +168,12 @@ export function parseChannelMessage(value: unknown): ChannelMessage | null {
         if (pieces.length !== value.pieces.length) return null;
         return { type: "state-sync", pieces, lockedCount: value.lockedCount };
       }
-    case "image-overlay":
+    case "image-overlay": {
       if (!isCoordinate(value.x) || !isCoordinate(value.y)) return null;
-      return { type: "image-overlay", x: value.x, y: value.y };
+      const locked = typeof value.locked === "boolean" ? value.locked : false;
+      const rawOpacity = typeof value.opacity === "number" && Number.isFinite(value.opacity) ? value.opacity : 1;
+      return { type: "image-overlay", x: value.x, y: value.y, locked, opacity: Math.max(0, Math.min(1, rawOpacity)) };
+    }
     default:
       return null;
   }
