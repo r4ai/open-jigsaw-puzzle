@@ -117,6 +117,7 @@ export function createInitialPieces(layout: PuzzleLayout): BoardPiece[] {
       targetY: piece.targetY,
       x: Math.max(0, Math.min(layout.boardWidth - layout.pieceWidth, piece.targetX + (lane - 1.5) * spreadX + offset)),
       y: Math.max(0, Math.min(layout.boardHeight - layout.pieceHeight, piece.targetY + ((lane % 2) - 0.5) * spreadY + offset)),
+      z: index + 1,
       locked: false,
     };
   });

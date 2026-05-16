@@ -31,7 +31,7 @@ describe("puzzle geometry", () => {
   });
 
   it("snaps pieces within the threshold", () => {
-    const piece = { id: 1, x: 98, y: 103, targetX: 100, targetY: 100, locked: false };
+    const piece = { id: 1, x: 98, y: 103, z: 1, targetX: 100, targetY: 100, locked: false };
 
     expect(shouldSnap(piece, 5)).toBe(true);
     expect(snapPiece(piece, 5)).toMatchObject({ x: 100, y: 100, locked: true });

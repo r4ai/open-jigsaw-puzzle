@@ -79,13 +79,15 @@ export type ChannelMessage =
   | { type: "request-image"; participantId: string }
   | { type: "image-meta"; imageId: string; mimeType: string; width: number; height: number; chunks: number; byteLength: number }
   | { type: "image-chunk"; imageId: string; index: number; data: string }
-  | { type: "piece-move"; pieceId: number; x: number; y: number; by: string }
-  | { type: "piece-lock"; pieceId: number; x: number; y: number; by: string }
+  | { type: "piece-front"; pieceId: number; z: number; by: string }
+  | { type: "piece-move"; pieceId: number; x: number; y: number; z: number; by: string }
+  | { type: "piece-lock"; pieceId: number; x: number; y: number; z: number; by: string }
   | { type: "state-sync"; pieces: SyncedPiece[]; lockedCount: number };
 
 export type SyncedPiece = {
   id: number;
   x: number;
   y: number;
+  z: number;
   locked: boolean;
 };

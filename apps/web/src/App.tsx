@@ -301,7 +301,7 @@ export default function App() {
           const nextPieces = current.map((piece) => {
             if (piece.id !== message.pieceId || piece.locked) return piece;
             const { x, y } = constrainPiecePosition(message.pieceId, message.x, message.y);
-            return { ...piece, x, y };
+            return { ...piece, x, y, z: message.z };
           });
           piecesRef.current = nextPieces;
           return nextPieces;
@@ -312,7 +312,17 @@ export default function App() {
           const nextPieces = current.map((piece) => {
             if (piece.id !== message.pieceId) return piece;
             const { x, y } = constrainPiecePosition(message.pieceId, message.x, message.y);
-            return { ...piece, x, y, locked: true };
+            return { ...piece, x, y, z: message.z, locked: true };
+          });
+          piecesRef.current = nextPieces;
+          return nextPieces;
+        });
+        break;
+      case "piece-front":
+        setPieces((current) => {
+          const nextPieces = current.map((piece) => {
+            if (piece.id !== message.pieceId) return piece;
+            return { ...piece, z: message.z };
           });
           piecesRef.current = nextPieces;
           return nextPieces;
@@ -361,7 +371,7 @@ export default function App() {
 
   function sendSnapshot(to?: string, dataUrl = imageDataRef.current, width = imageSizeRef.current?.width, height = imageSizeRef.current?.height, snapshotPieces = piecesRef.current) {
     sendImage(dataUrl, width, height, to);
-    const syncedPieces = snapshotPieces.map(({ id, x, y, locked }) => ({ id, x, y, locked }));
+    const syncedPieces = snapshotPieces.map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
     const message: ChannelMessage = { type: "state-sync", pieces: syncedPieces, lockedCount: syncedPieces.filter((piece) => piece.locked).length };
     if (to) meshRef.current?.send(to, message);
     else broadcast(message);
@@ -391,10 +401,28 @@ export default function App() {
     meshRef.current?.broadcast(message);
   }
 
+  function bringPieceToFront(pieceId: number): number {
+    const nextZ = Math.max(0, ...piecesRef.current.map((piece) => piece.z)) + 1;
+    setPieces((current) => {
+      const nextPieces = current.map((piece) => (piece.id === pieceId ? { ...piece, z: nextZ } : piece));
+      piecesRef.current = nextPieces;
+      return nextPieces;
+    });
+    return nextZ;
+  }
+
   function handlePointerDown(event: React.PointerEvent, piece: BoardPiece) {
-    if (piece.locked || !layout || !workspaceMetrics) return;
+    if (!layout || !workspaceMetrics) return;
+    const nextZ = bringPieceToFront(piece.id);
+    if (piece.locked) {
+      broadcast({ type: "piece-front", pieceId: piece.id, z: nextZ, by: myId ?? "local" });
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     const pointer = getWorkspacePoint(event);
     if (!pointer) return;
+    broadcast({ type: "piece-front", pieceId: piece.id, z: nextZ, by: myId ?? "local" });
     setDragging({
       id: piece.id,
       dx: pointer.x - (workspaceMetrics.margin + piece.x),
@@ -428,7 +456,7 @@ export default function App() {
       const nextPieces = current.map((piece) => {
         if (piece.id !== dragging.id || piece.locked) return piece;
         const next = { ...piece, x, y };
-        broadcast({ type: "piece-move", pieceId: piece.id, x: next.x, y: next.y, by: myId ?? "local" });
+        broadcast({ type: "piece-move", pieceId: piece.id, x: next.x, y: next.y, z: next.z, by: myId ?? "local" });
         return next;
       });
       piecesRef.current = nextPieces;
@@ -447,7 +475,7 @@ export default function App() {
       const nextPieces = current.map((piece) => {
         if (piece.id !== dragging.id) return piece;
         const snapped = snapPiece(piece, threshold);
-        if (snapped.locked) broadcast({ type: "piece-lock", pieceId: snapped.id, x: snapped.x, y: snapped.y, by: myId ?? "local" });
+        if (snapped.locked) broadcast({ type: "piece-lock", pieceId: snapped.id, x: snapped.x, y: snapped.y, z: snapped.z, by: myId ?? "local" });
         return snapped;
       });
       piecesRef.current = nextPieces;
@@ -523,7 +551,7 @@ export default function App() {
     setPieces((current) => {
       const nextPieces = arrangeLoosePieces(current, layout);
       piecesRef.current = nextPieces;
-      const syncedPieces = nextPieces.map(({ id, x, y, locked }) => ({ id, x, y, locked }));
+      const syncedPieces = nextPieces.map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
       broadcast({ type: "state-sync", pieces: syncedPieces, lockedCount: syncedPieces.filter((piece) => piece.locked).length });
       return nextPieces;
     });
@@ -666,7 +694,7 @@ export default function App() {
                         top: `${workspaceMetrics.margin + piece.y}px`,
                         width: `${layout.pieceWidth}px`,
                         height: `${layout.pieceHeight}px`,
-                        zIndex: piece.locked ? 1 : dragging?.id === piece.id ? 5 : 2,
+                        zIndex: piece.z,
                       }}
                       aria-label={`piece ${piece.id + 1}`}
                       onPointerDown={(event) => handlePointerDown(event, piece)}
@@ -842,7 +870,7 @@ function mergeSyncedPieces(current: BoardPiece[], synced: SyncedPiece[]): BoardP
   const byId = new Map(synced.map((piece) => [piece.id, piece]));
   return current.map((piece) => {
     const next = byId.get(piece.id);
-    return next ? { ...piece, x: next.x, y: next.y, locked: next.locked } : piece;
+    return next ? { ...piece, x: next.x, y: next.y, z: next.z, locked: next.locked } : piece;
   });
 }
 
