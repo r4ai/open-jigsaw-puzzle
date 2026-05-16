@@ -1,6 +1,6 @@
 import { Check, ChevronLeft, ChevronRight, Copy, ImagePlus, Link, Loader2, Maximize2, Minus, Moon, MousePointer2, Play, Plus, Rows3, Sun, Users } from "lucide-react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { DIFFICULTIES, MAX_PARTICIPANTS, type ChannelMessage, type Difficulty, type Participant, type RoomSummary, type SyncedPiece } from "@open-puzzle/shared/protocol";
 import { createInitialPieces, createPuzzleLayout, getWorkspaceMargin, isComplete, snapPiece, type BoardPiece, type PieceEdge, type PieceGeometry, type PuzzleLayout } from "@open-puzzle/shared/puzzle";
 import { chunkString, resizeImage } from "./image";
@@ -97,8 +97,8 @@ export default function App() {
     return { margin };
   }, [layout]);
 
-  const lockedCount = pieces.filter((piece) => piece.locked).length;
-  const complete = isComplete(pieces);
+  const lockedCount = useMemo(() => countLockedPieces(pieces), [pieces]);
+  const complete = useMemo(() => isComplete(pieces), [pieces]);
   const isHost = participants.find((participant) => participant.id === myId)?.isHost ?? false;
   const shareUrl = room ? `${window.location.origin}/rooms/${room.id}` : "";
   const loadingSummary = describeLoadingProgress(loadingProgress) ?? status;
@@ -394,7 +394,7 @@ export default function App() {
         const incoming = incomingRef.current.get(message.imageId);
         if (!incoming) return;
         incoming.chunks[message.index] = message.data;
-        const chunksReceived = incoming.chunks.filter(Boolean).length;
+        const chunksReceived = countReceivedChunks(incoming.chunks);
         setLoadingProgress((current) => ({
           phase: "receiving",
           imageId: message.imageId,
@@ -432,8 +432,8 @@ export default function App() {
       }
       case "piece-move":
         setPieces((current) => {
-          const nextPieces = current.map((piece) => {
-            if (piece.id !== message.pieceId || piece.locked) return piece;
+          const nextPieces = updatePieceById(current, message.pieceId, (piece) => {
+            if (piece.locked) return piece;
             const { x, y } = constrainPiecePosition(message.pieceId, message.x, message.y);
             return { ...piece, x, y, z: message.z };
           });
@@ -443,8 +443,7 @@ export default function App() {
         break;
       case "piece-lock":
         setPieces((current) => {
-          const nextPieces = current.map((piece) => {
-            if (piece.id !== message.pieceId) return piece;
+          const nextPieces = updatePieceById(current, message.pieceId, (piece) => {
             const { x, y } = constrainPiecePosition(message.pieceId, message.x, message.y);
             return { ...piece, x, y, z: message.z, locked: true };
           });
@@ -454,10 +453,7 @@ export default function App() {
         break;
       case "piece-front":
         setPieces((current) => {
-          const nextPieces = current.map((piece) => {
-            if (piece.id !== message.pieceId) return piece;
-            return { ...piece, z: message.z };
-          });
+          const nextPieces = updatePieceById(current, message.pieceId, (piece) => ({ ...piece, z: message.z }));
           piecesRef.current = nextPieces;
           return nextPieces;
         });
@@ -504,7 +500,7 @@ export default function App() {
 
   function constrainPiecePosition(pieceId: number, x: number, y: number): { x: number; y: number } {
     if (!Number.isFinite(x) || !Number.isFinite(y) || Math.abs(x) > MAX_CANVAS_COORDINATE || Math.abs(y) > MAX_CANVAS_COORDINATE) {
-      const fallback = piecesRef.current.find((piece) => piece.id === pieceId);
+      const fallback = piecesRef.current[pieceId];
       return { x: fallback?.x ?? 0, y: fallback?.y ?? 0 };
     }
     return { x, y };
@@ -518,7 +514,7 @@ export default function App() {
   function sendSnapshot(to?: string, dataUrl = imageDataRef.current, width = imageSizeRef.current?.width, height = imageSizeRef.current?.height, snapshotPieces = piecesRef.current) {
     sendImage(dataUrl, width, height, to);
     const syncedPieces = snapshotPieces.map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
-    const message: ChannelMessage = { type: "state-sync", pieces: syncedPieces, lockedCount: syncedPieces.filter((piece) => piece.locked).length };
+    const message: ChannelMessage = { type: "state-sync", pieces: syncedPieces, lockedCount: countLockedPieces(syncedPieces) };
     if (to) meshRef.current?.send(to, message);
     else broadcast(message);
   }
@@ -533,11 +529,16 @@ export default function App() {
     if (to) meshRef.current?.send(to, meta);
     else broadcast(meta);
 
+    let lastProgressAt = startedAt;
     chunks.forEach((data, index) => {
       const message: ChannelMessage = { type: "image-chunk", imageId, index, data };
       if (to) meshRef.current?.send(to, message);
       else broadcast(message);
-      setLoadingProgress({ phase: "sending", chunksSent: index + 1, totalChunks: chunks.length, byteLength: dataUrl.length, target: to ? "peer" : "all", startedAt });
+      const now = Date.now();
+      if (index === chunks.length - 1 || now - lastProgressAt >= 100) {
+        lastProgressAt = now;
+        setLoadingProgress({ phase: "sending", chunksSent: index + 1, totalChunks: chunks.length, byteLength: dataUrl.length, target: to ? "peer" : "all", startedAt });
+      }
     });
     setStatus(`画像を配布しました (${chunks.length} チャンク)`);
     setLoadingProgress({ phase: "complete", detail: `${chunks.length} チャンク / ${formatBytes(dataUrl.length)} を配布しました` });
@@ -558,7 +559,7 @@ export default function App() {
   function bringPieceToFront(pieceId: number): number {
     const nextZ = Math.max(0, ...piecesRef.current.map((piece) => piece.z)) + 1;
     setPieces((current) => {
-      const nextPieces = current.map((piece) => (piece.id === pieceId ? { ...piece, z: nextZ } : piece));
+      const nextPieces = updatePieceById(current, pieceId, (piece) => ({ ...piece, z: nextZ }));
       piecesRef.current = nextPieces;
       return nextPieces;
     });
@@ -611,8 +612,8 @@ export default function App() {
     );
 
     setPieces((current) => {
-      const nextPieces = current.map((piece) => {
-        if (piece.id !== dragging.id || piece.locked) return piece;
+      const nextPieces = updatePieceById(current, dragging.id, (piece) => {
+        if (piece.locked) return piece;
         const next = { ...piece, x, y };
         broadcast({ type: "piece-move", pieceId: piece.id, x: next.x, y: next.y, z: next.z, by: myId ?? "local" });
         return next;
@@ -631,8 +632,7 @@ export default function App() {
     if (!dragging || !layout) return;
     const threshold = Math.min(layout.pieceWidth, layout.pieceHeight) * 0.22;
     setPieces((current) => {
-      const nextPieces = current.map((piece) => {
-        if (piece.id !== dragging.id) return piece;
+      const nextPieces = updatePieceById(current, dragging.id, (piece) => {
         const snapped = snapPiece(piece, threshold);
         if (snapped.locked) broadcast({ type: "piece-lock", pieceId: snapped.id, x: snapped.x, y: snapped.y, z: snapped.z, by: myId ?? "local" });
         return snapped;
@@ -715,7 +715,7 @@ export default function App() {
       const nextPieces = arrangeLoosePieces(current, layout);
       piecesRef.current = nextPieces;
       const syncedPieces = nextPieces.map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
-      broadcast({ type: "state-sync", pieces: syncedPieces, lockedCount: syncedPieces.filter((piece) => piece.locked).length });
+      broadcast({ type: "state-sync", pieces: syncedPieces, lockedCount: countLockedPieces(syncedPieces) });
       return nextPieces;
     });
     setStatus("未固定ピースを盤面の下に並べました");
@@ -1089,7 +1089,7 @@ function formatBytes(bytes: number): string {
   return `${mib.toFixed(mib >= 100 ? 0 : 1)} MiB`;
 }
 
-function JigsawPieceImage({ geometry, imageDataUrl, layout, pieceId }: { geometry: PieceGeometry; imageDataUrl: string; layout: PuzzleLayout; pieceId: number }) {
+const JigsawPieceImage = memo(function JigsawPieceImage({ geometry, imageDataUrl, layout, pieceId }: { geometry: PieceGeometry; imageDataUrl: string; layout: PuzzleLayout; pieceId: number }) {
   const tabSize = Math.min(layout.pieceWidth, layout.pieceHeight) * 0.22;
   const path = createPiecePath(layout.pieceWidth, layout.pieceHeight, geometry.edges, tabSize);
 
@@ -1123,7 +1123,7 @@ function JigsawPieceImage({ geometry, imageDataUrl, layout, pieceId }: { geometr
       <path className="piece-edge" d={path} />
     </svg>
   );
-}
+});
 
 function createPiecePath(width: number, height: number, edges: PieceGeometry["edges"], tabSize: number): string {
   const commands = [`M 0 0`];
@@ -1158,6 +1158,36 @@ function createEdgePath(startX: number, startY: number, endX: number, endY: numb
 
 function roundPath(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function countReceivedChunks(chunks: string[]): number {
+  let count = 0;
+  for (const chunk of chunks) {
+    if (chunk) count += 1;
+  }
+  return count;
+}
+
+function countLockedPieces(pieces: Pick<BoardPiece, "locked">[]): number {
+  let count = 0;
+  for (const piece of pieces) {
+    if (piece.locked) count += 1;
+  }
+  return count;
+}
+
+function updatePieceById(pieces: BoardPiece[], pieceId: number, update: (piece: BoardPiece) => BoardPiece): BoardPiece[] {
+  const piece = pieces[pieceId];
+  if (!piece || piece.id !== pieceId) {
+    return pieces.map((candidate) => (candidate.id === pieceId ? update(candidate) : candidate));
+  }
+
+  const nextPiece = update(piece);
+  if (nextPiece === piece) return pieces;
+
+  const nextPieces = pieces.slice();
+  nextPieces[pieceId] = nextPiece;
+  return nextPieces;
 }
 
 function mergeSyncedPieces(current: BoardPiece[], synced: SyncedPiece[]): BoardPiece[] {

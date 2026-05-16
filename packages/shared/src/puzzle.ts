@@ -138,16 +138,67 @@ function createScatterSlots(layout: PuzzleLayout, margin: number, gap: number, s
   const padding = Math.max(4, Math.min(layout.pieceWidth, layout.pieceHeight) * 0.06);
   const slotsTarget = Math.ceil(required * 1.35);
   const maxAttempts = required * 90;
+  const spatialIndex = createSlotSpatialIndex(layout, padding);
   const slots: Array<{ x: number; y: number; sort: number }> = [];
 
   for (let attempt = 0; attempt < maxAttempts && slots.length < slotsTarget; attempt += 1) {
     const candidate = createBandCandidate(attempt, layout, margin, gap, seed);
     if (!isOutsideFrame(candidate, layout, gap * 0.7)) continue;
-    if (slots.some((slot) => rectanglesOverlap(candidate, slot, layout, padding))) continue;
+    if (spatialIndex.overlaps(candidate)) continue;
     slots.push(candidate);
+    spatialIndex.add(candidate);
   }
 
   return slots;
+}
+
+function createSlotSpatialIndex(layout: PuzzleLayout, padding: number): {
+  add: (slot: { x: number; y: number }) => void;
+  overlaps: (slot: { x: number; y: number }) => boolean;
+} {
+  const cellSize = Math.max(layout.pieceWidth, layout.pieceHeight) + padding;
+  const cells = new Map<string, Array<{ x: number; y: number }>>();
+
+  function cellRange(slot: { x: number; y: number }): { minX: number; maxX: number; minY: number; maxY: number } {
+    return {
+      minX: Math.floor((slot.x - padding) / cellSize),
+      maxX: Math.floor((slot.x + layout.pieceWidth + padding) / cellSize),
+      minY: Math.floor((slot.y - padding) / cellSize),
+      maxY: Math.floor((slot.y + layout.pieceHeight + padding) / cellSize),
+    };
+  }
+
+  function cellKey(x: number, y: number): string {
+    return `${x}:${y}`;
+  }
+
+  return {
+    add(slot) {
+      const range = cellRange(slot);
+      for (let y = range.minY; y <= range.maxY; y += 1) {
+        for (let x = range.minX; x <= range.maxX; x += 1) {
+          const key = cellKey(x, y);
+          const bucket = cells.get(key);
+          if (bucket) bucket.push(slot);
+          else cells.set(key, [slot]);
+        }
+      }
+    },
+    overlaps(slot) {
+      const range = cellRange(slot);
+      const checked = new Set<{ x: number; y: number }>();
+      for (let y = range.minY; y <= range.maxY; y += 1) {
+        for (let x = range.minX; x <= range.maxX; x += 1) {
+          for (const existing of cells.get(cellKey(x, y)) ?? []) {
+            if (checked.has(existing)) continue;
+            checked.add(existing);
+            if (rectanglesOverlap(slot, existing, layout, padding)) return true;
+          }
+        }
+      }
+      return false;
+    },
+  };
 }
 
 function createBandCandidate(index: number, layout: PuzzleLayout, margin: number, gap: number, seed: number): { x: number; y: number; sort: number } {

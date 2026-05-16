@@ -16,6 +16,8 @@ type MeshHandlers = {
 
 const MAX_PENDING_MESSAGES_PER_PEER = 512;
 const MAX_PENDING_ICE_CANDIDATES_PER_PEER = 128;
+const MAX_CHANNEL_BUFFERED_AMOUNT = 1_000_000;
+const CHANNEL_BUFFERED_AMOUNT_LOW_THRESHOLD = 256_000;
 const RECONNECT_DELAY_MS = 750;
 
 export async function fetchIceConfig(): Promise<IceConfig> {
@@ -127,11 +129,12 @@ export class PeerMesh {
   send(to: string, message: ChannelMessage): void {
     const channel = this.channels.get(to);
     const payload = JSON.stringify(message);
-    if (channel?.readyState === "open") {
+    if (channel?.readyState === "open" && !this.pendingMessages.has(to) && getBufferedAmount(channel) <= MAX_CHANNEL_BUFFERED_AMOUNT) {
       channel.send(payload);
       return;
     }
     this.queueMessage(to, payload);
+    if (channel?.readyState === "open") this.drainPending(to, channel);
   }
 
   disconnect(participantId: string): void {
@@ -195,10 +198,12 @@ export class PeerMesh {
     const previous = this.channels.get(participantId);
     if (previous && previous !== channel) previous.close();
     this.channels.set(participantId, channel);
+    channel.bufferedAmountLowThreshold = CHANNEL_BUFFERED_AMOUNT_LOW_THRESHOLD;
     channel.addEventListener("open", () => {
-      this.flushPending(participantId, channel);
+      this.drainPending(participantId, channel);
       this.emitConnectionChange();
     });
+    channel.addEventListener("bufferedamountlow", () => this.drainPending(participantId, channel));
     channel.addEventListener("close", () => {
       if (this.channels.get(participantId) === channel) this.channels.delete(participantId);
       this.emitConnectionChange();
@@ -219,10 +224,10 @@ export class PeerMesh {
     this.pendingMessages.set(participantId, queue);
   }
 
-  private flushPending(participantId: string, channel: RTCDataChannel): void {
+  private drainPending(participantId: string, channel: RTCDataChannel): void {
     const queue = this.pendingMessages.get(participantId);
     if (!queue?.length) return;
-    while (queue.length > 0 && channel.readyState === "open") {
+    while (queue.length > 0 && channel.readyState === "open" && getBufferedAmount(channel) <= MAX_CHANNEL_BUFFERED_AMOUNT) {
       const payload = queue.shift();
       if (payload) channel.send(payload);
     }
@@ -285,4 +290,8 @@ export class PeerMesh {
     const connected = [...this.channels.values()].filter((channel) => channel.readyState === "open").length;
     this.handlers.onConnectionChange(connected);
   }
+}
+
+function getBufferedAmount(channel: RTCDataChannel): number {
+  return typeof channel.bufferedAmount === "number" ? channel.bufferedAmount : 0;
 }

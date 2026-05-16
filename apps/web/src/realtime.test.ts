@@ -24,10 +24,16 @@ class FakeWebSocket {
 class FakeDataChannel {
   readonly listeners = new Map<string, ((event: unknown) => void)[]>();
   readyState: RTCDataChannelState = "connecting";
+  bufferedAmount = 0;
+  bufferedAmountLowThreshold = 0;
   sent: string[] = [];
 
   addEventListener(type: string, listener: (event: unknown) => void): void {
     this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
+  }
+
+  dispatch(type: string, event: unknown = {}): void {
+    for (const listener of this.listeners.get(type) ?? []) listener(event);
   }
 
   send(payload: string): void {
@@ -151,5 +157,29 @@ describe("PeerMesh", () => {
     expect(FakePeerConnection.instances).toHaveLength(2);
     expect(sendSignal).toHaveBeenCalledTimes(2);
     expect(sendSignal.mock.calls[1]?.[1].type).toBe("offer");
+  });
+
+  it("waits for data channel backpressure to drain before flushing queued messages", async () => {
+    vi.stubGlobal("window", { setTimeout, clearTimeout });
+    vi.stubGlobal("RTCPeerConnection", FakePeerConnection);
+    const mesh = new PeerMesh("a", iceConfig, vi.fn<(to: string, payload: PeerSignal) => void>(), {
+      onMessage: vi.fn<(from: string, message: ChannelMessage) => void>(),
+      onConnectionChange: vi.fn(),
+    });
+
+    mesh.connectToParticipants(participants);
+    await flushPromises();
+    const channel = FakePeerConnection.instances[0]!.channels[0]!;
+    channel.readyState = "open";
+    channel.bufferedAmount = 1_000_001;
+    channel.dispatch("open");
+
+    mesh.send("b", { type: "piece-front", pieceId: 1, z: 2, by: "a" });
+    expect(channel.sent).toHaveLength(0);
+
+    channel.bufferedAmount = 0;
+    channel.dispatch("bufferedamountlow");
+    expect(channel.sent).toHaveLength(1);
+    expect(JSON.parse(channel.sent[0]!) as ChannelMessage).toMatchObject({ type: "piece-front", pieceId: 1 });
   });
 });

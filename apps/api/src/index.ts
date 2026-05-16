@@ -178,11 +178,12 @@ export class PuzzleRoom implements DurableObject {
     this.state.waitUntil(touchRoom(this.env.DB, roomId, this.sessions.size, Number(this.env.ROOM_TTL_SECONDS || ROOM_TTL_SECONDS)));
     this.state.waitUntil(recordEvent(this.env.DB, roomId, "leave", { participantId: attachment.participantId }));
 
+    const participants = this.participants();
     this.broadcast({
       type: "peer-left",
       participantId: attachment.participantId,
-      hostId: this.participants().find((participant) => participant.isHost)?.id ?? null,
-      participants: this.participants(),
+      hostId: participants.find((participant) => participant.isHost)?.id ?? null,
+      participants,
     });
   }
 
@@ -249,8 +250,12 @@ async function readRoom(db: D1Database, roomId: string): Promise<RoomRow | null>
 async function touchRoom(db: D1Database, roomId: string, participantCount: number, ttlSeconds: number): Promise<RoomRow> {
   const now = nowSeconds();
   const expiry = expiresAt(now, ttlSeconds);
-  await db.prepare("UPDATE rooms SET participant_count = ?, last_seen_at = ?, expires_at = ? WHERE id = ?").bind(participantCount, now, expiry, roomId).run();
-  const row = await readRoom(db, roomId);
+  const row = await db
+    .prepare(
+      "UPDATE rooms SET participant_count = ?, last_seen_at = ?, expires_at = ? WHERE id = ? RETURNING id, difficulty, expires_at, participant_count",
+    )
+    .bind(participantCount, now, expiry, roomId)
+    .first<RoomRow>();
   if (!row) throw new Error("Room disappeared.");
   return row;
 }
