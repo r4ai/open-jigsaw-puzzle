@@ -6,7 +6,6 @@ import { createInitialPieces, createPuzzleLayout, isComplete, snapPiece, type Bo
 import { chunkString, resizeImage } from "./image";
 import { fetchIceConfig, openSignaling, PeerMesh } from "./realtime";
 
-type AppState = "home" | "room";
 type IncomingImage = {
   imageId: string;
   chunks: string[];
@@ -39,7 +38,6 @@ const WHEEL_ZOOM_FACTOR = 1.12;
 export default function App() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const [appState, setAppState] = useState<AppState>("home");
   const [name, setName] = useState(DEFAULT_NAME);
   const [joinId, setJoinId] = useState("");
   const [difficulty, setDifficulty] = useState<Difficulty>(96);
@@ -53,7 +51,6 @@ export default function App() {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
   const [pieces, setPieces] = useState<BoardPiece[]>([]);
-  const [dragging, setDragging] = useState<DragState | null>(null);
   const [panning, setPanning] = useState<PanState | null>(null);
   const [remoteCursors, setRemoteCursors] = useState<RemoteCursor[]>([]);
   const [pan, setPan] = useState<PanOffset>({ x: 0, y: 0 });
@@ -71,6 +68,7 @@ export default function App() {
   const layoutRef = useRef<PuzzleLayout | null>(null);
   const myIdRef = useRef<string | null>(null);
   const piecesRef = useRef<BoardPiece[]>([]);
+  const draggingRef = useRef<DragState | null>(null);
   const pendingSyncRef = useRef<SyncedPiece[] | null>(null);
   const enteredRoomRef = useRef<string | null>(null);
   const lastCursorSentAtRef = useRef(0);
@@ -91,6 +89,7 @@ export default function App() {
   const shareUrl = room ? `${window.location.origin}/rooms/${room.id}` : "";
   const loadingSummary = describeLoadingProgress(loadingProgress) ?? status;
   const routeRoomId = getRoomIdFromPath(pathname);
+  const viewingRoom = Boolean(routeRoomId);
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
@@ -105,7 +104,6 @@ export default function App() {
   useEffect(() => {
     if (!routeRoomId) {
       enteredRoomRef.current = null;
-      setAppState("home");
       return;
     }
     const normalizedRoomId = routeRoomId.toUpperCase();
@@ -192,7 +190,6 @@ export default function App() {
         setMyId(participantId);
         setRoom(nextRoom);
         setParticipants(nextParticipants);
-        setAppState("room");
         setStatus("接続しました");
         setLoadingProgress({ phase: "idle" });
         mesh.connectToParticipants(nextParticipants);
@@ -469,11 +466,11 @@ export default function App() {
     const pointer = getWorkspacePoint(event);
     if (!pointer) return;
     broadcast({ type: "piece-front", pieceId: piece.id, z: nextZ, by: myId ?? "local" });
-    setDragging({
+    draggingRef.current = {
       id: piece.id,
       dx: pointer.x - (workspaceMetrics.margin + piece.x),
       dy: pointer.y - (workspaceMetrics.margin + piece.y),
-    });
+    };
     event.currentTarget.setPointerCapture(event.pointerId);
     event.preventDefault();
     event.stopPropagation();
@@ -492,6 +489,7 @@ export default function App() {
       return;
     }
 
+    const dragging = draggingRef.current;
     if (!dragging || !layout || !workspaceMetrics) return;
     const pointer = cursor;
     if (!pointer) return;
@@ -518,6 +516,7 @@ export default function App() {
       setPanning(null);
       return;
     }
+    const dragging = draggingRef.current;
     if (!dragging || !layout) return;
     const threshold = Math.min(layout.pieceWidth, layout.pieceHeight) * 0.22;
     setPieces((current) => {
@@ -530,7 +529,7 @@ export default function App() {
       piecesRef.current = nextPieces;
       return nextPieces;
     });
-    setDragging(null);
+    draggingRef.current = null;
   }
 
   function handleViewportPointerDown(event: React.PointerEvent<HTMLDivElement>) {
@@ -617,7 +616,7 @@ export default function App() {
     window.setTimeout(() => setCopied(false), 1200);
   }
 
-  if (appState === "home") {
+  if (!viewingRoom) {
     return (
       <main className="shell home">
         <section className="intro">
