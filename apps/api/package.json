@@ -1,0 +1,23 @@
+{
+  "name": "@open-puzzle/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --config wrangler.jsonc",
+    "build": "tsc -p tsconfig.json",
+    "deploy": "wrangler deploy --config wrangler.jsonc",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@open-puzzle/shared": "workspace:*",
+    "hono": "^4.10.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251213.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15",
+    "wrangler": "^4.55.0"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "open-puzzle",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @open-puzzle/web dev",
+    "dev:api": "pnpm --filter @open-puzzle/api dev",
+    "dev:web": "pnpm --filter @open-puzzle/web dev",
+    "build": "pnpm -r build",
+    "preview": "pnpm --filter @open-puzzle/web preview",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "deploy": "pnpm build && pnpm --filter @open-puzzle/api deploy"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  },
+  "packageManager": "pnpm@10.26.2"
+}

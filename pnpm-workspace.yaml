@@ -1,0 +1,19 @@
+packages:
+  - apps/*
+  - packages/*
+
+minimumReleaseAge: 1440
+
+minimumReleaseAgeStrict: true
+
+onlyBuiltDependencies:
+  - b
+  - d
+  - e
+  - esbuild
+  - i
+  - l
+  - s
+  - sharp
+  - u
+  - workerd
