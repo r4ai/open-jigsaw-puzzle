@@ -132,8 +132,26 @@ export class PuzzleRoom implements DurableObject {
     const sender = this.sessions.get(socket);
     if (!sender) return;
 
-    const parsed = parseJson<{ type?: string; to?: string; payload?: PeerSignal }>(message);
-    if (!parsed || parsed.type !== "signal" || !parsed.to || !parsed.payload) return;
+    const parsed = parseJson<{ type?: string; to?: string; payload?: PeerSignal; name?: unknown }>(message);
+    if (!parsed) return;
+
+    if (parsed.type === "update-name") {
+      const nextName = sanitizeName(parsed.name);
+      if (sender.name === nextName) return;
+      sender.name = nextName;
+      socket.serializeAttachment(sender);
+      const participant = toParticipant(sender);
+      const participants = this.participants();
+      this.broadcast({
+        type: "participant-updated",
+        participant,
+        participants,
+      });
+      this.state.waitUntil(recordEvent(this.env.DB, this.state.id.name || "", "rename", { participantId: sender.participantId, name: nextName }));
+      return;
+    }
+
+    if (parsed.type !== "signal" || !parsed.to || !parsed.payload) return;
 
     for (const [targetSocket, target] of this.sessions) {
       if (target.participantId !== parsed.to) continue;

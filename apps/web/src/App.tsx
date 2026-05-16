@@ -3,6 +3,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { DIFFICULTIES, MAX_PARTICIPANTS, type ChannelMessage, type Difficulty, type Participant, type RoomSummary, type SyncedPiece } from "@open-puzzle/shared/protocol";
 import { createInitialPieces, createPuzzleLayout, getWorkspaceMargin, isComplete, snapPiece, type BoardPiece, type PieceEdge, type PieceGeometry, type PuzzleLayout } from "@open-puzzle/shared/puzzle";
+import { sanitizeName } from "@open-puzzle/shared/rooms";
 import { createIncomingImage, storeIncomingImageChunk, type IncomingImage } from "./incoming-image";
 import { chunkString, resizeImage } from "./image";
 import { fetchIceConfig, openSignaling, PeerMesh } from "./realtime";
@@ -35,12 +36,14 @@ const MIN_ZOOM = 0.35;
 const MAX_ZOOM = 2.5;
 const ZOOM_STEP = 0.15;
 const WHEEL_ZOOM_FACTOR = 1.12;
+const PARTICIPANT_COLORS = ["#0f9f8f", "#d94f70", "#7a5cff", "#e2871a", "#2f7dd1", "#47a447", "#c14db2", "#8b6b3d"] as const;
 
 export default function App() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [theme, setTheme] = useState<"light" | "dark">(getInitialTheme);
   const [name, setName] = useState(DEFAULT_NAME);
+  const [draftName, setDraftName] = useState(DEFAULT_NAME);
   const [joinId, setJoinId] = useState("");
   const [difficulty, setDifficulty] = useState<Difficulty>(96);
   const [room, setRoom] = useState<RoomSummary | null>(null);
@@ -94,7 +97,10 @@ export default function App() {
 
   const lockedCount = useMemo(() => countLockedPieces(pieces), [pieces]);
   const complete = useMemo(() => isComplete(pieces), [pieces]);
-  const isHost = participants.find((participant) => participant.id === myId)?.isHost ?? false;
+  const myParticipant = participants.find((participant) => participant.id === myId);
+  const isHost = myParticipant?.isHost ?? false;
+  const sanitizedDraftName = sanitizeName(draftName);
+  const nameChanged = Boolean(myParticipant && sanitizedDraftName !== myParticipant.name);
   const shareUrl = room ? `${window.location.origin}/rooms/${room.id}` : "";
   const loadingSummary = describeLoadingProgress(loadingProgress) ?? status;
   const routeRoomId = getRoomIdFromPath(pathname);
@@ -219,6 +225,19 @@ export default function App() {
     socket.send(JSON.stringify({ type: "signal", to, payload }));
   }
 
+  function updateDisplayName() {
+    if (!myParticipant) return;
+    const nextName = sanitizeName(draftName);
+    setDraftName(nextName);
+    if (nextName === myParticipant.name) return;
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      setError("Signaling connection is not open.");
+      return;
+    }
+    socket.send(JSON.stringify({ type: "update-name", name: nextName }));
+  }
+
   async function enterRoom(roomId: string, options: { preserveState?: boolean } = {}) {
     const normalizedRoomId = roomId.trim().toUpperCase();
     const attempt = connectionAttemptRef.current + 1;
@@ -230,6 +249,8 @@ export default function App() {
       setMyId(null);
       setConnectedPeers(0);
       setRemoteCursors([]);
+      setActiveRemoteCursorIds(new Set());
+      clearRemoteCursorActivityTimers();
       incomingRef.current.clear();
       pendingSyncRef.current = null;
       myIdRef.current = null;
@@ -275,6 +296,9 @@ export default function App() {
         setMyId(participantId);
         setRoom(nextRoom);
         setParticipants(nextParticipants);
+        const joinedName = nextParticipants.find((participant) => participant.id === participantId)?.name ?? name;
+        setName(joinedName);
+        setDraftName(joinedName);
         setStatus("接続しました");
         setLoadingProgress({ phase: "idle" });
         mesh.connectToParticipants(nextParticipants);
@@ -295,6 +319,15 @@ export default function App() {
         clearRemoteCursorActive(participantId);
         setRemoteCursors((current) => current.filter((cursor) => cursor.participantId !== participantId));
         meshRef.current?.disconnect(participantId);
+      },
+      onParticipantUpdated: (participant, nextParticipants) => {
+        if (!isCurrentConnection(attempt, socket)) return;
+        setParticipants(nextParticipants);
+        setRemoteCursors((current) => current.map((cursor) => (cursor.participantId === participant.id ? { ...cursor, name: participant.name } : cursor)));
+        if (participant.id === myIdRef.current) {
+          setName(participant.name);
+          setDraftName(participant.name);
+        }
       },
       onSignal: (from, payload) => {
         if (!isCurrentConnection(attempt, socket)) return;
@@ -796,7 +829,14 @@ export default function App() {
 
           <label>
             表示名
-            <input value={name} maxLength={24} onChange={(event) => setName(event.target.value)} />
+            <input
+              value={name}
+              maxLength={24}
+              onChange={(event) => {
+                setName(event.target.value);
+                setDraftName(event.target.value);
+              }}
+            />
           </label>
 
           <div className="field-group">
@@ -969,7 +1009,8 @@ export default function App() {
                       style={{
                         "--cursor-x": `${cursor.x}px`,
                         "--cursor-y": `${cursor.y}px`,
-                      } as React.CSSProperties & Record<"--cursor-x" | "--cursor-y", string>}
+                        "--cursor-color": participantColor(cursor.participantId),
+                      } as React.CSSProperties & Record<"--cursor-x" | "--cursor-y" | "--cursor-color", string>}
                       title={cursor.name}
                     >
                       <MousePointer2 size={16} />
@@ -1027,9 +1068,32 @@ export default function App() {
 
       <aside className="people">
         <p className="people-header">参加者</p>
+        {myParticipant ? (
+          <div className="name-editor-wrap">
+            <span className="name-editor-label">あなたの表示名</span>
+            <div className="name-editor">
+              <input
+                aria-label="表示名"
+                value={draftName}
+                maxLength={24}
+                onChange={(event) => setDraftName(event.target.value)}
+                onBlur={() => setDraftName(sanitizeName(draftName))}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") updateDisplayName();
+                }}
+              />
+              <button type="button" disabled={!nameChanged} title="表示名を保存" onClick={updateDisplayName}>
+                <Check size={14} />
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {participants.length > 0 && <p className="people-subheader">メンバー</p>}
         {participants.map((participant) => (
           <div key={participant.id} className="person">
-            <div className="person-avatar">{participant.name.charAt(0)}</div>
+            <div className="person-avatar" style={{ "--participant-color": participantColor(participant.id) } as React.CSSProperties & Record<"--participant-color", string>}>
+              {participant.name.charAt(0)}
+            </div>
             <span>{participant.name}</span>
             {participant.isHost ? <strong className="host-badge">Host</strong> : null}
           </div>
@@ -1077,6 +1141,14 @@ function readError(error: unknown): string {
 function getRoomIdFromPath(pathname: string): string | null {
   const match = /^\/rooms\/([^/]+)$/.exec(pathname);
   return match?.[1] ?? null;
+}
+
+function participantColor(participantId: string): string {
+  let hash = 0;
+  for (let index = 0; index < participantId.length; index += 1) {
+    hash = (hash * 31 + participantId.charCodeAt(index)) >>> 0;
+  }
+  return PARTICIPANT_COLORS[hash % PARTICIPANT_COLORS.length];
 }
 
 function describeLoadingProgress(progress: LoadingProgress): string | null {

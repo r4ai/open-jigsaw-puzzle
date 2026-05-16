@@ -117,17 +117,27 @@ describe("openSignaling", () => {
     vi.stubGlobal("window", { location: { protocol: "https:", host: "puzzle.example" } });
     vi.stubGlobal("WebSocket", FakeWebSocket);
     const onClose = vi.fn();
+    const onParticipantUpdated = vi.fn();
 
     openSignaling("ROOM/ID", "A B", {
       onHello: vi.fn(),
       onPeerJoined: vi.fn(),
       onPeerLeft: vi.fn(),
+      onParticipantUpdated,
       onSignal: vi.fn(),
       onError: vi.fn(),
       onClose,
     });
 
     expect(FakeWebSocket.instances[0]?.url).toBe("wss://puzzle.example/api/rooms/ROOM%2FID/socket?name=A%20B");
+    FakeWebSocket.instances[0]?.dispatch("message", {
+      data: JSON.stringify({
+        type: "participant-updated",
+        participant: { id: "a", name: "Ada", isHost: true },
+        participants: [{ id: "a", name: "Ada", isHost: true }],
+      }),
+    });
+    expect(onParticipantUpdated).toHaveBeenCalledWith({ id: "a", name: "Ada", isHost: true }, [{ id: "a", name: "Ada", isHost: true }]);
     FakeWebSocket.instances[0]?.dispatch("close", { wasClean: false, reason: "upgrade failed" });
     expect(onClose).toHaveBeenCalledWith("upgrade failed");
   });

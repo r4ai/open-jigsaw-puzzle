@@ -4,6 +4,7 @@ type SignalingHandlers = {
   onHello: (participantId: string, participants: Participant[], room: RoomSummary) => void;
   onPeerJoined: (participant: Participant, participants: Participant[]) => void;
   onPeerLeft: (participantId: string, participants: Participant[]) => void;
+  onParticipantUpdated: (participant: Participant, participants: Participant[]) => void;
   onSignal: (from: string, payload: PeerSignal) => void;
   onError: (message: string) => void;
   onClose: (message: string) => void;
@@ -47,6 +48,9 @@ export function openSignaling(roomId: string, name: string, handlers: SignalingH
         break;
       case "peer-left":
         handlers.onPeerLeft(message.participantId, message.participants);
+        break;
+      case "participant-updated":
+        handlers.onParticipantUpdated(message.participant, message.participants);
         break;
       case "signal":
         handlers.onSignal(message.from, message.payload);

@@ -47,6 +47,11 @@ export type SignalEnvelope =
       participants: Participant[];
     }
   | {
+      type: "participant-updated";
+      participant: Participant;
+      participants: Participant[];
+    }
+  | {
       type: "signal";
       from: string;
       to: string;

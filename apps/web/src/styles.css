@@ -721,7 +721,7 @@ label {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: var(--accent);
+  color: var(--cursor-color, var(--accent));
   font: 500 0.72rem var(--font-ui);
   pointer-events: none;
   transform: translate3d(var(--cursor-x, 0), var(--cursor-y, 0), 0) translate(2px, 2px);
@@ -734,7 +734,7 @@ label {
 }
 
 .remote-cursor svg {
-  fill: var(--accent);
+  fill: var(--cursor-color, var(--accent));
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
 }
 
@@ -743,7 +743,8 @@ label {
   overflow: hidden;
   border-radius: 6px;
   padding: 2px 7px;
-  background: var(--canvas-glass);
+  background: color-mix(in srgb, var(--cursor-color, var(--accent)) 18%, var(--canvas-glass));
+  border: 1px solid color-mix(in srgb, var(--cursor-color, var(--accent)) 50%, transparent);
   color: var(--on-canvas);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -858,6 +859,64 @@ label {
   background: var(--border);
 }
 
+.name-editor-wrap {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  background: var(--paper-sunken);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.name-editor-label {
+  font: 600 0.625rem/1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-40);
+}
+
+.name-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  gap: 6px;
+}
+
+.name-editor input {
+  min-width: 0;
+  min-height: unset;
+  height: 32px;
+  border-radius: 7px;
+  padding: 0 9px;
+  font-size: 0.8125rem;
+}
+
+.name-editor button {
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: 7px;
+  justify-content: center;
+}
+
+.people-subheader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 0;
+  font: 500 0.625rem/1 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-40);
+}
+
+.people-subheader::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
 .person {
   display: flex;
   align-items: center;
@@ -873,9 +932,9 @@ label {
   width: 24px;
   height: 24px;
   border-radius: 6px;
-  background: var(--teal-surf);
-  border: 1px solid var(--teal-border);
-  color: var(--teal);
+  background: color-mix(in srgb, var(--participant-color, var(--teal)) 16%, var(--paper-raised));
+  border: 1px solid color-mix(in srgb, var(--participant-color, var(--teal)) 52%, var(--border));
+  color: var(--participant-color, var(--teal));
   font: 600 0.72rem/1 var(--font-ui);
   display: flex;
   align-items: center;
