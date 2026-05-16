@@ -18,6 +18,7 @@ type IncomingImage = {
 type DragState = { id: number; dx: number; dy: number };
 type PanState = { pointerId: number; startX: number; startY: number; panX: number; panY: number };
 type PanOffset = { x: number; y: number };
+type RemoteCursor = { participantId: string; name: string; x: number; y: number; seenAt: number };
 type WorkspaceMetrics = {
   margin: number;
 };
@@ -54,6 +55,7 @@ export default function App() {
   const [pieces, setPieces] = useState<BoardPiece[]>([]);
   const [dragging, setDragging] = useState<DragState | null>(null);
   const [panning, setPanning] = useState<PanState | null>(null);
+  const [remoteCursors, setRemoteCursors] = useState<RemoteCursor[]>([]);
   const [pan, setPan] = useState<PanOffset>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(0.8);
   const [copied, setCopied] = useState(false);
@@ -70,6 +72,7 @@ export default function App() {
   const piecesRef = useRef<BoardPiece[]>([]);
   const pendingSyncRef = useRef<SyncedPiece[] | null>(null);
   const enteredRoomRef = useRef<string | null>(null);
+  const lastCursorSentAtRef = useRef(0);
 
   const layout = useMemo<PuzzleLayout | null>(() => {
     if (!room || !imageSize) return null;
@@ -202,6 +205,7 @@ export default function App() {
       },
       onPeerLeft: (participantId, nextParticipants) => {
         setParticipants(nextParticipants);
+        setRemoteCursors((current) => current.filter((cursor) => cursor.participantId !== participantId));
         meshRef.current?.disconnect(participantId);
       },
       onSignal: (from, payload) => {
@@ -332,6 +336,18 @@ export default function App() {
         applySyncedPieces(message.pieces);
         break;
       case "presence":
+        setRemoteCursors((current) => {
+          if (!message.cursor) return current.filter((cursor) => cursor.participantId !== message.participantId);
+          const nextCursor: RemoteCursor = {
+            participantId: message.participantId,
+            name: message.name,
+            x: message.cursor.x,
+            y: message.cursor.y,
+            seenAt: Date.now(),
+          };
+          const exists = current.some((cursor) => cursor.participantId === message.participantId);
+          return exists ? current.map((cursor) => (cursor.participantId === message.participantId ? nextCursor : cursor)) : [...current, nextCursor];
+        });
         break;
     }
   }
@@ -401,6 +417,14 @@ export default function App() {
     meshRef.current?.broadcast(message);
   }
 
+  function publishCursor(cursor: { x: number; y: number } | null, force = false) {
+    if (!myId) return;
+    const now = Date.now();
+    if (!force && now - lastCursorSentAtRef.current < 40) return;
+    lastCursorSentAtRef.current = now;
+    broadcast({ type: "presence", participantId: myId, name, cursor });
+  }
+
   function bringPieceToFront(pieceId: number): number {
     const nextZ = Math.max(0, ...piecesRef.current.map((piece) => piece.z)) + 1;
     setPieces((current) => {
@@ -434,6 +458,9 @@ export default function App() {
   }
 
   function handlePointerMove(event: React.PointerEvent) {
+    const cursor = getWorkspacePoint(event);
+    if (cursor) publishCursor(cursor);
+
     if (panning) {
       setPan({
         x: panning.panX + event.clientX - panning.startX,
@@ -444,7 +471,7 @@ export default function App() {
     }
 
     if (!dragging || !layout || !workspaceMetrics) return;
-    const pointer = getWorkspacePoint(event);
+    const pointer = cursor;
     if (!pointer) return;
     const { x, y } = constrainPiecePosition(
       dragging.id,
@@ -497,6 +524,10 @@ export default function App() {
     });
     event.currentTarget.setPointerCapture(event.pointerId);
     event.preventDefault();
+  }
+
+  function handleViewportPointerLeave() {
+    publishCursor(null, true);
   }
 
   function handleWheel(event: React.WheelEvent<HTMLDivElement>) {
@@ -664,6 +695,7 @@ export default function App() {
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
+            onPointerLeave={handleViewportPointerLeave}
             onWheel={handleWheel}
           >
             <div className="board-stage">
@@ -708,6 +740,20 @@ export default function App() {
                     </button>
                   );
                 })}
+                {remoteCursors.map((cursor) => (
+                  <div
+                    key={cursor.participantId}
+                    className="remote-cursor"
+                    style={{
+                      left: `${cursor.x}px`,
+                      top: `${cursor.y}px`,
+                    }}
+                    title={cursor.name}
+                  >
+                    <MousePointer2 size={18} />
+                    <span>{cursor.name}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
