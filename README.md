@@ -37,3 +37,7 @@ Before remote deploy, create a real D1 database and replace `database_id` in `ap
 For production rooms, configure TURN credentials through `TURN_URLS`, `TURN_USERNAME`, and `TURN_CREDENTIAL`.
 STUN-only WebRTC works on some networks, but TURN is required for reliable connections across restrictive NATs,
 mobile carriers, and corporate networks.
+
+## Deployment
+
+See [Deployment](docs/deployment.md) for Cloudflare setup.
