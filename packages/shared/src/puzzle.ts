@@ -130,7 +130,7 @@ export function createInitialPieces(layout: PuzzleLayout): BoardPiece[] {
       z: index + 1,
       locked: false,
     };
-  });
+  }).sort((a, b) => a.id - b.id);
 }
 
 function createScatterSlots(layout: PuzzleLayout, margin: number, gap: number, seed: number): Array<{ x: number; y: number; sort: number }> {

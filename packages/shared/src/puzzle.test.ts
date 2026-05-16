@@ -63,4 +63,11 @@ describe("puzzle geometry", () => {
     expect(pieces.every((piece) => piece.x >= -margin - layout.pieceWidth && piece.x <= layout.boardWidth + margin)).toBe(true);
     expect(pieces.every((piece) => piece.y >= -margin - layout.pieceHeight && piece.y <= layout.boardHeight + margin)).toBe(true);
   });
+
+  it("indexes initial pieces by their id", () => {
+    const layout = createPuzzleLayout(192, 1200, 800);
+    const pieces = createInitialPieces(layout);
+
+    expect(pieces.map((piece) => piece.id)).toEqual(layout.pieces.map((piece) => piece.id));
+  });
 });
