@@ -813,13 +813,9 @@ export default function App() {
             {copied ? <Check size={15} /> : <Copy size={15} />}
             {copied ? "コピー済み" : "共有"}
           </button>
-          <label className="upload">
-            <ImagePlus size={15} />
-            画像
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileInputChange} />
-          </label>
         </div>
       </header>
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileInputChange} style={{ display: "none" }} />
 
       <section className="board-wrap">
         {layout && imageDataUrl && workspaceMetrics ? (

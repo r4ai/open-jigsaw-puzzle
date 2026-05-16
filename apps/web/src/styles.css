@@ -566,6 +566,8 @@ label {
   transition: none;
 }
 
+.piece:hover:not(:disabled) { background: transparent; }
+
 .piece.locked { cursor: default; }
 .piece:not(.locked):active { cursor: grabbing; }
 .piece:active:not(:disabled) { transform: none; }
@@ -807,6 +809,45 @@ label {
 /* ─── Animations ─── */
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Dark mode ─── */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --ink:          #f0e6d2;
+    --ink-60:       #9e8f7e;
+    --ink-40:       #5e5448;
+
+    --paper:        #181510;
+    --paper-raised: #201d17;
+    --paper-sunken: #131009;
+
+    --border:       #2c2820;
+    --border-strong:#3a352c;
+
+    --accent-surf:  #2e0f04;
+
+    --teal-surf:    #071e1b;
+    --teal-border:  #1a5a55;
+
+    --ok-surf:      #071a10;
+
+    --err-surf:     #1e0707;
+  }
+
+  .home::before {
+    background-image: radial-gradient(circle, rgba(240, 230, 210, 0.05) 1px, transparent 1px);
+  }
+
+  .start-panel {
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.04) inset,
+      0 36px 72px rgba(0, 0, 0, 0.45),
+      0 8px 24px rgba(0, 0, 0, 0.25);
+  }
+}
 
 /* ─── Responsive ─── */
 
