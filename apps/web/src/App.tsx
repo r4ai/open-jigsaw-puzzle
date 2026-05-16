@@ -608,6 +608,7 @@ export default function App() {
       broadcast({ type: "state-sync", pieces: syncedPieces, lockedCount: syncedPieces.filter((piece) => piece.locked).length });
       return nextPieces;
     });
+    setStatus("未固定ピースを盤面の下に並べました");
   }
 
   async function copyShareUrl() {
@@ -668,7 +669,7 @@ export default function App() {
           <h1>{room?.difficulty} pieces</h1>
         </div>
         <div className="top-actions">
-          <button onClick={organizePieces} disabled={!layout || !pieces.some((piece) => !piece.locked)} title="未固定のピースを整理">
+          <button onClick={organizePieces} disabled={!layout || !pieces.some((piece) => !piece.locked)} title="未固定ピースを盤面の下に並べる">
             <Rows3 size={18} />
             整理
           </button>
@@ -978,9 +979,9 @@ function isLoosePieceEventTarget(target: EventTarget): boolean {
 }
 
 function arrangeLoosePieces(pieces: BoardPiece[], layout: PuzzleLayout): BoardPiece[] {
-  const margin = getWorkspaceMargin(layout);
   const gap = Math.max(8, Math.min(layout.pieceWidth, layout.pieceHeight) * 0.12);
-  const columns = Math.max(1, Math.floor((layout.boardWidth + margin * 2 + gap) / (layout.pieceWidth + gap)));
+  const columns = Math.max(1, layout.cols);
+  const nextTopZ = Math.max(0, ...pieces.map((piece) => piece.z)) + 1;
   let index = 0;
 
   return pieces.map((piece) => {
@@ -989,12 +990,8 @@ function arrangeLoosePieces(pieces: BoardPiece[], layout: PuzzleLayout): BoardPi
     const row = Math.floor(index / columns);
     index += 1;
 
-    const x = -margin + gap + col * (layout.pieceWidth + gap);
+    const x = col * (layout.pieceWidth + gap);
     const y = layout.boardHeight + gap + row * (layout.pieceHeight + gap);
-    const constrained = {
-      x: clamp(x, -margin, layout.boardWidth + margin - layout.pieceWidth),
-      y: clamp(y, -margin, layout.boardHeight + margin - layout.pieceHeight),
-    };
-    return { ...piece, ...constrained };
+    return { ...piece, x, y, z: nextTopZ + index };
   });
 }
