@@ -99,6 +99,8 @@ export function PuzzleBoard({
                 style={{
                   left: `${margin + imageOverlayPosition.x}px`,
                   top: `${margin + imageOverlayPosition.y}px`,
+                  width: `${layout.boardWidth}px`,
+                  height: `${layout.boardHeight}px`,
                 }}
                 onPointerDown={onImageOverlayPointerDown}
               >
