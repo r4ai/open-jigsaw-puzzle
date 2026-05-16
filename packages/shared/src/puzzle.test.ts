@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createInitialPieces, createPuzzleLayout, factorGrid, isComplete, shouldSnap, snapPiece } from "./puzzle";
+import { createInitialPieces, createPuzzleLayout, factorGrid, getWorkspaceMargin, isComplete, shouldSnap, snapPiece } from "./puzzle";
 
 describe("puzzle geometry", () => {
   it.each([48, 96, 192] as const)("creates exactly %s pieces", (difficulty) => {
@@ -43,5 +43,24 @@ describe("puzzle geometry", () => {
 
     expect(isComplete(pieces)).toBe(false);
     expect(isComplete(pieces.map((piece) => ({ ...piece, locked: true })))).toBe(true);
+  });
+
+  it("scatters initial pieces around the frame instead of inside it", () => {
+    const layout = createPuzzleLayout(96, 1200, 800);
+    const pieces = createInitialPieces(layout);
+    const margin = getWorkspaceMargin(layout);
+    const outsideFrame = pieces.filter(
+      (piece) =>
+        piece.x + layout.pieceWidth <= 0 ||
+        piece.x >= layout.boardWidth ||
+        piece.y + layout.pieceHeight <= 0 ||
+        piece.y >= layout.boardHeight,
+    );
+
+    expect(pieces).toHaveLength(layout.pieces.length);
+    expect(outsideFrame.length).toBe(pieces.length);
+    expect(pieces.every((piece) => Number.isFinite(piece.x) && Number.isFinite(piece.y))).toBe(true);
+    expect(pieces.every((piece) => piece.x >= -margin - layout.pieceWidth && piece.x <= layout.boardWidth + margin)).toBe(true);
+    expect(pieces.every((piece) => piece.y >= -margin - layout.pieceHeight && piece.y <= layout.boardHeight + margin)).toBe(true);
   });
 });

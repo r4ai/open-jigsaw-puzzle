@@ -2,7 +2,7 @@ import { Check, Copy, ImagePlus, Link, Loader2, Maximize2, Minus, MousePointer2,
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DIFFICULTIES, MAX_PARTICIPANTS, type ChannelMessage, type Difficulty, type Participant, type RoomSummary, type SyncedPiece } from "@open-puzzle/shared/protocol";
-import { createInitialPieces, createPuzzleLayout, isComplete, snapPiece, type BoardPiece, type PieceEdge, type PieceGeometry, type PuzzleLayout } from "@open-puzzle/shared/puzzle";
+import { createInitialPieces, createPuzzleLayout, getWorkspaceMargin, isComplete, snapPiece, type BoardPiece, type PieceEdge, type PieceGeometry, type PuzzleLayout } from "@open-puzzle/shared/puzzle";
 import { chunkString, resizeImage } from "./image";
 import { fetchIceConfig, openSignaling, PeerMesh } from "./realtime";
 
@@ -84,7 +84,7 @@ export default function App() {
   }, [imageSize, room]);
   const workspaceMetrics = useMemo<WorkspaceMetrics | null>(() => {
     if (!layout) return null;
-    const margin = Math.max(layout.pieceWidth * 2.4, layout.pieceHeight * 2.4, Math.min(layout.boardWidth, layout.boardHeight) * 0.24);
+    const margin = getWorkspaceMargin(layout);
     return { margin };
   }, [layout]);
 
@@ -1073,10 +1073,6 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 const MAX_CANVAS_COORDINATE = 1_000_000_000;
-
-function getWorkspaceMargin(layout: PuzzleLayout): number {
-  return Math.max(layout.pieceWidth * 2.4, layout.pieceHeight * 2.4, Math.min(layout.boardWidth, layout.boardHeight) * 0.24);
-}
 
 function roundZoom(value: number): number {
   return Math.round(value * 100) / 100;
