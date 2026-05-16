@@ -10,6 +10,7 @@ import {
   selectByRect,
   selectOnlyPiece,
   togglePieceSelection,
+  shouldStartViewportPan,
 } from "./puzzle-ops";
 
 describe("arrangeLoosePieces", () => {
@@ -45,6 +46,22 @@ describe("arrangeLoosePieces", () => {
     const arranged = arrangeLoosePieces(pieces, layout, seededRandom(13));
 
     expect(arranged[0]).toEqual(pieces[0]);
+  });
+});
+
+describe("viewport pan helpers", () => {
+  it("keeps left-button panning from starting on loose pieces", () => {
+    const piece = document.createElement("button");
+    piece.className = "piece";
+
+    expect(shouldStartViewportPan(0, piece)).toBe(false);
+  });
+
+  it("allows middle-button panning even from loose pieces", () => {
+    const piece = document.createElement("button");
+    piece.className = "piece";
+
+    expect(shouldStartViewportPan(1, piece)).toBe(true);
   });
 });
 

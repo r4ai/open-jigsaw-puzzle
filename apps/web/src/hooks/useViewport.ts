@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { clamp, isLoosePieceEventTarget, roundZoom } from "../utils/puzzle-ops";
+import { clamp, roundZoom, shouldStartViewportPan } from "../utils/puzzle-ops";
 
 export const MIN_ZOOM = 0.35;
 export const MAX_ZOOM = 2.5;
@@ -61,7 +61,7 @@ export function useViewport() {
   }
 
   function handleViewportPointerDown(event: React.PointerEvent<HTMLDivElement>) {
-    if (event.button !== 0 || isLoosePieceEventTarget(event.target)) return;
+    if (!shouldStartViewportPan(event.button, event.target)) return;
     if (!viewportRef.current) return;
     setPanning({
       pointerId: event.pointerId,

@@ -195,6 +195,7 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     getPoint: (e: React.PointerEvent) => { x: number; y: number } | null,
     margin: number,
   ) {
+    if (event.button !== 0) return;
     const selectionBefore = currentSelection();
     let nextSelection: SelectionState;
     if (event.shiftKey) {
@@ -250,6 +251,7 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     event: React.PointerEvent,
     getPoint: (e: React.PointerEvent) => { x: number; y: number } | null,
   ) {
+    if (event.button !== 0) return;
     const selectionBefore = currentSelection();
     let nextSelection: SelectionState;
     if (event.ctrlKey || event.metaKey) {
@@ -328,7 +330,7 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     event: React.PointerEvent,
     getPoint: (e: React.PointerEvent) => { x: number; y: number } | null,
   ): boolean {
-    if (!event.shiftKey) return false;
+    if (event.button !== 0 || !event.shiftKey) return false;
     const pointer = getPoint(event);
     if (!pointer) return false;
     selectionBoxRef.current = { start: pointer, end: pointer };

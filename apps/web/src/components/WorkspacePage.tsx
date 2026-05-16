@@ -254,7 +254,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
 
   function handleViewportPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (layout && puzzle.handleSelectionBoxPointerDown(e, viewport.getWorkspacePoint)) return;
-    if (!e.shiftKey) puzzle.clearSelection();
+    if (e.button === 0 && !e.shiftKey) puzzle.clearSelection();
     viewport.handleViewportPointerDown(e);
   }
 
@@ -310,6 +310,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
             worldRef={viewport.worldRef}
             imageOverlayPosition={imageOverlay.position}
             onImageOverlayPointerDown={(e) => {
+              if (e.button !== 0) return;
               puzzle.handleImageOverlayPointerDown(e, viewport.getWorkspacePoint);
               if (e.ctrlKey || e.metaKey) return;
               imageOverlay.handlePointerDown(e, viewport.getWorkspacePoint);

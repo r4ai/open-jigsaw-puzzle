@@ -97,6 +97,9 @@ export function PuzzleBoard({
         onPointerCancel={onPointerCancel}
         onPointerLeave={onPointerLeave}
         onWheel={onWheel}
+        onAuxClick={(e) => {
+          if (e.button === 1) e.preventDefault();
+        }}
       >
         <div className={styles.boardStage}>
           <div

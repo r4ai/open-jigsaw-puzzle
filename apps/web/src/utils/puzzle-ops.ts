@@ -55,6 +55,15 @@ export function isLoosePieceEventTarget(target: EventTarget): boolean {
   return target instanceof Element && Boolean(target.closest(".piece:not(.locked)"));
 }
 
+export function isViewportPanButton(button: number): boolean {
+  return button === 0 || button === 1;
+}
+
+export function shouldStartViewportPan(button: number, target: EventTarget): boolean {
+  if (!isViewportPanButton(button)) return false;
+  return button === 1 || !isLoosePieceEventTarget(target);
+}
+
 export function createEmptySelection(): SelectionState {
   return { pieceIds: new Set(), imageOverlaySelected: false, lastSelectedPieceId: null };
 }
