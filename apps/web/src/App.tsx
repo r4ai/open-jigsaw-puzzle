@@ -1,4 +1,4 @@
-import { Check, Copy, ImagePlus, Link, Loader2, Maximize2, Minus, Moon, MousePointer2, Play, Plus, Rows3, Sun, Users } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Copy, ImagePlus, Link, Loader2, Maximize2, Minus, Moon, MousePointer2, Play, Plus, Rows3, Sun, Users } from "lucide-react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DIFFICULTIES, MAX_PARTICIPANTS, type ChannelMessage, type Difficulty, type Participant, type RoomSummary, type SyncedPiece } from "@open-puzzle/shared/protocol";
@@ -66,6 +66,7 @@ export default function App() {
   const [zoom, setZoom] = useState(0.8);
   const [copied, setCopied] = useState(false);
   const [showCompletion, setShowCompletion] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const meshRef = useRef<PeerMesh | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const incomingRef = useRef<Map<string, IncomingImage>>(new Map());
@@ -802,7 +803,7 @@ export default function App() {
   }
 
   return (
-    <main className="workspace">
+    <main className={`workspace${sidebarOpen ? "" : " sidebar-collapsed"}`}>
       <header className="topbar">
         <div className="topbar-left">
           <span className="brand-mark">OP</span>
@@ -853,6 +854,13 @@ export default function App() {
             title={isDark ? "ライトモードに切り替え" : "ダークモードに切り替え"}
           >
             {isDark ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+          <button
+            className="theme-toggle sidebar-toggle"
+            onClick={() => setSidebarOpen((v) => !v)}
+            title={sidebarOpen ? "参加者パネルを閉じる" : "参加者パネルを開く"}
+          >
+            {sidebarOpen ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
           </button>
         </div>
       </header>
