@@ -1,22 +1,24 @@
 import { memo } from "react";
 import type { PieceGeometry, PuzzleLayout } from "@open-puzzle/shared/puzzle";
 import { createPiecePath } from "../utils/piece-path";
+import styles from "./JigsawPiece.module.css";
 
 type Props = {
   geometry: PieceGeometry;
   imageDataUrl: string;
   layout: PuzzleLayout;
   pieceId: number;
+  locked: boolean;
 };
 
-export const JigsawPiece = memo(function JigsawPiece({ geometry, imageDataUrl, layout, pieceId }: Props) {
+export const JigsawPiece = memo(function JigsawPiece({ geometry, imageDataUrl, layout, pieceId, locked }: Props) {
   const tabSize = Math.min(layout.pieceWidth, layout.pieceHeight) * 0.22;
   const path = createPiecePath(layout.pieceWidth, layout.pieceHeight, geometry.edges, tabSize);
 
   return (
     <svg
       aria-hidden="true"
-      className="piece-svg"
+      className={styles.pieceSvg}
       style={{
         left: `${(-tabSize / layout.pieceWidth) * 100}%`,
         top: `${(-tabSize / layout.pieceHeight) * 100}%`,
@@ -30,7 +32,10 @@ export const JigsawPiece = memo(function JigsawPiece({ geometry, imageDataUrl, l
           <path d={path} />
         </clipPath>
       </defs>
-      <g className="piece-shape" clipPath={`url(#piece-clip-${pieceId})`}>
+      <g
+        className={locked ? styles.pieceShapeLocked : styles.pieceShape}
+        clipPath={`url(#piece-clip-${pieceId})`}
+      >
         <image
           href={imageDataUrl}
           x={-geometry.sourceX}
@@ -40,7 +45,7 @@ export const JigsawPiece = memo(function JigsawPiece({ geometry, imageDataUrl, l
           preserveAspectRatio="none"
         />
       </g>
-      <path className="piece-edge" d={path} />
+      <path className={locked ? styles.pieceEdgeLocked : styles.pieceEdge} d={path} />
     </svg>
   );
 });

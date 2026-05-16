@@ -1,0 +1,78 @@
+.emptyBoard {
+  flex: 1;
+  border: 1.5px dashed var(--canvas-rim);
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  color: var(--on-canvas-fade);
+  background: var(--canvas);
+  text-align: center;
+  padding: 32px;
+  min-height: 0;
+}
+
+.dropTarget {
+  border-color: var(--drop-border);
+  background:
+    radial-gradient(circle, var(--drop-dot) 1px, transparent 1px),
+    var(--canvas);
+  background-size: 24px 24px;
+}
+
+.emptyUploadButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 176px;
+  min-height: 44px;
+  border-color: var(--teal);
+  background: var(--teal);
+  color: #fff;
+  font-weight: 600;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+}
+
+.emptyUploadButton:hover:not(:disabled) {
+  background: var(--teal-dark);
+  border-color: var(--teal-dark);
+}
+
+.emptyHint {
+  font: 400 0.8125rem var(--font-ui);
+  color: var(--on-canvas-ghost);
+}
+
+.emptySub {
+  font: 400 0.75rem/1.5 var(--font-mono);
+  color: var(--on-canvas-ghost);
+  max-width: 400px;
+}
+
+.loadingIcon {
+  animation: spin 0.9s linear infinite;
+  color: var(--teal-border);
+}
+
+.loadingCopy {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  max-width: min(480px, 100%);
+}
+
+.loadingCopy strong {
+  color: var(--on-canvas-strong);
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.loadingCopy span {
+  color: var(--on-canvas-sub);
+  font: 400 0.8125rem/1.55 var(--font-mono);
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }

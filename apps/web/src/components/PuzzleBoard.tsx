@@ -5,6 +5,7 @@ import type { PanOffset } from "../hooks/useViewport";
 import { ZOOM_STEP, MIN_ZOOM, MAX_ZOOM } from "../hooks/useViewport";
 import { JigsawPiece } from "./JigsawPiece";
 import { participantColor } from "../utils/participant";
+import styles from "./PuzzleBoard.module.css";
 
 type Props = {
   layout: PuzzleLayout;
@@ -66,7 +67,7 @@ export function PuzzleBoard({
     <>
       <div
         ref={viewportRef}
-        className={`board-viewport ${panning ? "panning" : ""}`}
+        className={`${styles.boardViewport} ${panning ? styles.panning : ""}`}
         style={{
           backgroundPosition: `${pan.x}px ${pan.y}px`,
           backgroundSize: `${28 * zoom}px ${28 * zoom}px`,
@@ -78,14 +79,14 @@ export function PuzzleBoard({
         onPointerLeave={onPointerLeave}
         onWheel={onWheel}
       >
-        <div className="board-stage">
+        <div className={styles.boardStage}>
           <div
             ref={worldRef}
-            className="board-world"
+            className={styles.boardWorld}
             style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
           >
             <div
-              className={`puzzle-frame ${complete ? "complete" : ""}`}
+              className={`${styles.puzzleFrame} ${complete ? styles.complete : ""}`}
               style={{
                 left: `${margin}px`,
                 top: `${margin}px`,
@@ -95,7 +96,7 @@ export function PuzzleBoard({
             />
             {imageOverlayPosition && (
               <div
-                className="image-overlay"
+                className={styles.imageOverlay}
                 style={{
                   left: `${margin + imageOverlayPosition.x}px`,
                   top: `${margin + imageOverlayPosition.y}px`,
@@ -107,7 +108,7 @@ export function PuzzleBoard({
                 <img
                   src={imageDataUrl}
                   alt="元の画像"
-                  className="image-overlay-img"
+                  className={styles.imageOverlayImg}
                   draggable={false}
                 />
               </div>
@@ -117,7 +118,7 @@ export function PuzzleBoard({
               return (
                 <button
                   key={piece.id}
-                  className={`piece ${piece.locked ? "locked" : ""}`}
+                  className={`${styles.piece} ${piece.locked ? styles.locked : ""}`}
                   style={{
                     left: `${margin + piece.x}px`,
                     top: `${margin + piece.y}px`,
@@ -133,6 +134,7 @@ export function PuzzleBoard({
                     imageDataUrl={imageDataUrl}
                     layout={layout}
                     pieceId={piece.id}
+                    locked={piece.locked}
                   />
                 </button>
               );
@@ -140,7 +142,7 @@ export function PuzzleBoard({
             {remoteCursors.map((cursor) => (
               <div
                 key={cursor.participantId}
-                className={`remote-cursor${activeRemoteCursorIds.has(cursor.participantId) ? " dragging" : ""}`}
+                className={`${styles.remoteCursor}${activeRemoteCursorIds.has(cursor.participantId) ? ` ${styles.dragging}` : ""}`}
                 style={{
                   "--cursor-x": `${cursor.x}px`,
                   "--cursor-y": `${cursor.y}px`,
@@ -156,11 +158,11 @@ export function PuzzleBoard({
         </div>
       </div>
 
-      <div className="zoom-controls">
+      <div className={styles.zoomControls}>
         <button onClick={onZoomOut} disabled={zoom <= MIN_ZOOM} title="縮小">
           <Minus size={13} />
         </button>
-        <span className="zoom-pct">{Math.round(zoom * 100)}%</span>
+        <span className={styles.zoomPct}>{Math.round(zoom * 100)}%</span>
         <button onClick={onZoomIn} disabled={zoom >= MAX_ZOOM} title="拡大">
           <Plus size={13} />
         </button>
@@ -169,7 +171,7 @@ export function PuzzleBoard({
         </button>
       </div>
 
-      <div className={`canvas-status ${complete ? "complete" : ""}`}>
+      <div className={`${styles.canvasStatus} ${complete ? styles.complete : ""}`}>
         {complete ? "完成 ✓" : loadingSummary}
       </div>
     </>

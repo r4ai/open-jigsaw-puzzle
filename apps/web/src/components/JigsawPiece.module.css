@@ -1,0 +1,22 @@
+.pieceSvg {
+  position: absolute;
+  display: block;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.pieceShape {
+  filter: drop-shadow(0 5px 14px rgba(0, 0, 0, 0.45));
+}
+
+.pieceShapeLocked { filter: none; }
+
+.pieceEdge {
+  fill: none;
+  stroke: var(--piece-edge);
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.pieceEdgeLocked { stroke: var(--piece-edge-locked); }

@@ -16,6 +16,7 @@ import { PuzzleBoard } from "./PuzzleBoard";
 import { EmptyBoard } from "./EmptyBoard";
 import { Sidebar } from "./Sidebar";
 import { CompletionOverlay } from "./CompletionOverlay";
+import styles from "./WorkspacePage.module.css";
 
 type Props = {
   roomId: string;
@@ -229,7 +230,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
   // ── Render ────────────────────────────────────────────────────────────────────────
 
   return (
-    <main className={`workspace${sidebarOpen ? "" : " sidebar-collapsed"}`}>
+    <main className={`${styles.workspace} ${!sidebarOpen ? styles.sidebarCollapsed : ""}`}>
       <Topbar
         roomId={signaling.room?.id}
         participantCount={signaling.participants.length}
@@ -255,7 +256,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
         style={{ display: "none" }}
       />
 
-      <section className="board-wrap">
+      <section className={styles.boardWrap}>
         {layout && imageTransfer.imageDataUrl ? (
           <PuzzleBoard
             layout={layout}
@@ -304,13 +305,14 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
         myParticipant={myParticipant}
         participants={signaling.participants}
         draftName={draftName}
+        sidebarOpen={sidebarOpen}
         onDraftNameChange={setDraftName}
         onDraftNameBlur={() => setDraftName(sanitizeName(draftName))}
         onSaveName={updateDisplayName}
         nameChanged={nameChanged}
       />
 
-      {error ? <p className="toast error">{error}</p> : null}
+      {error ? <p className={styles.toast}>{error}</p> : null}
 
       {showCompletion && (
         <CompletionOverlay

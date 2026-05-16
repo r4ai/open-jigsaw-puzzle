@@ -1,5 +1,6 @@
 import { Check, ChevronLeft, ChevronRight, Copy, Moon, MousePointer2, Rows3, Sun, Users } from "lucide-react";
 import { MAX_PARTICIPANTS } from "@open-puzzle/shared/protocol";
+import styles from "./Topbar.module.css";
 
 type Props = {
   roomId: string | undefined;
@@ -35,34 +36,34 @@ export function Topbar({
   onToggleSidebar,
 }: Props) {
   return (
-    <header className="topbar">
-      <div className="topbar-left">
-        <span className="brand-mark">OP</span>
-        <div className="room-info">
-          <span className="room-id-label">Room</span>
-          <strong className="room-id">{roomId ?? "–"}</strong>
+    <header className={styles.topbar}>
+      <div className={styles.topbarLeft}>
+        <span className={styles.brandMark}>OP</span>
+        <div className={styles.roomInfo}>
+          <span className={styles.roomIdLabel}>Room</span>
+          <strong className={styles.roomId}>{roomId ?? "–"}</strong>
         </div>
       </div>
 
-      <span className="topbar-sep" />
+      <span className={styles.topbarSep} />
 
-      <div className="topbar-stats">
-        <span className="stat-chip">
+      <div className={styles.topbarStats}>
+        <span className={styles.statChip}>
           <Users size={11} />
           {participantCount}/{MAX_PARTICIPANTS}
         </span>
-        <span className="stat-chip">
+        <span className={styles.statChip}>
           <MousePointer2 size={11} />
           {connectedPeers} P2P
         </span>
-        <span className="stat-chip">
+        <span className={styles.statChip}>
           {lockedCount}/{totalPieces || difficulty} locked
         </span>
       </div>
 
-      <span className="topbar-spacer" />
+      <span className={styles.topbarSpacer} />
 
-      <div className="top-actions">
+      <div className={styles.topActions}>
         <button
           onClick={onOrganize}
           disabled={!canOrganize}
@@ -76,14 +77,14 @@ export function Topbar({
           {copied ? "コピー済み" : "共有"}
         </button>
         <button
-          className="theme-toggle"
+          className={styles.themeToggle}
           onClick={onToggleTheme}
           title={isDark ? "ライトモードに切り替え" : "ダークモードに切り替え"}
         >
           {isDark ? <Sun size={15} /> : <Moon size={15} />}
         </button>
         <button
-          className="theme-toggle sidebar-toggle"
+          className={`${styles.themeToggle} ${styles.sidebarToggle}`}
           onClick={onToggleSidebar}
           title={sidebarOpen ? "参加者パネルを閉じる" : "参加者パネルを開く"}
         >

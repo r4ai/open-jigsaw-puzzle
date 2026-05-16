@@ -2,6 +2,7 @@ import { Link, Moon, Play, Sun } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { DIFFICULTIES, type Difficulty } from "@open-puzzle/shared/protocol";
+import styles from "./HomePage.module.css";
 
 type Props = {
   theme: "light" | "dark";
@@ -41,29 +42,29 @@ export function HomePage({ theme, name, onNameChange, onToggleTheme }: Props) {
   }
 
   return (
-    <main className="home">
+    <main className={styles.home}>
       <button
-        className="theme-toggle-home"
+        className={styles.themeToggle}
         onClick={onToggleTheme}
         title={isDark ? "ライトモードに切り替え" : "ダークモードに切り替え"}
       >
         {isDark ? <Sun size={16} /> : <Moon size={16} />}
       </button>
 
-      <section className="intro">
-        <p className="eyebrow">Open Puzzle</p>
-        <h1>
+      <section className={styles.intro}>
+        <p className={styles.eyebrow}>Open Puzzle</p>
+        <h1 className={styles.heading}>
           画像を保存しない、<br />
           <em>ブラウザ同士</em>の<br />
           ジグソーパズル。
         </h1>
-        <p className="intro-desc">
+        <p className={styles.introDesc}>
           部屋を作って画像を選ぶだけで開始できます。画像はリサイズ後に WebRTC で参加者へ配布され、サーバーには保存されません。
         </p>
       </section>
 
-      <section className="start-panel" aria-label="部屋の作成と参加">
-        <p className="panel-header">はじめる</p>
+      <section className={styles.startPanel} aria-label="部屋の作成と参加">
+        <p className={styles.panelHeader}>はじめる</p>
 
         <label>
           表示名
@@ -74,13 +75,13 @@ export function HomePage({ theme, name, onNameChange, onToggleTheme }: Props) {
           />
         </label>
 
-        <div className="field-group">
-          <p className="field-label">難易度（ピース数）</p>
-          <div className="difficulty" aria-label="難易度">
+        <div className={styles.fieldGroup}>
+          <p className={styles.fieldLabel}>難易度（ピース数）</p>
+          <div className={styles.difficulty} aria-label="難易度">
             {DIFFICULTIES.map((value) => (
               <button
                 key={value}
-                className={difficulty === value ? "selected" : ""}
+                className={difficulty === value ? styles.selected : ""}
                 onClick={() => setDifficulty(value)}
               >
                 {value}
@@ -89,14 +90,14 @@ export function HomePage({ theme, name, onNameChange, onToggleTheme }: Props) {
           </div>
         </div>
 
-        <button className="primary" onClick={() => void createRoom()} disabled={creating}>
+        <button className={styles.primary} onClick={() => void createRoom()} disabled={creating}>
           <Play size={16} />
           部屋を作成
         </button>
 
-        <div className="divider"><span>または参加する</span></div>
+        <div className={styles.divider}><span>または参加する</span></div>
 
-        <div className="join-row">
+        <div className={styles.joinRow}>
           <input
             aria-label="部屋ID"
             placeholder="部屋ID を入力"
@@ -112,7 +113,7 @@ export function HomePage({ theme, name, onNameChange, onToggleTheme }: Props) {
           </button>
         </div>
 
-        {error ? <p className="error">{error}</p> : null}
+        {error ? <p className={styles.error}>{error}</p> : null}
       </section>
     </main>
   );

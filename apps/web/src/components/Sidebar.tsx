@@ -1,11 +1,13 @@
 import { Check } from "lucide-react";
 import type { Participant } from "@open-puzzle/shared/protocol";
 import { participantColor } from "../utils/participant";
+import styles from "./Sidebar.module.css";
 
 type Props = {
   myParticipant: Participant | undefined;
   participants: Participant[];
   draftName: string;
+  sidebarOpen: boolean;
   onDraftNameChange: (name: string) => void;
   onDraftNameBlur: () => void;
   onSaveName: () => void;
@@ -16,17 +18,18 @@ export function Sidebar({
   myParticipant,
   participants,
   draftName,
+  sidebarOpen,
   onDraftNameChange,
   onDraftNameBlur,
   onSaveName,
   nameChanged,
 }: Props) {
   return (
-    <aside className="people">
+    <aside className={`${styles.people} ${!sidebarOpen ? styles.hidden : ""}`}>
       {myParticipant ? (
-        <div className="name-editor-wrap">
-          <span className="name-editor-label">あなたの表示名</span>
-          <div className="name-editor">
+        <div className={styles.nameEditorWrap}>
+          <span className={styles.nameEditorLabel}>あなたの表示名</span>
+          <div className={styles.nameEditor}>
             <input
               aria-label="表示名"
               value={draftName}
@@ -41,17 +44,17 @@ export function Sidebar({
           </div>
         </div>
       ) : null}
-      {participants.length > 0 && <p className="people-subheader">メンバー</p>}
+      {participants.length > 0 && <p className={styles.peopleSubheader}>メンバー</p>}
       {participants.map((participant) => (
-        <div key={participant.id} className="person">
+        <div key={participant.id} className={styles.person}>
           <div
-            className="person-avatar"
+            className={styles.personAvatar}
             style={{ "--participant-color": participantColor(participant.id) } as React.CSSProperties & Record<"--participant-color", string>}
           >
             {participant.name.charAt(0)}
           </div>
           <span>{participant.name}</span>
-          {participant.isHost ? <strong className="host-badge">Host</strong> : null}
+          {participant.isHost ? <strong className={styles.hostBadge}>Host</strong> : null}
         </div>
       ))}
     </aside>

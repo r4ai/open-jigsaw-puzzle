@@ -1,0 +1,196 @@
+.boardViewport {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  min-height: 0;
+  border: 1px solid var(--canvas-rim);
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: var(--canvas);
+  background-image: radial-gradient(circle, var(--canvas-dot) 1px, transparent 1px);
+  background-size: 28px 28px;
+  cursor: grab;
+  overscroll-behavior: contain;
+  touch-action: none;
+  user-select: none;
+}
+
+.panning { cursor: grabbing; }
+
+.boardStage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+.boardWorld {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  overflow: visible;
+}
+
+.puzzleFrame {
+  position: absolute;
+  border: 1px solid var(--piece-frame);
+  border-radius: 4px;
+  background: var(--piece-fill);
+}
+
+.puzzleFrame.complete {
+  border-color: var(--ok-canvas-border);
+  box-shadow: 0 0 0 3px var(--ok-canvas-ring) inset, 0 0 60px var(--ok-canvas-glow);
+}
+
+.imageOverlay {
+  position: absolute;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  z-index: 1;
+}
+
+.imageOverlay:active { cursor: grabbing; }
+
+.imageOverlayImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.piece {
+  position: absolute;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+  cursor: grab;
+  touch-action: none;
+  transition: none;
+}
+
+.piece:hover:not(:disabled) { background: transparent; }
+
+.locked { cursor: default; }
+.piece:not(.locked):active { cursor: grabbing; }
+.piece:active:not(:disabled) { transform: none; }
+
+.remoteCursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1000000;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--cursor-color, var(--accent));
+  font: 500 0.72rem var(--font-ui);
+  pointer-events: none;
+  transform: translate3d(var(--cursor-x, 0), var(--cursor-y, 0), 0) translate(2px, 2px);
+  transition: transform 80ms linear;
+  will-change: transform;
+}
+
+.dragging {
+  transition: none;
+}
+
+.remoteCursor svg {
+  fill: var(--cursor-color, var(--accent));
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+}
+
+.remoteCursor span {
+  max-width: 110px;
+  overflow: hidden;
+  border-radius: 6px;
+  padding: 2px 7px;
+  background: color-mix(in srgb, var(--cursor-color, var(--accent)) 18%, var(--canvas-glass));
+  border: 1px solid color-mix(in srgb, var(--cursor-color, var(--accent)) 50%, transparent);
+  color: var(--on-canvas);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+}
+
+.zoomControls {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--canvas-glass);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--canvas-glass-border);
+  border-radius: 9px;
+  padding: 3px;
+  z-index: 50;
+}
+
+.zoomControls button {
+  width: 28px;
+  height: 28px;
+  min-height: unset;
+  padding: 0;
+  border-radius: 6px;
+  background: transparent;
+  border-color: transparent;
+  color: var(--on-canvas-mid);
+  font-size: 0.8125rem;
+  transition: background 100ms, color 100ms;
+}
+
+.zoomControls button:hover:not(:disabled) {
+  background: var(--canvas-glass-hover);
+  border-color: transparent;
+  color: var(--on-canvas);
+}
+
+.zoomControls button:disabled { opacity: 0.25; }
+.zoomControls button:active:not(:disabled) { transform: none; }
+
+.zoomPct {
+  min-width: 42px;
+  text-align: center;
+  font: 400 0.75rem/1 var(--font-mono);
+  color: var(--on-canvas-dim);
+}
+
+.canvasStatus {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  max-width: calc(100% - 160px);
+  padding: 5px 10px;
+  background: var(--canvas-glass);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--canvas-glass-border);
+  border-radius: 7px;
+  color: var(--on-canvas-dim);
+  font: 400 0.72rem/1.45 var(--font-mono);
+  z-index: 50;
+  pointer-events: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canvasStatus.complete {
+  border-color: var(--ok-canvas-ring);
+  background: var(--ok-canvas-glass);
+  color: var(--ok-canvas-text);
+}
+
+@media (max-width: 760px), (max-width: 1024px) and (orientation: portrait) {
+  .boardViewport { min-height: 48dvh; }
+}
