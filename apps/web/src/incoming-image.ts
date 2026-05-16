@@ -55,7 +55,7 @@ export function storeIncomingImageChunk(
   };
 }
 
-export function countReceivedChunks(chunks: Array<string | undefined>): number {
+function countReceivedChunks(chunks: Array<string | undefined>): number {
   let count = 0;
   for (const chunk of chunks) {
     if (chunk !== undefined) count += 1;
