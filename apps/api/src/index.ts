@@ -34,13 +34,13 @@ const app = new Hono<{ Bindings: Env }>();
 app.post("/api/rooms", (c) => createRoom(c.req.raw, c.env));
 
 app.get("/api/rooms/:roomId", (c) => {
-  const roomId = c.req.param("roomId");
+  const roomId = normalizeRoomId(c.req.param("roomId"));
   if (!roomId) return json({ error: "Room id is required." }, 400);
   return getRoom(roomId, c.env);
 });
 
 app.get("/api/rooms/:roomId/socket", (c) => {
-  const roomId = c.req.param("roomId");
+  const roomId = normalizeRoomId(c.req.param("roomId"));
   if (!roomId) return json({ error: "Room id is required." }, 400);
   const id = c.env.ROOMS.idFromName(roomId);
   return c.env.ROOMS.get(id).fetch(c.req.raw);
@@ -70,12 +70,13 @@ export class PuzzleRoom implements DurableObject {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    const upgradeHeader = request.headers.get("Upgrade");
-    const roomId = url.pathname.split("/")[3];
+    const upgradeHeader = request.headers.get("Upgrade")?.toLowerCase();
+    const roomId = normalizeRoomId(url.pathname.split("/")[3]);
 
     if (upgradeHeader !== "websocket") {
       return json({ error: "Expected WebSocket upgrade." }, 426);
     }
+    if (!roomId) return json({ error: "Room id is required." }, 400);
 
     const room = await readRoom(this.env.DB, roomId);
     if (!room) return json({ error: "Room not found." }, 404);
@@ -199,7 +200,7 @@ export class PuzzleRoom implements DurableObject {
     try {
       socket.send(JSON.stringify(message));
     } catch {
-      this.sessions.delete(socket);
+      this.state.waitUntil(this.removeSocket(socket));
     }
   }
 }
@@ -302,6 +303,10 @@ function parseJson<T>(value: string): T | null {
   } catch {
     return null;
   }
+}
+
+function normalizeRoomId(value: string | undefined): string {
+  return value?.trim().toUpperCase() ?? "";
 }
 
 function json(payload: unknown, status = 200): Response {

@@ -30,6 +30,8 @@ type LoadingProgress =
   | { phase: "complete"; detail: string };
 
 const DEFAULT_NAME = `Player ${Math.floor(Math.random() * 900 + 100)}`;
+const MAX_SIGNALING_RECONNECT_ATTEMPTS = 3;
+const SIGNALING_RECONNECT_DELAY_MS = 1_500;
 const MIN_ZOOM = 0.35;
 const MAX_ZOOM = 2.5;
 const ZOOM_STEP = 0.15;
@@ -71,6 +73,9 @@ export default function App() {
   const draggingRef = useRef<DragState | null>(null);
   const pendingSyncRef = useRef<SyncedPiece[] | null>(null);
   const enteredRoomRef = useRef<string | null>(null);
+  const connectionAttemptRef = useRef(0);
+  const signalingReconnectTimerRef = useRef<number | null>(null);
+  const signalingReconnectAttemptsRef = useRef(0);
   const lastCursorSentAtRef = useRef(0);
 
   const layout = useMemo<PuzzleLayout | null>(() => {
@@ -115,6 +120,8 @@ export default function App() {
 
   useEffect(() => {
     return () => {
+      connectionAttemptRef.current += 1;
+      clearSignalingReconnect();
       socketRef.current?.close();
       meshRef.current?.close();
     };
@@ -148,38 +155,116 @@ export default function App() {
     setError(null);
     setStatus("部屋を作成しています");
     setLoadingProgress({ phase: "connecting", startedAt: Date.now() });
-    const response = await fetch("/api/rooms", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ difficulty }),
-    });
-    const payload = (await response.json()) as { room?: RoomSummary; error?: string };
-    if (!response.ok || !payload.room) {
-      setError(payload.error ?? "部屋を作成できませんでした");
-      return;
+    try {
+      const response = await fetch("/api/rooms", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ difficulty }),
+      });
+      const payload = (await response.json()) as { room?: RoomSummary; error?: string };
+      if (!response.ok || !payload.room) {
+        setError(payload.error ?? "部屋を作成できませんでした");
+        setLoadingProgress({ phase: "idle" });
+        return;
+      }
+      await navigate({ to: "/rooms/$roomId", params: { roomId: payload.room.id } });
+    } catch (caught) {
+      setError(readError(caught));
+      setLoadingProgress({ phase: "idle" });
     }
-    await navigate({ to: "/rooms/$roomId", params: { roomId: payload.room.id } });
   }
 
-  async function enterRoom(roomId: string) {
+  function resetRoomState() {
+    setRoom(null);
+    setParticipants([]);
+    setMyId(null);
+    setConnectedPeers(0);
+    setRemoteCursors([]);
+    setImageDataUrl(null);
+    setImageSize(null);
+    setPieces([]);
+    setPan({ x: 0, y: 0 });
+    setZoom(0.8);
+    incomingRef.current.clear();
+    pendingSyncRef.current = null;
+    imageDataRef.current = null;
+    imageSizeRef.current = null;
+    roomRef.current = null;
+    layoutRef.current = null;
+    myIdRef.current = null;
+    piecesRef.current = [];
+  }
+
+  function closeCurrentConnection() {
+    socketRef.current?.close();
+    socketRef.current = null;
+    meshRef.current?.close();
+    meshRef.current = null;
+  }
+
+  function clearSignalingReconnect() {
+    if (signalingReconnectTimerRef.current !== null) window.clearTimeout(signalingReconnectTimerRef.current);
+    signalingReconnectTimerRef.current = null;
+  }
+
+  function isCurrentConnection(attempt: number, socket: WebSocket): boolean {
+    return connectionAttemptRef.current === attempt && socketRef.current === socket;
+  }
+
+  function sendSignal(socket: WebSocket, to: string, payload: unknown) {
+    if (socket.readyState !== WebSocket.OPEN) {
+      setError("Signaling connection is not open.");
+      return;
+    }
+    socket.send(JSON.stringify({ type: "signal", to, payload }));
+  }
+
+  async function enterRoom(roomId: string, options: { preserveState?: boolean } = {}) {
+    const normalizedRoomId = roomId.trim().toUpperCase();
+    const attempt = connectionAttemptRef.current + 1;
+    connectionAttemptRef.current = attempt;
+    clearSignalingReconnect();
+    closeCurrentConnection();
+    if (options.preserveState) {
+      setParticipants([]);
+      setMyId(null);
+      setConnectedPeers(0);
+      setRemoteCursors([]);
+      incomingRef.current.clear();
+      pendingSyncRef.current = null;
+      myIdRef.current = null;
+    } else {
+      signalingReconnectAttemptsRef.current = 0;
+      resetRoomState();
+    }
     setError(null);
     setStatus("部屋へ接続しています");
     setLoadingProgress({ phase: "connecting", startedAt: Date.now() });
-    const iceConfig = await fetchIceConfig();
+    let iceConfig;
+    try {
+      iceConfig = await fetchIceConfig();
+    } catch (caught) {
+      if (connectionAttemptRef.current !== attempt) return;
+      setError(readError(caught));
+      setStatus("接続に失敗しました");
+      setLoadingProgress({ phase: "idle" });
+      return;
+    }
 
-    socketRef.current?.close();
-    meshRef.current?.close();
-    pendingSyncRef.current = null;
+    if (connectionAttemptRef.current !== attempt) return;
 
-    const socket = openSignaling(roomId.trim().toUpperCase(), name, {
+    const socket = openSignaling(normalizedRoomId, name, {
       onHello: (participantId, nextParticipants, nextRoom) => {
+        if (!isCurrentConnection(attempt, socket)) return;
+        signalingReconnectAttemptsRef.current = 0;
         const mesh = new PeerMesh(
           participantId,
           iceConfig,
-          (to, payload) => socket.send(JSON.stringify({ type: "signal", to, payload })),
+          (to, payload) => sendSignal(socket, to, payload),
           {
             onMessage: handleChannelMessage,
             onConnectionChange: (connected) => {
+              if (!isCurrentConnection(attempt, socket)) return;
               setConnectedPeers(connected);
               if (connected > 0) requestImageFromPeers(participantId);
             },
@@ -193,23 +278,47 @@ export default function App() {
         setStatus("接続しました");
         setLoadingProgress({ phase: "idle" });
         mesh.connectToParticipants(nextParticipants);
-        setTimeout(() => requestImageFromPeers(participantId), 400);
+        window.setTimeout(() => {
+          if (isCurrentConnection(attempt, socket)) requestImageFromPeers(participantId);
+        }, 400);
       },
       onPeerJoined: (participant, nextParticipants) => {
+        if (!isCurrentConnection(attempt, socket)) return;
         setParticipants(nextParticipants);
         meshRef.current?.connectToParticipants(nextParticipants);
         if (imageDataRef.current) sendSnapshot(participant.id);
         else requestImageFromPeers(myIdRef.current);
       },
       onPeerLeft: (participantId, nextParticipants) => {
+        if (!isCurrentConnection(attempt, socket)) return;
         setParticipants(nextParticipants);
         setRemoteCursors((current) => current.filter((cursor) => cursor.participantId !== participantId));
         meshRef.current?.disconnect(participantId);
       },
       onSignal: (from, payload) => {
-        void meshRef.current?.acceptSignal(from, payload).catch((caught) => setError(readError(caught)));
+        if (!isCurrentConnection(attempt, socket)) return;
+        void meshRef.current?.acceptSignal(from, payload).catch((caught) => {
+          if (isCurrentConnection(attempt, socket)) setError(readError(caught));
+        });
       },
-      onError: setError,
+      onError: (message) => {
+        if (isCurrentConnection(attempt, socket)) setError(message);
+      },
+      onClose: (message) => {
+        if (!isCurrentConnection(attempt, socket)) return;
+        meshRef.current?.close();
+        meshRef.current = null;
+        setConnectedPeers(0);
+        setStatus("接続が切断されました");
+        setLoadingProgress({ phase: "idle" });
+        setError(message);
+        if (signalingReconnectAttemptsRef.current >= MAX_SIGNALING_RECONNECT_ATTEMPTS) return;
+        signalingReconnectAttemptsRef.current += 1;
+        signalingReconnectTimerRef.current = window.setTimeout(() => {
+          signalingReconnectTimerRef.current = null;
+          if (connectionAttemptRef.current === attempt) void enterRoom(normalizedRoomId, { preserveState: true });
+        }, SIGNALING_RECONNECT_DELAY_MS);
+      },
     });
 
     socketRef.current = socket;
