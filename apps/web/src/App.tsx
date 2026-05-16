@@ -55,6 +55,7 @@ export default function App() {
   const [pieces, setPieces] = useState<BoardPiece[]>([]);
   const [panning, setPanning] = useState<PanState | null>(null);
   const [remoteCursors, setRemoteCursors] = useState<RemoteCursor[]>([]);
+  const [activeRemoteCursorIds, setActiveRemoteCursorIds] = useState<Set<string>>(new Set());
   const [pan, setPan] = useState<PanOffset>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(0.8);
   const [copied, setCopied] = useState(false);
@@ -79,6 +80,7 @@ export default function App() {
   const signalingReconnectTimerRef = useRef<number | null>(null);
   const signalingReconnectAttemptsRef = useRef(0);
   const lastCursorSentAtRef = useRef(0);
+  const remoteCursorActivityTimersRef = useRef<Map<string, number>>(new Map());
 
   const layout = useMemo<PuzzleLayout | null>(() => {
     if (!room || !imageSize) return null;
@@ -129,6 +131,7 @@ export default function App() {
     return () => {
       connectionAttemptRef.current += 1;
       clearSignalingReconnect();
+      clearRemoteCursorActivityTimers();
       socketRef.current?.close();
       meshRef.current?.close();
     };
@@ -174,6 +177,8 @@ export default function App() {
     setMyId(null);
     setConnectedPeers(0);
     setRemoteCursors([]);
+    setActiveRemoteCursorIds(new Set());
+    clearRemoteCursorActivityTimers();
     setImageDataUrl(null);
     setImageSize(null);
     setPieces([]);
@@ -287,6 +292,7 @@ export default function App() {
       onPeerLeft: (participantId, nextParticipants) => {
         if (!isCurrentConnection(attempt, socket)) return;
         setParticipants(nextParticipants);
+        clearRemoteCursorActive(participantId);
         setRemoteCursors((current) => current.filter((cursor) => cursor.participantId !== participantId));
         meshRef.current?.disconnect(participantId);
       },
@@ -426,6 +432,7 @@ export default function App() {
         break;
       }
       case "piece-move":
+        markRemoteCursorActive(message.by);
         setPieces((current) => {
           const nextPieces = updatePieceById(current, message.pieceId, (piece) => {
             if (piece.locked) return piece;
@@ -437,6 +444,7 @@ export default function App() {
         });
         break;
       case "piece-lock":
+        clearRemoteCursorActive(message.by);
         setPieces((current) => {
           const nextPieces = updatePieceById(current, message.pieceId, (piece) => {
             const { x, y } = constrainPiecePosition(message.pieceId, message.x, message.y);
@@ -458,7 +466,10 @@ export default function App() {
         break;
       case "presence":
         setRemoteCursors((current) => {
-          if (!message.cursor) return current.filter((cursor) => cursor.participantId !== message.participantId);
+          if (!message.cursor) {
+            clearRemoteCursorActive(message.participantId);
+            return current.filter((cursor) => cursor.participantId !== message.participantId);
+          }
           const nextCursor: RemoteCursor = {
             participantId: message.participantId,
             name: message.name,
@@ -551,6 +562,37 @@ export default function App() {
     broadcast({ type: "presence", participantId: myId, name, cursor });
   }
 
+  function markRemoteCursorActive(participantId: string) {
+    if (participantId === myIdRef.current) return;
+    const existingTimer = remoteCursorActivityTimersRef.current.get(participantId);
+    if (existingTimer !== undefined) window.clearTimeout(existingTimer);
+    setActiveRemoteCursorIds((current) => {
+      if (current.has(participantId)) return current;
+      return new Set(current).add(participantId);
+    });
+    const timer = window.setTimeout(() => clearRemoteCursorActive(participantId), 120);
+    remoteCursorActivityTimersRef.current.set(participantId, timer);
+  }
+
+  function clearRemoteCursorActive(participantId: string) {
+    const existingTimer = remoteCursorActivityTimersRef.current.get(participantId);
+    if (existingTimer !== undefined) window.clearTimeout(existingTimer);
+    remoteCursorActivityTimersRef.current.delete(participantId);
+    setActiveRemoteCursorIds((current) => {
+      if (!current.has(participantId)) return current;
+      const next = new Set(current);
+      next.delete(participantId);
+      return next;
+    });
+  }
+
+  function clearRemoteCursorActivityTimers() {
+    for (const timer of remoteCursorActivityTimersRef.current.values()) {
+      window.clearTimeout(timer);
+    }
+    remoteCursorActivityTimersRef.current.clear();
+  }
+
   function bringPieceToFront(pieceId: number): number {
     const nextZ = Math.max(0, ...piecesRef.current.map((piece) => piece.z)) + 1;
     setPieces((current) => {
@@ -585,7 +627,8 @@ export default function App() {
 
   function handlePointerMove(event: React.PointerEvent) {
     const cursor = getWorkspacePoint(event);
-    if (cursor) publishCursor(cursor);
+    const dragging = draggingRef.current;
+    if (cursor) publishCursor(cursor, Boolean(dragging));
 
     if (panning) {
       setPan({
@@ -596,7 +639,6 @@ export default function App() {
       return;
     }
 
-    const dragging = draggingRef.current;
     if (!dragging || !layout || !workspaceMetrics) return;
     const pointer = cursor;
     if (!pointer) return;
@@ -923,8 +965,11 @@ export default function App() {
                   {remoteCursors.map((cursor) => (
                     <div
                       key={cursor.participantId}
-                      className="remote-cursor"
-                      style={{ left: `${cursor.x}px`, top: `${cursor.y}px` }}
+                      className={`remote-cursor${activeRemoteCursorIds.has(cursor.participantId) ? " dragging" : ""}`}
+                      style={{
+                        "--cursor-x": `${cursor.x}px`,
+                        "--cursor-y": `${cursor.y}px`,
+                      } as React.CSSProperties & Record<"--cursor-x" | "--cursor-y", string>}
                       title={cursor.name}
                     >
                       <MousePointer2 size={16} />

@@ -715,6 +715,8 @@ label {
 
 .remote-cursor {
   position: absolute;
+  top: 0;
+  left: 0;
   z-index: 1000000;
   display: inline-flex;
   align-items: center;
@@ -722,7 +724,13 @@ label {
   color: var(--accent);
   font: 500 0.72rem var(--font-ui);
   pointer-events: none;
-  transform: translate(2px, 2px);
+  transform: translate3d(var(--cursor-x, 0), var(--cursor-y, 0), 0) translate(2px, 2px);
+  transition: transform 80ms linear;
+  will-change: transform;
+}
+
+.remote-cursor.dragging {
+  transition: none;
 }
 
 .remote-cursor svg {
