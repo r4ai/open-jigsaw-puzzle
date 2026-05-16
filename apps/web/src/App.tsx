@@ -62,6 +62,7 @@ export default function App() {
   const meshRef = useRef<PeerMesh | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const incomingRef = useRef<Map<string, IncomingImage>>(new Map());
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const worldRef = useRef<HTMLDivElement | null>(null);
   const imageDataRef = useRef<string | null>(null);
@@ -234,6 +235,27 @@ export default function App() {
     setPieces(nextPieces);
     setStatus("画像を参加者へ配布しています");
     sendSnapshot(undefined, resized.dataUrl, resized.width, resized.height, nextPieces);
+  }
+
+  function handleFileInputChange(event: React.ChangeEvent<HTMLInputElement>) {
+    void handleImageUpload(event.target.files?.[0] ?? null);
+    event.target.value = "";
+  }
+
+  function openImagePicker() {
+    fileInputRef.current?.click();
+  }
+
+  function handleUploadDragOver(event: React.DragEvent<HTMLElement>) {
+    if (!isHost) return;
+    event.preventDefault();
+  }
+
+  function handleUploadDrop(event: React.DragEvent<HTMLElement>) {
+    if (!isHost) return;
+    event.preventDefault();
+    const file = [...event.dataTransfer.files].find((candidate) => candidate.type.startsWith("image/")) ?? null;
+    void handleImageUpload(file);
   }
 
   function handleChannelMessage(from: string, message: ChannelMessage) {
@@ -657,7 +679,7 @@ export default function App() {
           <label className="upload">
             <ImagePlus size={18} />
             画像
-            <input type="file" accept="image/*" onChange={(event) => void handleImageUpload(event.target.files?.[0] ?? null)} />
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileInputChange} />
           </label>
         </div>
       </header>
@@ -758,12 +780,29 @@ export default function App() {
             </div>
           </div>
         ) : (
-          <div className="empty-board">
-            <Loader2 className="loading-icon" size={26} />
-            <div className="loading-copy">
-              <strong>{isHost ? "画像を選択してください" : "ホストまたは画像を持つ参加者からの配布を待っています"}</strong>
-              <span>{loadingSummary}</span>
-            </div>
+          <div
+            className={`empty-board ${isHost ? "drop-target" : ""}`}
+            onDragOver={handleUploadDragOver}
+            onDrop={handleUploadDrop}
+          >
+            {isHost ? (
+              <>
+                <button className="empty-upload-button" onClick={openImagePicker}>
+                  <ImagePlus size={20} />
+                  画像を選択
+                </button>
+                <span className="empty-upload-hint">ドラッグ&ドロップ可</span>
+                <span>{loadingSummary}</span>
+              </>
+            ) : (
+              <>
+                <Loader2 className="loading-icon" size={26} />
+                <div className="loading-copy">
+                  <strong>ホストまたは画像を持つ参加者からの配布を待っています</strong>
+                  <span>{loadingSummary}</span>
+                </div>
+              </>
+            )}
           </div>
         )}
       </section>

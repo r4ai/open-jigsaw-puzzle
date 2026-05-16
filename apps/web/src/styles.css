@@ -388,6 +388,33 @@ label {
   padding: 24px;
 }
 
+.empty-board.drop-target {
+  border-color: #0f766e;
+  background:
+    linear-gradient(90deg, rgb(15 118 110 / 0.06) 1px, transparent 1px),
+    linear-gradient(rgb(15 118 110 / 0.06) 1px, transparent 1px),
+    #fffdfa;
+  background-size: 32px 32px;
+}
+
+.empty-upload-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 180px;
+  border-color: #0f766e;
+  background: #0f766e;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.empty-upload-hint {
+  color: #536369;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .loading-icon {
   animation: spin 0.9s linear infinite;
   color: #0f766e;
