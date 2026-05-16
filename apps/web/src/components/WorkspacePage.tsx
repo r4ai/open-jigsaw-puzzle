@@ -310,7 +310,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
   );
 }
 
-function isAuthorizedPeerMessage(from: string, msg: ChannelMessage, hostId: string | null): boolean {
+export function isAuthorizedPeerMessage(from: string, msg: ChannelMessage, hostId: string | null): boolean {
   switch (msg.type) {
     case "presence":
       return msg.participantId === from;
@@ -320,9 +320,10 @@ function isAuthorizedPeerMessage(from: string, msg: ChannelMessage, hostId: stri
     case "piece-move":
     case "piece-lock":
       return msg.by === from;
+    case "state-sync":
+      return true;
     case "image-meta":
     case "image-chunk":
-    case "state-sync":
       return hostId === from;
   }
 }
