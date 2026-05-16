@@ -65,6 +65,7 @@ export default function App() {
   const [pan, setPan] = useState<PanOffset>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(0.8);
   const [copied, setCopied] = useState(false);
+  const [showCompletion, setShowCompletion] = useState(false);
   const meshRef = useRef<PeerMesh | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const incomingRef = useRef<Map<string, IncomingImage>>(new Map());
@@ -139,6 +140,10 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (complete) setShowCompletion(true);
+  }, [complete]);
+
   useEffect(() => { imageDataRef.current = imageDataUrl; }, [imageDataUrl]);
   useEffect(() => { imageSizeRef.current = imageSize; }, [imageSize]);
   useEffect(() => { roomRef.current = room; }, [room]);
@@ -180,6 +185,7 @@ export default function App() {
     setPieces([]);
     setPan({ x: 0, y: 0 });
     setZoom(0.8);
+    setShowCompletion(false);
     incomingRef.current.clear();
     pendingSyncRef.current = null;
     imageDataRef.current = null;
@@ -983,6 +989,35 @@ export default function App() {
       </aside>
 
       {error ? <p className="toast error">{error}</p> : null}
+
+      {showCompletion && (
+        <div className="completion-overlay" role="dialog" aria-modal="true" aria-label="パズル完成">
+          <div className="completion-card">
+            <p className="completion-eyebrow">Puzzle Complete</p>
+            <h2 className="completion-title">おめでとう<em>！</em></h2>
+            <p className="completion-desc">
+              {pieces.length} ピースのパズルを完成させました。
+            </p>
+            <div className="completion-actions">
+              <button
+                className="primary completion-btn"
+                onClick={() => {
+                  setShowCompletion(false);
+                  void navigate({ to: "/" });
+                }}
+              >
+                メニューに戻る
+              </button>
+              <button
+                className="completion-btn"
+                onClick={() => setShowCompletion(false)}
+              >
+                パズルを見る
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

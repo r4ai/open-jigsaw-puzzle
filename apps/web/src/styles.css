@@ -922,6 +922,104 @@ label {
   white-space: pre-wrap;
 }
 
+/* ─── Completion overlay ─── */
+
+.completion-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 12, 8, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: completion-fade-in 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.completion-card {
+  display: grid;
+  gap: 20px;
+  padding: 40px 44px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--paper-raised);
+  box-shadow:
+    0 1px 0 var(--panel-inset) inset,
+    var(--panel-shadow),
+    0 0 0 1px rgba(255,255,255,0.04);
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  animation: completion-card-in 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.completion-eyebrow {
+  margin: 0;
+  font: 500 0.6875rem/1 var(--font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ok);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.completion-eyebrow::before,
+.completion-eyebrow::after {
+  content: '';
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--ok);
+  border-radius: 1px;
+}
+
+.completion-title {
+  margin: 0;
+  font: 400 clamp(2.2rem, 6vw, 3.2rem)/1.1 var(--font-display);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.completion-title em {
+  font-style: italic;
+  color: var(--teal);
+}
+
+.completion-desc {
+  margin: 0;
+  color: var(--ink-60);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.completion-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.completion-btn {
+  min-height: 46px;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  width: 100%;
+  justify-content: center;
+}
+
+@keyframes completion-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes completion-card-in {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* ─── Animations ─── */
 
 @keyframes spin { to { transform: rotate(360deg); } }
