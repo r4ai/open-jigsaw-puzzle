@@ -3,17 +3,10 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { DIFFICULTIES, MAX_PARTICIPANTS, type ChannelMessage, type Difficulty, type Participant, type RoomSummary, type SyncedPiece } from "@open-puzzle/shared/protocol";
 import { createInitialPieces, createPuzzleLayout, getWorkspaceMargin, isComplete, snapPiece, type BoardPiece, type PieceEdge, type PieceGeometry, type PuzzleLayout } from "@open-puzzle/shared/puzzle";
+import { createIncomingImage, storeIncomingImageChunk, type IncomingImage } from "./incoming-image";
 import { chunkString, resizeImage } from "./image";
 import { fetchIceConfig, openSignaling, PeerMesh } from "./realtime";
 
-type IncomingImage = {
-  imageId: string;
-  chunks: string[];
-  expected: number;
-  byteLength: number;
-  width: number;
-  height: number;
-};
 type DragState = { id: number; dx: number; dy: number };
 type PanState = { pointerId: number; startX: number; startY: number; panX: number; panY: number };
 type PanOffset = { x: number; y: number };
@@ -372,14 +365,15 @@ export default function App() {
         if (imageDataRef.current && imageSizeRef.current) sendSnapshot(from);
         break;
       case "image-meta":
-        incomingRef.current.set(message.imageId, {
+        const incoming = createIncomingImage({
           imageId: message.imageId,
-          chunks: Array.from({ length: message.chunks }),
-          expected: message.chunks,
+          chunks: message.chunks,
           byteLength: message.byteLength,
           width: message.width,
           height: message.height,
         });
+        if (!incoming) return;
+        incomingRef.current.set(message.imageId, incoming);
         setStatus("画像を受信しています");
         setLoadingProgress({
           phase: "receiving",
@@ -393,8 +387,9 @@ export default function App() {
       case "image-chunk": {
         const incoming = incomingRef.current.get(message.imageId);
         if (!incoming) return;
-        incoming.chunks[message.index] = message.data;
-        const chunksReceived = countReceivedChunks(incoming.chunks);
+        const stored = storeIncomingImageChunk(incoming, message.index, message.data);
+        if (!stored) return;
+        const { chunksReceived } = stored;
         setLoadingProgress((current) => ({
           phase: "receiving",
           imageId: message.imageId,
@@ -404,8 +399,8 @@ export default function App() {
           startedAt: current.phase === "receiving" && current.imageId === message.imageId ? current.startedAt : Date.now(),
         }));
         setStatus(`画像を受信しています (${chunksReceived}/${incoming.expected})`);
-        if (chunksReceived === incoming.expected) {
-          const dataUrl = incoming.chunks.join("");
+        if (stored.dataUrl) {
+          const dataUrl = stored.dataUrl;
           incomingRef.current.delete(message.imageId);
           setImageDataUrl(dataUrl);
           setImageSize({ width: incoming.width, height: incoming.height });
@@ -1158,14 +1153,6 @@ function createEdgePath(startX: number, startY: number, endX: number, endY: numb
 
 function roundPath(value: number): number {
   return Math.round(value * 100) / 100;
-}
-
-function countReceivedChunks(chunks: string[]): number {
-  let count = 0;
-  for (const chunk of chunks) {
-    if (chunk) count += 1;
-  }
-  return count;
 }
 
 function countLockedPieces(pieces: Pick<BoardPiece, "locked">[]): number {
