@@ -106,7 +106,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
       window.setTimeout(() => imageTransfer.requestImageFromPeers(myId), 400);
     },
     onPeerJoined: (participant) => {
-      if (imageTransfer.imageDataRef.current) {
+      if (isHost && imageTransfer.imageDataRef.current) {
         imageTransfer.sendSnapshot(participant.id);
       } else {
         imageTransfer.requestImageFromPeers(signaling.myId);
@@ -130,6 +130,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
   };
 
   messageHandlerRef.current = (from, msg) => {
+    if (!isAuthorizedPeerMessage(from, msg, hostId)) return;
     imageTransfer.handleMessage(from, msg);
     puzzle.handleMessage(from, msg);
     cursors.handleMessage(from, msg);
@@ -151,6 +152,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
   const isDark = theme === "dark";
   const myParticipant = signaling.participants.find((p) => p.id === signaling.myId);
   const isHost = myParticipant?.isHost ?? false;
+  const hostId = signaling.participants.find((p) => p.isHost)?.id ?? null;
   const nameChanged = Boolean(myParticipant && sanitizeName(draftName) !== myParticipant.name);
   const loadingSummary = describeLoadingProgress(imageTransfer.loadingProgress) ?? status;
 
@@ -306,4 +308,21 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
       )}
     </main>
   );
+}
+
+function isAuthorizedPeerMessage(from: string, msg: ChannelMessage, hostId: string | null): boolean {
+  switch (msg.type) {
+    case "presence":
+      return msg.participantId === from;
+    case "request-image":
+      return msg.participantId === from;
+    case "piece-front":
+    case "piece-move":
+    case "piece-lock":
+      return msg.by === from;
+    case "image-meta":
+    case "image-chunk":
+    case "state-sync":
+      return hostId === from;
+  }
 }

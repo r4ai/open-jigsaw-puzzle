@@ -1,4 +1,4 @@
-import type { ChannelMessage, IceConfig, Participant, PeerSignal, RoomSummary, SignalEnvelope } from "@open-puzzle/shared/protocol";
+import { MAX_CHANNEL_MESSAGE_BYTES, parseChannelMessage, type ChannelMessage, type IceConfig, type Participant, type PeerSignal, type RoomSummary, type SignalEnvelope } from "@open-puzzle/shared/protocol";
 
 type SignalingHandlers = {
   onHello: (participantId: string, participants: Participant[], room: RoomSummary) => void;
@@ -214,7 +214,10 @@ export class PeerMesh {
     });
     channel.addEventListener("message", (event) => {
       try {
-        this.handlers.onMessage(participantId, JSON.parse(event.data as string) as ChannelMessage);
+        if (typeof event.data !== "string" || event.data.length > MAX_CHANNEL_MESSAGE_BYTES) return;
+        const message = parseChannelMessage(JSON.parse(event.data) as unknown);
+        if (!message) return;
+        this.handlers.onMessage(participantId, message);
       } catch {
         // Ignore malformed peer messages. A single bad payload should not break the room.
       }
