@@ -50,7 +50,7 @@ app.get("/api/ice", (c) => c.json(getIceConfig(c.env)));
 
 app.notFound((c) => {
   if (c.req.path.startsWith("/api/")) return c.json({ error: "Not found." }, 404);
-  return c.env.ASSETS.fetch(c.req.raw);
+  return serveAssetOrSpa(c.req.raw, c.env);
 });
 
 export default app;
@@ -306,6 +306,22 @@ function parseJson<T>(value: string): T | null {
 
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: JSON_HEADERS });
+}
+
+async function serveAssetOrSpa(request: Request, env: Env): Promise<Response> {
+  const assetResponse = await env.ASSETS.fetch(request);
+  if (assetResponse.status !== 404 || !shouldServeSpaFallback(request)) return assetResponse;
+
+  const url = new URL(request.url);
+  url.pathname = "/";
+  url.search = "";
+  return env.ASSETS.fetch(new Request(url, request));
+}
+
+function shouldServeSpaFallback(request: Request): boolean {
+  if (request.method !== "GET" && request.method !== "HEAD") return false;
+  const accept = request.headers.get("accept");
+  return !accept || accept.includes("text/html") || accept.includes("*/*");
 }
 
 function nowSeconds(): number {
