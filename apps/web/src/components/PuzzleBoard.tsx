@@ -1,5 +1,6 @@
 import { Maximize2, Minus, MousePointer2, Plus } from "lucide-react";
 import type { BoardPiece, PuzzleLayout } from "@open-puzzle/shared/puzzle";
+import type { RemoteSelection } from "../hooks/usePuzzle";
 import type { RemoteCursor } from "../hooks/useRemoteCursors";
 import type { PanOffset } from "../hooks/useViewport";
 import { ZOOM_STEP, MIN_ZOOM, MAX_ZOOM } from "../hooks/useViewport";
@@ -19,6 +20,10 @@ type Props = {
   loadingSummary: string;
   remoteCursors: RemoteCursor[];
   activeRemoteCursorIds: Set<string>;
+  selectedPieceIds: Set<number>;
+  imageOverlaySelected: boolean;
+  selectionBox: { x: number; y: number; width: number; height: number } | null;
+  remoteSelections: RemoteSelection[];
   myId: string | null;
   viewportRef: React.RefObject<HTMLDivElement | null>;
   worldRef: React.RefObject<HTMLDivElement | null>;
@@ -48,6 +53,10 @@ export function PuzzleBoard({
   loadingSummary,
   remoteCursors,
   activeRemoteCursorIds,
+  selectedPieceIds,
+  imageOverlaySelected,
+  selectionBox,
+  remoteSelections,
   viewportRef,
   worldRef,
   imageOverlayPosition,
@@ -63,6 +72,16 @@ export function PuzzleBoard({
   onZoomOut,
   onResetZoom,
 }: Props) {
+  const remotePieceColors = new Map<number, string>();
+  let remoteImageOverlayColor: string | null = null;
+  for (const selection of remoteSelections) {
+    const color = participantColor(selection.participantId);
+    for (const pieceId of selection.pieceIds) {
+      if (!remotePieceColors.has(pieceId)) remotePieceColors.set(pieceId, color);
+    }
+    if (selection.imageOverlaySelected && !remoteImageOverlayColor) remoteImageOverlayColor = color;
+  }
+
   return (
     <>
       <div
@@ -96,13 +115,14 @@ export function PuzzleBoard({
             />
             {imageOverlayPosition && (
               <div
-                className={styles.imageOverlay}
+                className={`${styles.imageOverlay} ${imageOverlaySelected ? styles.selected : ""} ${remoteImageOverlayColor ? styles.remoteSelected : ""}`}
                 style={{
                   left: `${margin + imageOverlayPosition.x}px`,
                   top: `${margin + imageOverlayPosition.y}px`,
                   width: `${layout.boardWidth}px`,
                   height: `${layout.boardHeight}px`,
-                }}
+                  "--remote-selection-color": remoteImageOverlayColor ?? "transparent",
+                } as React.CSSProperties & Record<"--remote-selection-color", string>}
                 onPointerDown={onImageOverlayPointerDown}
               >
                 <img
@@ -115,17 +135,19 @@ export function PuzzleBoard({
             )}
             {pieces.map((piece) => {
               const geometry = layout.pieces[piece.id];
+              const remoteColor = remotePieceColors.get(piece.id) ?? null;
               return (
                 <button
                   key={piece.id}
-                  className={`${styles.piece} ${piece.locked ? styles.locked : ""}`}
+                  className={`${styles.piece} ${piece.locked ? styles.locked : ""} ${selectedPieceIds.has(piece.id) ? styles.selected : ""} ${remoteColor ? styles.remoteSelected : ""}`}
                   style={{
                     left: `${margin + piece.x}px`,
                     top: `${margin + piece.y}px`,
                     width: `${layout.pieceWidth}px`,
                     height: `${layout.pieceHeight}px`,
                     zIndex: piece.z,
-                  }}
+                    "--remote-selection-color": remoteColor ?? "transparent",
+                  } as React.CSSProperties & Record<"--remote-selection-color", string>}
                   aria-label={`piece ${piece.id + 1}`}
                   onPointerDown={(e) => onPiecePointerDown(e, piece)}
                 >
@@ -139,6 +161,17 @@ export function PuzzleBoard({
                 </button>
               );
             })}
+            {selectionBox && (
+              <div
+                className={styles.selectionBox}
+                style={{
+                  left: `${selectionBox.x}px`,
+                  top: `${selectionBox.y}px`,
+                  width: `${selectionBox.width}px`,
+                  height: `${selectionBox.height}px`,
+                }}
+              />
+            )}
             {remoteCursors.map((cursor) => (
               <div
                 key={cursor.participantId}

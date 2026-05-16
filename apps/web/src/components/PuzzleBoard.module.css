@@ -55,6 +55,15 @@
   z-index: 1;
 }
 
+.selected {
+  outline: 2px solid var(--teal);
+  outline-offset: 3px;
+}
+
+.remoteSelected {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--remote-selection-color) 70%, transparent);
+}
+
 .imageOverlay:active { cursor: grabbing; }
 
 .imageOverlayImg {
@@ -81,6 +90,14 @@
 .locked { cursor: default; }
 .piece:not(.locked):active { cursor: grabbing; }
 .piece:active:not(:disabled) { transform: none; }
+
+.selectionBox {
+  position: absolute;
+  z-index: 999999;
+  border: 1px solid var(--teal);
+  background: color-mix(in srgb, var(--teal) 18%, transparent);
+  pointer-events: none;
+}
 
 .remoteCursor {
   position: absolute;

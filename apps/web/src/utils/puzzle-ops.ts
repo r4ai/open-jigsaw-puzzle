@@ -3,6 +3,14 @@ import type { SyncedPiece } from "@open-puzzle/shared/protocol";
 
 export const MAX_CANVAS_COORDINATE = 1_000_000_000;
 
+export type SelectionState = {
+  pieceIds: Set<number>;
+  imageOverlaySelected: boolean;
+  lastSelectedPieceId: number | null;
+};
+
+export type Rect = { x: number; y: number; width: number; height: number };
+
 export function countLockedPieces(pieces: Pick<BoardPiece, "locked">[]): number {
   let count = 0;
   for (const piece of pieces) {
@@ -45,6 +53,98 @@ export function roundZoom(value: number): number {
 
 export function isLoosePieceEventTarget(target: EventTarget): boolean {
   return target instanceof Element && Boolean(target.closest(".piece:not(.locked)"));
+}
+
+export function createEmptySelection(): SelectionState {
+  return { pieceIds: new Set(), imageOverlaySelected: false, lastSelectedPieceId: null };
+}
+
+export function selectOnlyPiece(pieceId: number): SelectionState {
+  return { pieceIds: new Set([pieceId]), imageOverlaySelected: false, lastSelectedPieceId: pieceId };
+}
+
+export function togglePieceSelection(selection: SelectionState, pieceId: number): SelectionState {
+  const pieceIds = new Set(selection.pieceIds);
+  if (pieceIds.has(pieceId)) pieceIds.delete(pieceId);
+  else pieceIds.add(pieceId);
+  return { pieceIds, imageOverlaySelected: selection.imageOverlaySelected, lastSelectedPieceId: pieceId };
+}
+
+export function addPieceRangeSelection(selection: SelectionState, toPieceId: number): SelectionState {
+  if (selection.lastSelectedPieceId === null) return selectOnlyPiece(toPieceId);
+  const pieceIds = new Set(selection.pieceIds);
+  const start = Math.min(selection.lastSelectedPieceId, toPieceId);
+  const end = Math.max(selection.lastSelectedPieceId, toPieceId);
+  for (let id = start; id <= end; id += 1) pieceIds.add(id);
+  return { pieceIds, imageOverlaySelected: selection.imageOverlaySelected, lastSelectedPieceId: toPieceId };
+}
+
+export function selectOnlyImageOverlay(): SelectionState {
+  return { pieceIds: new Set(), imageOverlaySelected: true, lastSelectedPieceId: null };
+}
+
+export function toggleImageOverlaySelection(selection: SelectionState): SelectionState {
+  return {
+    pieceIds: new Set(selection.pieceIds),
+    imageOverlaySelected: !selection.imageOverlaySelected,
+    lastSelectedPieceId: selection.lastSelectedPieceId,
+  };
+}
+
+export function normalizeRect(start: { x: number; y: number }, end: { x: number; y: number }): Rect {
+  return {
+    x: Math.min(start.x, end.x),
+    y: Math.min(start.y, end.y),
+    width: Math.abs(end.x - start.x),
+    height: Math.abs(end.y - start.y),
+  };
+}
+
+export function selectByRect(
+  pieces: BoardPiece[],
+  layout: PuzzleLayout,
+  rect: Rect,
+  imageOverlayRect: Rect | null,
+): SelectionState {
+  const pieceIds = new Set<number>();
+  for (const piece of pieces) {
+    if (rectsIntersect(rect, { x: piece.x, y: piece.y, width: layout.pieceWidth, height: layout.pieceHeight })) {
+      pieceIds.add(piece.id);
+    }
+  }
+  const imageOverlaySelected = Boolean(imageOverlayRect && rectsIntersect(rect, imageOverlayRect));
+  return { pieceIds, imageOverlaySelected, lastSelectedPieceId: pieceIds.size ? [...pieceIds].at(-1)! : null };
+}
+
+export function bringSelectedPiecesToFront(pieces: BoardPiece[], selectedPieceIds: Set<number>): BoardPiece[] {
+  const selected = pieces.filter((piece) => selectedPieceIds.has(piece.id));
+  if (!selected.length) return pieces;
+  const nextTopZ = Math.max(0, ...pieces.map((piece) => piece.z)) + 1;
+  const zById = new Map(
+    selected
+      .slice()
+      .sort((a, b) => a.z - b.z || a.id - b.id)
+      .map((piece, index) => [piece.id, nextTopZ + index]),
+  );
+  return pieces.map((piece) => {
+    const z = zById.get(piece.id);
+    return z === undefined ? piece : { ...piece, z };
+  });
+}
+
+export function moveSelectedLoosePiecesBy(
+  pieces: BoardPiece[],
+  selectedPieceIds: Set<number>,
+  delta: { x: number; y: number },
+): BoardPiece[] {
+  return pieces.map((piece) => {
+    if (piece.locked || !selectedPieceIds.has(piece.id)) return piece;
+    return { ...piece, x: piece.x + delta.x, y: piece.y + delta.y };
+  });
+}
+
+export function rectsIntersect(a: Rect, b: Rect): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
 export function arrangeLoosePieces(

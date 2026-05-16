@@ -96,6 +96,8 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
     onPieceMoved: cursors.markActive,
     onPieceLocked: cursors.clearActive,
   });
+  const clearSelectionRef = useRef<() => void>(() => {});
+  clearSelectionRef.current = puzzle.clearSelection;
 
   const viewport = useViewport();
 
@@ -117,7 +119,10 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
       }
       imageOverlay.broadcastCurrentPosition();
     },
-    onPeerLeft: (participantId) => cursors.removeCursor(participantId),
+    onPeerLeft: (participantId) => {
+      cursors.removeCursor(participantId);
+      puzzle.removeRemoteSelection(participantId);
+    },
     onParticipantUpdated: (participant) => {
       cursors.updateCursorName(participant.id, participant.name);
       if (participant.id === signaling.myId) {
@@ -157,6 +162,14 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
     if (layout) imageOverlay.initPosition(layout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layout]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") clearSelectionRef.current();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // ── Derived values ────────────────────────────────────────────────────────────────
 
@@ -213,18 +226,36 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
   function handlePointerMove(e: React.PointerEvent) {
     const cursor = viewport.getWorkspacePoint(e);
     if (cursor) cursors.publishCursor(cursor, Boolean(puzzle.draggingRef.current));
+    if (puzzle.handleSelectionBoxMove(e, viewport.getWorkspacePoint)) return;
     if (viewport.handlePanMove(e)) return;
     imageOverlay.handleDragMove(e, viewport.getWorkspacePoint);
     if (!layout) return;
-    puzzle.handleDragMove(e, viewport.getWorkspacePoint, margin);
+    puzzle.handleDragMove(
+      e,
+      viewport.getWorkspacePoint,
+      margin,
+      imageOverlay.draggingRef.current ? undefined : imageOverlay.moveBy,
+    );
   }
 
   function handlePointerUp() {
+    if (layout) {
+      const imageOverlayRect = imageOverlay.position
+        ? { x: imageOverlay.position.x, y: imageOverlay.position.y, width: layout.boardWidth, height: layout.boardHeight }
+        : null;
+      if (puzzle.handleSelectionBoxEnd(layout, imageOverlayRect, margin)) return;
+    }
     if (viewport.handlePanEnd()) return;
     imageOverlay.handleDragEnd();
     if (!layout) return;
     const threshold = Math.min(layout.pieceWidth, layout.pieceHeight) * 0.22;
     puzzle.handleDragEnd(threshold);
+  }
+
+  function handleViewportPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (layout && puzzle.handleSelectionBoxPointerDown(e, viewport.getWorkspacePoint)) return;
+    if (!e.shiftKey) puzzle.clearSelection();
+    viewport.handleViewportPointerDown(e);
   }
 
   // ── Render ────────────────────────────────────────────────────────────────────────
@@ -270,13 +301,19 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
             loadingSummary={loadingSummary}
             remoteCursors={cursors.remoteCursors}
             activeRemoteCursorIds={cursors.activeRemoteCursorIds}
+            selectedPieceIds={puzzle.selectedPieceIds}
+            imageOverlaySelected={puzzle.imageOverlaySelected}
+            selectionBox={puzzle.selectionBox}
+            remoteSelections={puzzle.remoteSelections}
             myId={signaling.myId}
             viewportRef={viewport.viewportRef}
             worldRef={viewport.worldRef}
             imageOverlayPosition={imageOverlay.position}
-            onImageOverlayPointerDown={(e) =>
-              imageOverlay.handlePointerDown(e, viewport.getWorkspacePoint)
-            }
+            onImageOverlayPointerDown={(e) => {
+              puzzle.handleImageOverlayPointerDown(e, viewport.getWorkspacePoint);
+              if (e.ctrlKey || e.metaKey) return;
+              imageOverlay.handlePointerDown(e, viewport.getWorkspacePoint);
+            }}
             onPiecePointerDown={(e, piece) =>
               puzzle.handlePointerDown(e, piece, viewport.getWorkspacePoint, margin)
             }
@@ -284,7 +321,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
             onPointerLeave={() => cursors.publishCursor(null, true)}
-            onViewportPointerDown={viewport.handleViewportPointerDown}
+            onViewportPointerDown={handleViewportPointerDown}
             onWheel={viewport.handleWheel}
             onZoomIn={() => viewport.changeZoom(ZOOM_STEP)}
             onZoomOut={() => viewport.changeZoom(-ZOOM_STEP)}
@@ -338,6 +375,8 @@ export function isAuthorizedPeerMessage(from: string, msg: ChannelMessage, hostI
     case "piece-move":
     case "piece-lock":
       return msg.by === from;
+    case "selection-presence":
+      return msg.participantId === from;
     case "state-sync":
     case "image-overlay":
       return true;

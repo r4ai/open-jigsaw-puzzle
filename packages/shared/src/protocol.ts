@@ -95,6 +95,7 @@ export type ChannelMessage =
   | { type: "piece-front"; pieceId: number; z: number; by: string }
   | { type: "piece-move"; pieceId: number; x: number; y: number; z: number; by: string }
   | { type: "piece-lock"; pieceId: number; x: number; y: number; z: number; by: string }
+  | { type: "selection-presence"; participantId: string; pieceIds: number[]; imageOverlaySelected: boolean }
   | { type: "state-sync"; pieces: SyncedPiece[]; lockedCount: number }
   | { type: "image-overlay"; x: number; y: number };
 
@@ -147,6 +148,15 @@ export function parseChannelMessage(value: unknown): ChannelMessage | null {
     case "piece-lock":
       if (!isPieceId(value.pieceId) || !isCoordinate(value.x) || !isCoordinate(value.y) || !isZIndex(value.z) || !isParticipantId(value.by)) return null;
       return { type: "piece-lock", pieceId: value.pieceId, x: value.x, y: value.y, z: value.z, by: value.by };
+    case "selection-presence":
+      if (!isParticipantId(value.participantId) || !Array.isArray(value.pieceIds) || typeof value.imageOverlaySelected !== "boolean") return null;
+      if (value.pieceIds.length > MAX_SYNCED_PIECES) return null;
+      {
+        const pieceIds = value.pieceIds.flatMap((pieceId) => (isPieceId(pieceId) ? [pieceId] : []));
+        if (pieceIds.length !== value.pieceIds.length) return null;
+        if (new Set(pieceIds).size !== pieceIds.length) return null;
+        return { type: "selection-presence", participantId: value.participantId, pieceIds, imageOverlaySelected: value.imageOverlaySelected };
+      }
     case "state-sync":
       if (!Array.isArray(value.pieces) || value.pieces.length > MAX_SYNCED_PIECES) return null;
       if (!isNonNegativeInteger(value.lockedCount) || value.lockedCount > value.pieces.length) return null;

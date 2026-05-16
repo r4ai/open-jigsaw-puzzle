@@ -57,6 +57,15 @@ export function useImageOverlay({ broadcast }: Props) {
     broadcastRef.current({ type: "image-overlay", x: pos.x, y: pos.y });
   }
 
+  function moveBy(deltaX: number, deltaY: number) {
+    const current = positionRef.current;
+    if (!current) return;
+    const pos = { x: current.x + deltaX, y: current.y + deltaY };
+    positionRef.current = pos;
+    setPosition(pos);
+    broadcastRef.current({ type: "image-overlay", x: pos.x, y: pos.y });
+  }
+
   function handleDragEnd() {
     draggingRef.current = null;
   }
@@ -80,6 +89,7 @@ export function useImageOverlay({ broadcast }: Props) {
     initPosition,
     handlePointerDown,
     handleDragMove,
+    moveBy,
     handleDragEnd,
     handleMessage,
     broadcastCurrentPosition,

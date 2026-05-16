@@ -23,4 +23,25 @@ describe("channel message validation", () => {
     expect(parseChannelMessage({ type: "presence", participantId: "", name: "Ada", cursor: null })).toBeNull();
     expect(parseChannelMessage({ type: "piece-lock", pieceId: 1, x: 0, y: 0, z: 1, by: "" })).toBeNull();
   });
+
+  it("accepts selection presence messages", () => {
+    expect(parseChannelMessage({
+      type: "selection-presence",
+      participantId: "peer-1",
+      pieceIds: [0, 2, 191],
+      imageOverlaySelected: true,
+    })).toEqual({
+      type: "selection-presence",
+      participantId: "peer-1",
+      pieceIds: [0, 2, 191],
+      imageOverlaySelected: true,
+    });
+  });
+
+  it("rejects malformed selection presence messages", () => {
+    expect(parseChannelMessage({ type: "selection-presence", participantId: "", pieceIds: [1], imageOverlaySelected: false })).toBeNull();
+    expect(parseChannelMessage({ type: "selection-presence", participantId: "peer-1", pieceIds: [1, 1], imageOverlaySelected: false })).toBeNull();
+    expect(parseChannelMessage({ type: "selection-presence", participantId: "peer-1", pieceIds: [192], imageOverlaySelected: false })).toBeNull();
+    expect(parseChannelMessage({ type: "selection-presence", participantId: "peer-1", pieceIds: Array.from({ length: 193 }, (_, id) => id), imageOverlaySelected: false })).toBeNull();
+  });
 });

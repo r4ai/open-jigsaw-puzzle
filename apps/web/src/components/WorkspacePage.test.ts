@@ -27,4 +27,16 @@ describe("isAuthorizedPeerMessage", () => {
     expect(isAuthorizedPeerMessage("peer-2", msg, "host-1")).toBe(false);
     expect(isAuthorizedPeerMessage("host-1", msg, "host-1")).toBe(true);
   });
+
+  it("accepts selection presence only from the selected participant", () => {
+    const msg: ChannelMessage = {
+      type: "selection-presence",
+      participantId: "peer-1",
+      pieceIds: [1, 2],
+      imageOverlaySelected: true,
+    };
+
+    expect(isAuthorizedPeerMessage("peer-1", msg, "host-1")).toBe(true);
+    expect(isAuthorizedPeerMessage("peer-2", msg, "host-1")).toBe(false);
+  });
 });
