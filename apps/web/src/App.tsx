@@ -1,4 +1,4 @@
-import { Check, Copy, ImagePlus, Link, Loader2, Maximize2, Minus, MousePointer2, Play, Plus, Rows3, Users } from "lucide-react";
+import { Check, Copy, ImagePlus, Link, Loader2, Maximize2, Minus, Moon, MousePointer2, Play, Plus, Rows3, Sun, Users } from "lucide-react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DIFFICULTIES, MAX_PARTICIPANTS, type ChannelMessage, type Difficulty, type Participant, type RoomSummary, type SyncedPiece } from "@open-puzzle/shared/protocol";
@@ -31,6 +31,12 @@ type LoadingProgress =
 
 const DEFAULT_NAME = `Player ${Math.floor(Math.random() * 900 + 100)}`;
 const MAX_SIGNALING_RECONNECT_ATTEMPTS = 3;
+
+function getInitialTheme(): "light" | "dark" {
+  const saved = localStorage.getItem("theme");
+  if (saved === "light" || saved === "dark") return saved;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
 const SIGNALING_RECONNECT_DELAY_MS = 1_500;
 const MIN_ZOOM = 0.35;
 const MAX_ZOOM = 2.5;
@@ -40,6 +46,7 @@ const WHEEL_ZOOM_FACTOR = 1.12;
 export default function App() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const [theme, setTheme] = useState<"light" | "dark">(getInitialTheme);
   const [name, setName] = useState(DEFAULT_NAME);
   const [joinId, setJoinId] = useState("");
   const [difficulty, setDifficulty] = useState<Difficulty>(96);
@@ -95,6 +102,11 @@ export default function App() {
   const loadingSummary = describeLoadingProgress(loadingProgress) ?? status;
   const routeRoomId = getRoomIdFromPath(pathname);
   const viewingRoom = Boolean(routeRoomId);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
@@ -708,9 +720,21 @@ export default function App() {
     window.setTimeout(() => setCopied(false), 1200);
   }
 
+  const isDark = theme === "dark";
+  function toggleTheme() {
+    setTheme((current) => (current === "dark" ? "light" : "dark"));
+  }
+
   if (!viewingRoom) {
     return (
       <main className="home">
+        <button
+          className="theme-toggle-home"
+          onClick={toggleTheme}
+          title={isDark ? "ライトモードに切り替え" : "ダークモードに切り替え"}
+        >
+          {isDark ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
         <section className="intro">
           <p className="eyebrow">Open Puzzle</p>
           <h1>
@@ -812,6 +836,13 @@ export default function App() {
           <button onClick={() => void copyShareUrl()} title="共有リンクをコピー">
             {copied ? <Check size={15} /> : <Copy size={15} />}
             {copied ? "コピー済み" : "共有"}
+          </button>
+          <button
+            className="theme-toggle"
+            onClick={toggleTheme}
+            title={isDark ? "ライトモードに切り替え" : "ダークモードに切り替え"}
+          >
+            {isDark ? <Sun size={15} /> : <Moon size={15} />}
           </button>
         </div>
       </header>
