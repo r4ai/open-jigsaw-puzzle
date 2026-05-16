@@ -1,6 +1,7 @@
 import { DIFFICULTIES, MAX_PARTICIPANTS, ROOM_ID_LENGTH, ROOM_TTL_SECONDS, type Difficulty } from "./protocol";
 
 const ROOM_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const ROOM_ID_PATTERN = new RegExp(`^[${ROOM_ID_ALPHABET}]{${ROOM_ID_LENGTH}}$`);
 type RandomBytes = (bytes: Uint8Array) => Uint8Array;
 
 function isDifficulty(value: unknown): value is Difficulty {
@@ -23,6 +24,12 @@ export function createRoomId(random: RandomBytes = crypto.getRandomValues.bind(c
   const bytes = new Uint8Array(ROOM_ID_LENGTH);
   random(bytes);
   return [...bytes].map((byte) => ROOM_ID_ALPHABET[byte % ROOM_ID_ALPHABET.length]).join("");
+}
+
+export function normalizeRoomId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toUpperCase();
+  return ROOM_ID_PATTERN.test(normalized) ? normalized : null;
 }
 
 export function expiresAt(nowSeconds: number, ttlSeconds = ROOM_TTL_SECONDS): number {

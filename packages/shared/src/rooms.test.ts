@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertCanJoin, createRoomId, expiresAt, parseDifficulty, sanitizeName } from "./rooms";
+import { assertCanJoin, createRoomId, expiresAt, normalizeRoomId, parseDifficulty, sanitizeName } from "./rooms";
 
 describe("room rules", () => {
   it("validates difficulty", () => {
@@ -17,6 +17,13 @@ describe("room rules", () => {
     const roomId = createRoomId((bytes) => bytes.fill(0));
 
     expect(roomId).toMatch(/^[A-Z2-9]{10}$/);
+  });
+
+  it("normalizes only generated room id shapes", () => {
+    expect(normalizeRoomId(" abcdefghj2 ")).toBe("ABCDEFGHJ2");
+    expect(normalizeRoomId("ABCDEF")).toBeNull();
+    expect(normalizeRoomId("ABCDEFGHI1")).toBeNull();
+    expect(normalizeRoomId("ABCDEF/GH2")).toBeNull();
   });
 
   it("applies a two hour TTL by default", () => {

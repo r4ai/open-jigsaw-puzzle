@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 import { Hono } from "hono";
 import { MAX_PARTICIPANTS, ROOM_TTL_SECONDS, type Difficulty, type IceServerConfig, type Participant, type PeerSignal, type RoomSummary, type SignalEnvelope } from "@open-puzzle/shared/protocol";
-import { assertCanJoin, createRoomId, expiresAt, parseDifficulty, sanitizeName } from "@open-puzzle/shared/rooms";
+import { assertCanJoin, createRoomId, expiresAt, normalizeRoomId, parseDifficulty, sanitizeName } from "@open-puzzle/shared/rooms";
 
 export type Env = {
   DB: D1Database;
@@ -82,7 +82,7 @@ export class PuzzleRoom implements DurableObject {
     if (!room) return json({ error: "Room not found." }, 404);
 
     const now = nowSeconds();
-    const maxParticipants = Number(this.env.MAX_PARTICIPANTS || MAX_PARTICIPANTS);
+    const maxParticipants = readEnvPositiveInteger(this.env.MAX_PARTICIPANTS, MAX_PARTICIPANTS);
     try {
       assertCanJoin(this.sessions.size, now, room.expires_at, maxParticipants);
     } catch (error) {
@@ -105,7 +105,7 @@ export class PuzzleRoom implements DurableObject {
     this.sessions.set(server, attachment);
 
     const participant = toParticipant(attachment);
-    const updatedRoom = await touchRoom(this.env.DB, roomId, this.sessions.size, Number(this.env.ROOM_TTL_SECONDS || ROOM_TTL_SECONDS));
+    const updatedRoom = await touchRoom(this.env.DB, roomId, this.sessions.size, readEnvPositiveInteger(this.env.ROOM_TTL_SECONDS, ROOM_TTL_SECONDS));
     const participants = this.participants();
 
     this.send(server, {
@@ -175,7 +175,7 @@ export class PuzzleRoom implements DurableObject {
     }
 
     const roomId = this.state.id.name || "";
-    this.state.waitUntil(touchRoom(this.env.DB, roomId, this.sessions.size, Number(this.env.ROOM_TTL_SECONDS || ROOM_TTL_SECONDS)));
+    this.state.waitUntil(touchRoom(this.env.DB, roomId, this.sessions.size, readEnvPositiveInteger(this.env.ROOM_TTL_SECONDS, ROOM_TTL_SECONDS)));
     this.state.waitUntil(recordEvent(this.env.DB, roomId, "leave", { participantId: attachment.participantId }));
 
     const participants = this.participants();
@@ -212,7 +212,7 @@ async function createRoom(request: Request, env: Env): Promise<Response> {
   if (!difficulty) return json({ error: "Difficulty must be 48, 96, or 192." }, 400);
 
   const now = nowSeconds();
-  const ttl = Number(env.ROOM_TTL_SECONDS || ROOM_TTL_SECONDS);
+  const ttl = readEnvPositiveInteger(env.ROOM_TTL_SECONDS, ROOM_TTL_SECONDS);
 
   for (let attempts = 0; attempts < 4; attempts += 1) {
     const id = createRoomId();
@@ -310,12 +310,14 @@ function parseJson<T>(value: string): T | null {
   }
 }
 
-function normalizeRoomId(value: string | undefined): string {
-  return value?.trim().toUpperCase() ?? "";
-}
-
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: JSON_HEADERS });
+}
+
+export function readEnvPositiveInteger(value: string | undefined, fallback: number): number {
+  if (value === undefined || value.trim() === "") return fallback;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 async function serveAssetOrSpa(request: Request, env: Env): Promise<Response> {
