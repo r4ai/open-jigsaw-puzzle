@@ -56,12 +56,22 @@
 }
 
 .selected {
-  outline: 2px solid var(--teal);
-  outline-offset: 3px;
+  box-shadow:
+    0 0 0 3px var(--teal),
+    0 0 0 8px color-mix(in srgb, var(--teal) 28%, transparent);
 }
 
 .remoteSelected {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--remote-selection-color) 70%, transparent);
+  box-shadow:
+    0 0 0 2.5px color-mix(in srgb, var(--remote-selection-color) 85%, transparent),
+    0 0 0 7px color-mix(in srgb, var(--remote-selection-color) 22%, transparent);
+}
+
+.selected.remoteSelected {
+  box-shadow:
+    0 0 0 3px var(--teal),
+    0 0 0 8px color-mix(in srgb, var(--teal) 28%, transparent),
+    0 0 0 6px color-mix(in srgb, var(--remote-selection-color) 60%, transparent);
 }
 
 .imageOverlay:active { cursor: grabbing; }
