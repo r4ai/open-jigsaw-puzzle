@@ -23,7 +23,7 @@
 
 .selectionGlow {
   fill: none;
-  stroke: var(--teal);
+  stroke: var(--selection-color, var(--teal));
   stroke-opacity: 0.28;
   stroke-width: 9;
   stroke-linejoin: round;
@@ -32,7 +32,7 @@
 
 .selectionStroke {
   fill: none;
-  stroke: var(--teal);
+  stroke: var(--selection-color, var(--teal));
   stroke-width: 3;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;

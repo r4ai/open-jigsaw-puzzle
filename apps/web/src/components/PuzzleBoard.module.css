@@ -57,8 +57,8 @@
 
 .selected {
   box-shadow:
-    0 0 0 3px var(--teal),
-    0 0 0 8px color-mix(in srgb, var(--teal) 28%, transparent);
+    0 0 0 3px var(--my-selection-color, var(--teal)),
+    0 0 0 8px color-mix(in srgb, var(--my-selection-color, var(--teal)) 28%, transparent);
 }
 
 .remoteSelected {
@@ -69,8 +69,8 @@
 
 .selected.remoteSelected {
   box-shadow:
-    0 0 0 3px var(--teal),
-    0 0 0 8px color-mix(in srgb, var(--teal) 28%, transparent),
+    0 0 0 3px var(--my-selection-color, var(--teal)),
+    0 0 0 8px color-mix(in srgb, var(--my-selection-color, var(--teal)) 28%, transparent),
     0 0 0 6px color-mix(in srgb, var(--remote-selection-color) 60%, transparent);
 }
 

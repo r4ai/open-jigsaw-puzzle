@@ -57,6 +57,7 @@ export function PuzzleBoard({
   imageOverlaySelected,
   selectionBox,
   remoteSelections,
+  myId,
   viewportRef,
   worldRef,
   imageOverlayPosition,
@@ -72,6 +73,7 @@ export function PuzzleBoard({
   onZoomOut,
   onResetZoom,
 }: Props) {
+  const myColor = myId ? participantColor(myId) : null;
   const remotePieceColors = new Map<number, string>();
   let remoteImageOverlayColor: string | null = null;
   for (const selection of remoteSelections) {
@@ -124,8 +126,9 @@ export function PuzzleBoard({
                   top: `${margin + imageOverlayPosition.y}px`,
                   width: `${layout.boardWidth}px`,
                   height: `${layout.boardHeight}px`,
+                  "--my-selection-color": myColor ?? "transparent",
                   "--remote-selection-color": remoteImageOverlayColor ?? "transparent",
-                } as React.CSSProperties & Record<"--remote-selection-color", string>}
+                } as React.CSSProperties & Record<"--my-selection-color" | "--remote-selection-color", string>}
                 onPointerDown={onImageOverlayPointerDown}
               >
                 <img
@@ -160,6 +163,7 @@ export function PuzzleBoard({
                     pieceId={piece.id}
                     locked={piece.locked}
                     selected={selectedPieceIds.has(piece.id)}
+                    selectionColor={myColor}
                     remoteColor={remoteColor}
                   />
                 </button>

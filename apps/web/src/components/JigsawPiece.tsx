@@ -10,10 +10,11 @@ type Props = {
   pieceId: number;
   locked: boolean;
   selected?: boolean;
+  selectionColor?: string | null;
   remoteColor?: string | null;
 };
 
-export const JigsawPiece = memo(function JigsawPiece({ geometry, imageDataUrl, layout, pieceId, locked, selected, remoteColor }: Props) {
+export const JigsawPiece = memo(function JigsawPiece({ geometry, imageDataUrl, layout, pieceId, locked, selected, selectionColor, remoteColor }: Props) {
   const tabSize = Math.min(layout.pieceWidth, layout.pieceHeight) * 0.22;
   const path = createPiecePath(layout.pieceWidth, layout.pieceHeight, geometry.edges, tabSize);
 
@@ -26,6 +27,7 @@ export const JigsawPiece = memo(function JigsawPiece({ geometry, imageDataUrl, l
         top: `${(-tabSize / layout.pieceHeight) * 100}%`,
         width: `${((layout.pieceWidth + tabSize * 2) / layout.pieceWidth) * 100}%`,
         height: `${((layout.pieceHeight + tabSize * 2) / layout.pieceHeight) * 100}%`,
+        "--selection-color": selectionColor ?? "transparent",
         "--remote-color": remoteColor ?? "transparent",
       } as React.CSSProperties}
       viewBox={`${-tabSize} ${-tabSize} ${layout.pieceWidth + tabSize * 2} ${layout.pieceHeight + tabSize * 2}`}
