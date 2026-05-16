@@ -861,18 +861,24 @@ label {
 
 .name-editor-wrap {
   display: grid;
-  gap: 7px;
-  padding: 10px;
-  background: var(--paper-sunken);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  gap: 6px;
 }
 
 .name-editor-label {
-  font: 600 0.625rem/1 var(--font-mono);
-  letter-spacing: 0.12em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 500 0.625rem/1 var(--font-mono);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-40);
+}
+
+.name-editor-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
 }
 
 .name-editor {
