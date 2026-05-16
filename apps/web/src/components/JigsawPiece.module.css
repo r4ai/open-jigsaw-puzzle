@@ -20,3 +20,38 @@
 }
 
 .pieceEdgeLocked { stroke: var(--piece-edge-locked); }
+
+.selectionGlow {
+  fill: none;
+  stroke: var(--teal);
+  stroke-opacity: 0.28;
+  stroke-width: 9;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.selectionStroke {
+  fill: none;
+  stroke: var(--teal);
+  stroke-width: 3;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.remoteSelectionGlow {
+  fill: none;
+  stroke: var(--remote-color, transparent);
+  stroke-opacity: 0.22;
+  stroke-width: 8;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.remoteSelectionStroke {
+  fill: none;
+  stroke: var(--remote-color, transparent);
+  stroke-opacity: 0.85;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}

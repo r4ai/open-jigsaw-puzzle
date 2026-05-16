@@ -139,15 +139,14 @@ export function PuzzleBoard({
               return (
                 <button
                   key={piece.id}
-                  className={`${styles.piece} ${piece.locked ? styles.locked : ""} ${selectedPieceIds.has(piece.id) ? styles.selected : ""} ${remoteColor ? styles.remoteSelected : ""}`}
+                  className={`${styles.piece} ${piece.locked ? styles.locked : ""}`}
                   style={{
                     left: `${margin + piece.x}px`,
                     top: `${margin + piece.y}px`,
                     width: `${layout.pieceWidth}px`,
                     height: `${layout.pieceHeight}px`,
                     zIndex: piece.z,
-                    "--remote-selection-color": remoteColor ?? "transparent",
-                  } as React.CSSProperties & Record<"--remote-selection-color", string>}
+                  } as React.CSSProperties}
                   aria-label={`piece ${piece.id + 1}`}
                   onPointerDown={(e) => onPiecePointerDown(e, piece)}
                 >
@@ -157,6 +156,8 @@ export function PuzzleBoard({
                     layout={layout}
                     pieceId={piece.id}
                     locked={piece.locked}
+                    selected={selectedPieceIds.has(piece.id)}
+                    remoteColor={remoteColor}
                   />
                 </button>
               );

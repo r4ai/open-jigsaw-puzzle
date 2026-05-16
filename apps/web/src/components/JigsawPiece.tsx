@@ -9,9 +9,11 @@ type Props = {
   layout: PuzzleLayout;
   pieceId: number;
   locked: boolean;
+  selected?: boolean;
+  remoteColor?: string | null;
 };
 
-export const JigsawPiece = memo(function JigsawPiece({ geometry, imageDataUrl, layout, pieceId, locked }: Props) {
+export const JigsawPiece = memo(function JigsawPiece({ geometry, imageDataUrl, layout, pieceId, locked, selected, remoteColor }: Props) {
   const tabSize = Math.min(layout.pieceWidth, layout.pieceHeight) * 0.22;
   const path = createPiecePath(layout.pieceWidth, layout.pieceHeight, geometry.edges, tabSize);
 
@@ -24,7 +26,8 @@ export const JigsawPiece = memo(function JigsawPiece({ geometry, imageDataUrl, l
         top: `${(-tabSize / layout.pieceHeight) * 100}%`,
         width: `${((layout.pieceWidth + tabSize * 2) / layout.pieceWidth) * 100}%`,
         height: `${((layout.pieceHeight + tabSize * 2) / layout.pieceHeight) * 100}%`,
-      }}
+        "--remote-color": remoteColor ?? "transparent",
+      } as React.CSSProperties}
       viewBox={`${-tabSize} ${-tabSize} ${layout.pieceWidth + tabSize * 2} ${layout.pieceHeight + tabSize * 2}`}
     >
       <defs>
@@ -45,6 +48,18 @@ export const JigsawPiece = memo(function JigsawPiece({ geometry, imageDataUrl, l
           preserveAspectRatio="none"
         />
       </g>
+      {remoteColor && (
+        <>
+          <path className={styles.remoteSelectionGlow} d={path} />
+          <path className={styles.remoteSelectionStroke} d={path} />
+        </>
+      )}
+      {selected && (
+        <>
+          <path className={styles.selectionGlow} d={path} />
+          <path className={styles.selectionStroke} d={path} />
+        </>
+      )}
       <path className={locked ? styles.pieceEdgeLocked : styles.pieceEdge} d={path} />
     </svg>
   );
