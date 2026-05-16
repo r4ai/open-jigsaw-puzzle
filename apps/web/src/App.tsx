@@ -1067,7 +1067,6 @@ export default function App() {
       </section>
 
       <aside className="people">
-        <p className="people-header">参加者</p>
         {myParticipant ? (
           <div className="name-editor-wrap">
             <span className="name-editor-label">あなたの表示名</span>
