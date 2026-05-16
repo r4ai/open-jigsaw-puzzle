@@ -841,23 +841,6 @@ label {
   overflow-y: auto;
 }
 
-.people-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 2px;
-  font: 500 0.6875rem/1 var(--font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-40);
-}
-
-.people-header::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
 
 .name-editor-wrap {
   display: grid;
