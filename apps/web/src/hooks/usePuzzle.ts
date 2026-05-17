@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createInitialPieces, isComplete, snapPiece } from "@open-puzzle/shared/puzzle";
 import type { BoardPiece, PuzzleLayout } from "@open-puzzle/shared/puzzle";
 import type { ChannelMessage, SyncedPiece } from "@open-puzzle/shared/protocol";
@@ -37,6 +37,11 @@ type DragState = {
   lastDeltaY: number;
   moveImageOverlay: boolean;
 };
+type PendingDragMove = {
+  deltaX: number;
+  deltaY: number;
+  onImageOverlayDelta?: (deltaX: number, deltaY: number) => void;
+};
 type SelectionBoxState = { start: { x: number; y: number }; end: { x: number; y: number } };
 export type RemoteSelection = { participantId: string; pieceIds: number[]; imageOverlaySelected: boolean };
 
@@ -57,6 +62,8 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
   const piecesRef = useRef<BoardPiece[]>([]);
   const pendingSyncRef = useRef<SyncedPiece[] | null>(null);
   const draggingRef = useRef<DragState | null>(null);
+  const pendingDragMoveRef = useRef<PendingDragMove | null>(null);
+  const dragFrameRef = useRef<number | null>(null);
   const selectedPieceIdsRef = useRef<Set<number>>(new Set());
   const imageOverlaySelectedRef = useRef(false);
   const lastSelectedPieceIdRef = useRef<number | null>(null);
@@ -75,6 +82,12 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
   onPieceMovedRef.current = onPieceMoved;
   const onPieceLockedRef = useRef(onPieceLocked);
   onPieceLockedRef.current = onPieceLocked;
+
+  useEffect(() => {
+    return () => {
+      if (dragFrameRef.current !== null) cancelAnimationFrame(dragFrameRef.current);
+    };
+  }, []);
 
   function constrainPosition(pieceId: number, x: number, y: number): { x: number; y: number } {
     if (
@@ -342,6 +355,33 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     if (!pointer) return;
     const deltaX = pointer.x - dragging.startPointer.x;
     const deltaY = pointer.y - dragging.startPointer.y;
+    scheduleDragMove({ deltaX, deltaY, onImageOverlayDelta });
+    event.preventDefault();
+  }
+
+  function scheduleDragMove(move: PendingDragMove) {
+    pendingDragMoveRef.current = move;
+    if (dragFrameRef.current !== null) return;
+    dragFrameRef.current = requestAnimationFrame(() => {
+      dragFrameRef.current = null;
+      flushPendingDragMove();
+    });
+  }
+
+  function flushPendingDragMove() {
+    const move = pendingDragMoveRef.current;
+    pendingDragMoveRef.current = null;
+    if (!move) return;
+    applyDragMove(move.deltaX, move.deltaY, move.onImageOverlayDelta);
+  }
+
+  function applyDragMove(
+    deltaX: number,
+    deltaY: number,
+    onImageOverlayDelta?: (deltaX: number, deltaY: number) => void,
+  ) {
+    const dragging = draggingRef.current;
+    if (!dragging) return;
     updatePieces((cur) => cur.map((piece) => {
       if (!dragging.startPieces.has(piece.id) || piece.locked) return piece;
       const startPiece = dragging.startPieces.get(piece.id)!;
@@ -360,6 +400,11 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
   function handleDragEnd(threshold: number) {
     const dragging = draggingRef.current;
     if (!dragging) return;
+    if (dragFrameRef.current !== null) {
+      cancelAnimationFrame(dragFrameRef.current);
+      dragFrameRef.current = null;
+    }
+    flushPendingDragMove();
     draggingRef.current = null;
     updatePieces((cur) => {
       const movedPieceIds = new Set(dragging.pieceIds);
