@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { Lock, LockOpen, Maximize2, Minus, MousePointer2, Plus } from "lucide-react";
 import type { BoardPiece, PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import type { RemoteSelection } from "../hooks/usePuzzle";
@@ -44,6 +44,8 @@ type Props = {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetZoom: () => void;
+  onApplyPinch: (distFactor: number, prevMidX: number, prevMidY: number, newMidX: number, newMidY: number) => void;
+  onSetPinching: (pinching: boolean) => void;
 };
 
 type PuzzlePieceViewProps = {
@@ -148,8 +150,70 @@ export function PuzzleBoard({
   onZoomIn,
   onZoomOut,
   onResetZoom,
+  onApplyPinch,
+  onSetPinching,
 }: Props) {
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const onApplyPinchRef = useRef(onApplyPinch);
+  const onSetPinchingRef = useRef(onSetPinching);
+  onApplyPinchRef.current = onApplyPinch;
+  onSetPinchingRef.current = onSetPinching;
+
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const touches = new Map<number, { x: number; y: number }>();
+    let prevMidX = 0, prevMidY = 0, prevDist = 1;
+
+    function midAndDist() {
+      const [a, b] = [...touches.values()];
+      return {
+        midX: (a.x + b.x) / 2,
+        midY: (a.y + b.y) / 2,
+        dist: Math.hypot(b.x - a.x, b.y - a.y),
+      };
+    }
+
+    function onDown(e: PointerEvent) {
+      if (e.pointerType !== "touch") return;
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size === 2) {
+        const { midX, midY, dist } = midAndDist();
+        prevMidX = midX; prevMidY = midY; prevDist = dist;
+        onSetPinchingRef.current(true);
+      }
+    }
+
+    function onMove(e: PointerEvent) {
+      if (e.pointerType !== "touch" || !touches.has(e.pointerId)) return;
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size < 2) return;
+      const { midX, midY, dist } = midAndDist();
+      onApplyPinchRef.current(dist / prevDist, prevMidX, prevMidY, midX, midY);
+      prevMidX = midX; prevMidY = midY; prevDist = dist;
+    }
+
+    function onUp(e: PointerEvent) {
+      if (e.pointerType !== "touch") return;
+      touches.delete(e.pointerId);
+      if (touches.size < 2) onSetPinchingRef.current(false);
+    }
+
+    el.addEventListener("pointerdown", onDown);
+    el.addEventListener("pointermove", onMove);
+    el.addEventListener("pointerup", onUp);
+    el.addEventListener("pointercancel", onUp);
+    return () => {
+      el.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("pointermove", onMove);
+      el.removeEventListener("pointerup", onUp);
+      el.removeEventListener("pointercancel", onUp);
+    };
+  // viewportRef is a stable object; runs once after mount when the viewport div is in the DOM
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const piecePointerDownRef = useRef(onPiecePointerDown);
   piecePointerDownRef.current = onPiecePointerDown;
   const handlePiecePointerDown = useCallback((e: React.PointerEvent, piece: BoardPiece) => {

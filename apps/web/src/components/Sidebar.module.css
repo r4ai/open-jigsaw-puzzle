@@ -7,6 +7,10 @@
   overflow-y: auto;
 }
 
+.memberList {
+  display: contents;
+}
+
 .hidden {
   display: none;
 }
@@ -126,14 +130,32 @@
   .people {
     grid-column: 1;
     grid-row: 3;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(130px, 1fr);
-    overflow-x: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: visible;
     align-content: unset;
-    padding-bottom: 4px;
   }
 
   .hidden {
-    display: grid;
+    display: flex;
+  }
+
+  .memberList {
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .person {
+    flex-shrink: 0;
+  }
+
+  .peopleSubheader {
+    flex-shrink: 0;
+    align-self: center;
+    margin: 0;
   }
 }

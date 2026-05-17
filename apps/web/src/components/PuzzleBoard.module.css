@@ -370,4 +370,15 @@
 
 @media (max-width: 760px), (max-width: 1024px) and (orientation: portrait) {
   .boardViewport { min-height: 48dvh; }
+
+  .canvasStatus {
+    bottom: 52px;
+    left: 8px;
+    max-width: calc(100% - 16px);
+  }
+
+  .zoomControls {
+    bottom: 8px;
+    right: 8px;
+  }
 }

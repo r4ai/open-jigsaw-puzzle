@@ -20,6 +20,7 @@ export function useViewport() {
   const panningRef = useRef<PanState | null>(panning);
   const pendingPanRef = useRef<PanOffset | null>(null);
   const panFrameRef = useRef<number | null>(null);
+  const isPinchingRef = useRef(false);
 
   zoomRef.current = zoom;
   if (!pendingPanRef.current) panRef.current = pan;
@@ -115,7 +116,25 @@ export function useViewport() {
     event.preventDefault();
   }
 
+  function applyPinch(distFactor: number, prevMidX: number, prevMidY: number, newMidX: number, newMidY: number) {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const rect = viewport.getBoundingClientRect();
+    const cz = zoomRef.current;
+    const cp = panRef.current;
+    const wx = (prevMidX - rect.left - cp.x) / cz;
+    const wy = (prevMidY - rect.top - cp.y) / cz;
+    const nextZoom = clamp(roundZoom(cz * distFactor), MIN_ZOOM, MAX_ZOOM);
+    zoomRef.current = nextZoom;
+    setZoom(nextZoom);
+    commitPan({
+      x: (newMidX - rect.left) - wx * nextZoom,
+      y: (newMidY - rect.top) - wy * nextZoom,
+    });
+  }
+
   function handlePanMove(event: React.PointerEvent): boolean {
+    if (isPinchingRef.current) return true;
     const currentPanning = panningRef.current;
     if (!currentPanning) return false;
     schedulePan({
@@ -139,9 +158,11 @@ export function useViewport() {
     panning,
     viewportRef,
     worldRef,
+    isPinchingRef,
     getWorkspacePoint,
     changeZoom,
     resetZoom,
+    applyPinch,
     handleWheel,
     handleViewportPointerDown,
     handlePanMove,

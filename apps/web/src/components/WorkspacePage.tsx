@@ -244,6 +244,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
   }
 
   function handlePointerMove(e: React.PointerEvent) {
+    if (viewport.isPinchingRef.current) return;
     const cursor = viewport.getWorkspacePoint(e);
     if (cursor) cursors.publishCursor(cursor, Boolean(puzzle.draggingRef.current));
     if (puzzle.handleSelectionBoxMove(e, viewport.getWorkspacePoint)) return;
@@ -351,6 +352,8 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
             onZoomIn={() => viewport.changeZoom(ZOOM_STEP)}
             onZoomOut={() => viewport.changeZoom(-ZOOM_STEP)}
             onResetZoom={viewport.resetZoom}
+            onApplyPinch={(f, px, py, nx, ny) => viewport.applyPinch(f, px, py, nx, ny)}
+            onSetPinching={(v) => { viewport.isPinchingRef.current = v; }}
           />
         ) : (
           <EmptyBoard

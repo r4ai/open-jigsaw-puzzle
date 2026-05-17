@@ -44,19 +44,21 @@ export function Sidebar({
           </div>
         </div>
       ) : null}
-      {participants.length > 0 && <p className={styles.peopleSubheader}>メンバー</p>}
-      {participants.map((participant) => (
-        <div key={participant.id} className={styles.person}>
-          <div
-            className={styles.personAvatar}
-            style={{ "--participant-color": participantColor(participant.id) } as React.CSSProperties & Record<"--participant-color", string>}
-          >
-            {participant.name.charAt(0)}
+      <div className={styles.memberList}>
+        {participants.length > 0 && <p className={styles.peopleSubheader}>メンバー</p>}
+        {participants.map((participant) => (
+          <div key={participant.id} className={styles.person}>
+            <div
+              className={styles.personAvatar}
+              style={{ "--participant-color": participantColor(participant.id) } as React.CSSProperties & Record<"--participant-color", string>}
+            >
+              {participant.name.charAt(0)}
+            </div>
+            <span>{participant.name}</span>
+            {participant.isHost ? <strong className={styles.hostBadge}>Host</strong> : null}
           </div>
-          <span>{participant.name}</span>
-          {participant.isHost ? <strong className={styles.hostBadge}>Host</strong> : null}
-        </div>
-      ))}
+        ))}
+      </div>
     </aside>
   );
 }
