@@ -2,6 +2,22 @@ import type { Difficulty, SyncedPiece } from "./protocol";
 
 export type PieceEdge = -1 | 0 | 1;
 
+export type PieceEdgeProfile = {
+  shoulderStart: number;
+  neckStart: number;
+  headStart: number;
+  headEnd: number;
+  neckEnd: number;
+  shoulderEnd: number;
+  neckDepth: number;
+  headDepth: number;
+  waistDepth: number;
+  shoulderDepth: number;
+  startCurve: number;
+  endCurve: number;
+  reverse: boolean;
+};
+
 export type PieceGeometry = {
   id: number;
   row: number;
@@ -11,6 +27,12 @@ export type PieceGeometry = {
     right: PieceEdge;
     bottom: PieceEdge;
     left: PieceEdge;
+  };
+  edgeProfiles: {
+    top: PieceEdgeProfile | null;
+    right: PieceEdgeProfile | null;
+    bottom: PieceEdgeProfile | null;
+    left: PieceEdgeProfile | null;
   };
   sourceX: number;
   sourceY: number;
@@ -61,13 +83,23 @@ export function createPuzzleLayout(difficulty: Difficulty, imageWidth: number, i
   const horizontalEdges = Array.from({ length: Math.max(0, rows - 1) }, (_, row) =>
     Array.from({ length: cols }, (_, col) => edgeDirection(row, col, "horizontal")),
   );
+  const horizontalProfiles = Array.from({ length: Math.max(0, rows - 1) }, (_, row) =>
+    Array.from({ length: cols }, (_, col) => createEdgeProfile(row, col, "horizontal", imageWidth, imageHeight)),
+  );
   const verticalEdges = Array.from({ length: rows }, (_, row) =>
     Array.from({ length: Math.max(0, cols - 1) }, (_, col) => edgeDirection(row, col, "vertical")),
+  );
+  const verticalProfiles = Array.from({ length: rows }, (_, row) =>
+    Array.from({ length: Math.max(0, cols - 1) }, (_, col) => createEdgeProfile(row, col, "vertical", imageWidth, imageHeight)),
   );
 
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {
       const id = row * cols + col;
+      const topProfile = row === 0 ? null : reverseEdgeProfile(horizontalProfiles[row - 1][col]);
+      const rightProfile = col === cols - 1 ? null : verticalProfiles[row][col];
+      const bottomProfile = row === rows - 1 ? null : horizontalProfiles[row][col];
+      const leftProfile = col === 0 ? null : reverseEdgeProfile(verticalProfiles[row][col - 1]);
       pieces.push({
         id,
         row,
@@ -77,6 +109,12 @@ export function createPuzzleLayout(difficulty: Difficulty, imageWidth: number, i
           right: col === cols - 1 ? 0 : verticalEdges[row][col],
           bottom: row === rows - 1 ? 0 : horizontalEdges[row][col],
           left: col === 0 ? 0 : (-verticalEdges[row][col - 1] as PieceEdge),
+        },
+        edgeProfiles: {
+          top: topProfile,
+          right: rightProfile,
+          bottom: bottomProfile,
+          left: leftProfile,
         },
         sourceX: col * pieceWidth,
         sourceY: row * pieceHeight,
@@ -102,6 +140,58 @@ export function createPuzzleLayout(difficulty: Difficulty, imageWidth: number, i
 
 function edgeDirection(row: number, col: number, axis: "horizontal" | "vertical"): PieceEdge {
   return ((row * 31 + col * 17 + (axis === "horizontal" ? 7 : 13)) % 2 === 0 ? 1 : -1) as PieceEdge;
+}
+
+function createEdgeProfile(row: number, col: number, axis: "horizontal" | "vertical", imageWidth: number, imageHeight: number): PieceEdgeProfile {
+  const seed = Math.round(imageWidth * 13 + imageHeight * 29) + row * 10_007 + col * 1_009 + (axis === "horizontal" ? 3_001 : 7_003);
+  const center = 0.5 + (hashNoise(seed, 11) - 0.5) * 0.18;
+  const neckWidth = 0.14 + hashNoise(seed, 23) * 0.06;
+  const headWidth = 0.28 + hashNoise(seed, 37) * 0.07;
+  const shoulderWidth = 0.5 + hashNoise(seed, 41) * 0.08;
+  const neckStart = clamp(center - neckWidth / 2, 0.27, 0.46);
+  const neckEnd = clamp(center + neckWidth / 2, 0.54, 0.73);
+  const headStart = clamp(center - headWidth / 2, 0.19, neckStart - 0.02);
+  const headEnd = clamp(center + headWidth / 2, neckEnd + 0.02, 0.81);
+  const shoulderStart = clamp(center - shoulderWidth / 2, 0.12, headStart - 0.03);
+  const shoulderEnd = clamp(center + shoulderWidth / 2, headEnd + 0.03, 0.88);
+
+  return {
+    shoulderStart,
+    neckStart,
+    headStart,
+    headEnd,
+    neckEnd,
+    shoulderEnd,
+    neckDepth: 0.35 + hashNoise(seed, 53) * 0.13,
+    headDepth: 0.86 + hashNoise(seed, 67) * 0.2,
+    waistDepth: 0.23 + hashNoise(seed, 71) * 0.14,
+    shoulderDepth: 0.04 + hashNoise(seed, 83) * 0.1,
+    startCurve: 0.015 + hashNoise(seed, 97) * 0.04,
+    endCurve: -0.015 - hashNoise(seed, 101) * 0.04,
+    reverse: false,
+  };
+}
+
+function reverseEdgeProfile(profile: PieceEdgeProfile): PieceEdgeProfile {
+  return {
+    shoulderStart: 1 - profile.shoulderEnd,
+    neckStart: 1 - profile.neckEnd,
+    headStart: 1 - profile.headEnd,
+    headEnd: 1 - profile.headStart,
+    neckEnd: 1 - profile.neckStart,
+    shoulderEnd: 1 - profile.shoulderStart,
+    neckDepth: profile.neckDepth,
+    headDepth: profile.headDepth,
+    waistDepth: profile.waistDepth,
+    shoulderDepth: profile.shoulderDepth,
+    startCurve: -profile.endCurve,
+    endCurve: -profile.startCurve,
+    reverse: !profile.reverse,
+  };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 export function getWorkspaceMargin(layout: PuzzleLayout): number {

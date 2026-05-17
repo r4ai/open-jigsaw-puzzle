@@ -30,6 +30,36 @@ describe("puzzle geometry", () => {
     }
   });
 
+  it("shares reversed organic edge profiles between neighboring pieces", () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+
+    for (const piece of layout.pieces) {
+      if (piece.col < layout.cols - 1) {
+        const right = layout.pieces[piece.id + 1]!;
+        expect(piece.edgeProfiles.right).not.toBeNull();
+        expect(right.edgeProfiles.left).toMatchObject({
+          shoulderStart: 1 - piece.edgeProfiles.right!.shoulderEnd,
+          shoulderEnd: 1 - piece.edgeProfiles.right!.shoulderStart,
+          headStart: 1 - piece.edgeProfiles.right!.headEnd,
+          headEnd: 1 - piece.edgeProfiles.right!.headStart,
+          reverse: true,
+        });
+      }
+
+      if (piece.row < layout.rows - 1) {
+        const below = layout.pieces[piece.id + layout.cols]!;
+        expect(piece.edgeProfiles.bottom).not.toBeNull();
+        expect(below.edgeProfiles.top).toMatchObject({
+          shoulderStart: 1 - piece.edgeProfiles.bottom!.shoulderEnd,
+          shoulderEnd: 1 - piece.edgeProfiles.bottom!.shoulderStart,
+          headStart: 1 - piece.edgeProfiles.bottom!.headEnd,
+          headEnd: 1 - piece.edgeProfiles.bottom!.headStart,
+          reverse: true,
+        });
+      }
+    }
+  });
+
   it("snaps pieces within the threshold", () => {
     const piece = { id: 1, x: 98, y: 103, z: 1, targetX: 100, targetY: 100, locked: false };
 
