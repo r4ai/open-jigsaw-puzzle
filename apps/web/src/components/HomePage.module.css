@@ -12,7 +12,7 @@
   background: var(--canvas);
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: center;
   padding: 60px 68px;
   position: relative;
   overflow: hidden;
@@ -20,12 +20,13 @@
 
 .deco {
   position: absolute;
-  top: -20px;
-  right: -60px;
-  width: 520px;
-  height: 520px;
-  color: var(--teal);
-  opacity: 0.28;
+  top: 50%;
+  right: -140px;
+  width: 800px;
+  height: 800px;
+  transform: translateY(-50%);
+  color: #5de0d8;
+  opacity: 0.12;
   pointer-events: none;
 }
 
@@ -38,7 +39,7 @@
 
 .heading {
   margin: 0;
-  font: 400 clamp(3.25rem, 5.5vw, 5.75rem) / 0.93 var(--font-display);
+  font: 400 clamp(3.5rem, 7vw, 7.5rem) / 0.93 var(--font-display);
   letter-spacing: -0.035em;
   color: var(--on-canvas);
 }
@@ -221,11 +222,12 @@
   }
 
   .deco {
-    width: 300px;
-    height: 300px;
-    top: -30px;
-    right: -40px;
-    opacity: 0.2;
+    width: 340px;
+    height: 340px;
+    top: 50%;
+    right: -60px;
+    transform: translateY(-50%);
+    opacity: 0.13;
   }
 
   .heading {
