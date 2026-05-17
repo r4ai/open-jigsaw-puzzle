@@ -141,6 +141,75 @@ export function bringSelectedPiecesToFront(pieces: BoardPiece[], selectedPieceId
   });
 }
 
+export function getConnectedLoosePieceIds(
+  pieces: BoardPiece[],
+  seedPieceIds: Set<number>,
+  layout: PuzzleLayout,
+  tolerance = 0.5,
+): Set<number> {
+  const connected = new Set<number>();
+  const queue: number[] = [];
+
+  for (const pieceId of seedPieceIds) {
+    const piece = pieces.find((candidate) => candidate.id === pieceId);
+    if (!piece || piece.locked) continue;
+    connected.add(piece.id);
+    queue.push(piece.id);
+  }
+
+  while (queue.length) {
+    const pieceId = queue.shift()!;
+    const piece = pieces.find((candidate) => candidate.id === pieceId);
+    if (!piece) continue;
+
+    for (const candidate of pieces) {
+      if (candidate.locked || connected.has(candidate.id)) continue;
+      if (!areSnappedNeighbors(piece, candidate, layout, tolerance)) continue;
+      connected.add(candidate.id);
+      queue.push(candidate.id);
+    }
+  }
+
+  return connected;
+}
+
+export function snapLoosePiecesToNeighbors(
+  pieces: BoardPiece[],
+  movedPieceIds: Set<number>,
+  layout: PuzzleLayout,
+  threshold: number,
+): BoardPiece[] {
+  const movableIds = new Set([...movedPieceIds].filter((pieceId) => {
+    const piece = pieces.find((candidate) => candidate.id === pieceId);
+    return piece && !piece.locked;
+  }));
+  if (!movableIds.size) return pieces;
+
+  let best: { distance: number; deltaX: number; deltaY: number } | null = null;
+
+  for (const moved of pieces) {
+    if (!movableIds.has(moved.id)) continue;
+
+    for (const anchor of pieces) {
+      if (movableIds.has(anchor.id) || !areLayoutNeighbors(moved.id, anchor.id, layout)) continue;
+      const expectedX = anchor.x + moved.targetX - anchor.targetX;
+      const expectedY = anchor.y + moved.targetY - anchor.targetY;
+      const deltaX = expectedX - moved.x;
+      const deltaY = expectedY - moved.y;
+      const distance = Math.hypot(deltaX, deltaY);
+      if (distance > threshold || (best && distance >= best.distance)) continue;
+      best = { distance, deltaX, deltaY };
+    }
+  }
+
+  if (!best) return pieces;
+
+  return pieces.map((piece) => {
+    if (!movableIds.has(piece.id) || piece.locked) return piece;
+    return { ...piece, x: piece.x + best.deltaX, y: piece.y + best.deltaY };
+  });
+}
+
 export function moveSelectedLoosePiecesBy(
   pieces: BoardPiece[],
   selectedPieceIds: Set<number>,
@@ -193,6 +262,20 @@ export function arrangeLoosePieces(
     if (piece.locked) return piece;
     return arrangedById.get(piece.id) ?? piece;
   });
+}
+
+function areSnappedNeighbors(a: BoardPiece, b: BoardPiece, layout: PuzzleLayout, tolerance: number): boolean {
+  if (!areLayoutNeighbors(a.id, b.id, layout)) return false;
+  const expectedDeltaX = a.targetX - b.targetX;
+  const expectedDeltaY = a.targetY - b.targetY;
+  return Math.hypot(a.x - b.x - expectedDeltaX, a.y - b.y - expectedDeltaY) <= tolerance;
+}
+
+function areLayoutNeighbors(aId: number, bId: number, layout: PuzzleLayout): boolean {
+  const a = layout.pieces[aId];
+  const b = layout.pieces[bId];
+  if (!a || !b || a.id !== aId || b.id !== bId) return false;
+  return Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1;
 }
 
 function shuffle<T>(items: T[], rng: () => number): T[] {

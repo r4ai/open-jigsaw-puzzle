@@ -6,9 +6,11 @@ import {
   arrangeLoosePieces,
   bringSelectedPiecesToFront,
   createEmptySelection,
+  getConnectedLoosePieceIds,
   moveSelectedLoosePiecesBy,
   selectByRect,
   selectOnlyPiece,
+  snapLoosePiecesToNeighbors,
   togglePieceSelection,
   shouldStartViewportPan,
 } from "./puzzle-ops";
@@ -130,6 +132,41 @@ describe("selection helpers", () => {
 
   it("creates an empty selection", () => {
     expect(createEmptySelection()).toMatchObject({ imageOverlaySelected: false, lastSelectedPieceId: null });
+  });
+});
+
+describe("piece connection helpers", () => {
+  it("snaps matching neighboring pieces outside the frame", () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const pieces = createInitialPieces(layout).map((piece) => {
+      if (piece.id === 0) return { ...piece, x: 2000, y: 1600 };
+      if (piece.id === 1) return { ...piece, x: 2000 + layout.pieceWidth - 6, y: 1603 };
+      return piece;
+    });
+
+    const snapped = snapLoosePiecesToNeighbors(pieces, new Set([1]), layout, 10);
+
+    expect(snapped[1]).toMatchObject({
+      x: pieces[0]!.x + layout.pieceWidth,
+      y: pieces[0]!.y,
+      locked: false,
+    });
+  });
+
+  it("collects a snapped loose cluster from one dragged piece", () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const pieces = createInitialPieces(layout).map((piece) => {
+      if (piece.id === 0) return { ...piece, x: 1800, y: 1400 };
+      if (piece.id === 1) return { ...piece, x: 1800 + layout.pieceWidth, y: 1400 };
+      if (piece.id === layout.cols) return { ...piece, x: 1800, y: 1400 + layout.pieceHeight };
+      return piece;
+    });
+
+    expect([...getConnectedLoosePieceIds(pieces, new Set([0]), layout)].sort((a, b) => a - b)).toEqual([
+      0,
+      1,
+      layout.cols,
+    ]);
   });
 });
 

@@ -7,12 +7,14 @@ import {
   bringSelectedPiecesToFront,
   countLockedPieces,
   createEmptySelection,
+  getConnectedLoosePieceIds,
   MAX_CANVAS_COORDINATE,
   mergeSyncedPieces,
   normalizeRect,
   selectByRect,
   selectOnlyImageOverlay,
   selectOnlyPiece,
+  snapLoosePiecesToNeighbors,
   toggleImageOverlaySelection,
   togglePieceSelection,
   addPieceRangeSelection,
@@ -215,7 +217,10 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
       return;
     }
 
-    const activePieceIds = nextSelection.pieceIds.size ? nextSelection.pieceIds : new Set([piece.id]);
+    const basePieceIds = nextSelection.pieceIds.size ? nextSelection.pieceIds : new Set([piece.id]);
+    const activePieceIds = layoutRef.current && !piece.locked
+      ? getConnectedLoosePieceIds(piecesRef.current, basePieceIds, layoutRef.current)
+      : basePieceIds;
     if (activePieceIds.size > 1) bringSelectionToFront(activePieceIds);
     else {
       const nextZ = bringToFront(piece.id);
@@ -314,16 +319,26 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     const dragging = draggingRef.current;
     if (!dragging) return;
     draggingRef.current = null;
-    updatePieces((cur) =>
-      cur.map((piece) => {
+    updatePieces((cur) => {
+      const movedPieceIds = new Set(dragging.pieceIds);
+      const neighborSnapped = layoutRef.current
+        ? snapLoosePiecesToNeighbors(cur, movedPieceIds, layoutRef.current, threshold)
+        : cur;
+
+      return neighborSnapped.map((piece) => {
         if (!dragging.startPieces.has(piece.id) || piece.locked) return piece;
         const snapped = snapPiece(piece, threshold);
         if (snapped.locked) {
           broadcastRef.current({ type: "piece-lock", pieceId: snapped.id, x: snapped.x, y: snapped.y, z: snapped.z, by: myIdRef.current ?? "local" });
+        } else {
+          const previous = cur.find((candidate) => candidate.id === snapped.id);
+          if (previous && (previous.x !== snapped.x || previous.y !== snapped.y)) {
+            broadcastRef.current({ type: "piece-move", pieceId: snapped.id, x: snapped.x, y: snapped.y, z: snapped.z, by: myIdRef.current ?? "local" });
+          }
         }
         return snapped;
-      }),
-    );
+      });
+    });
   }
 
   function handleSelectionBoxPointerDown(
