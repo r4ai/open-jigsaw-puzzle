@@ -43,17 +43,16 @@ export function HomePage({ theme, name, onNameChange, onToggleTheme }: Props) {
     <main className={styles.home}>
       {/* ── Left: dark stage ── */}
       <section className={styles.hero}>
-        <svg className={styles.deco} viewBox="0 0 320 300" fill="none" aria-hidden="true">
-          <path
-            d="M 20 20 L 230 20 L 230 100
-               C 258 100 275 108 275 118
-               C 275 128 258 136 230 136
-               L 230 240 L 130 240
-               C 130 268 120 282 108 282
-               C 96 282 86 268 86 240
-               L 20 240 Z"
-            stroke="currentColor" strokeWidth="2"
-          />
+        <svg className={styles.deco} viewBox="0 0 280 280" fill="none" aria-hidden="true">
+          <g className={styles.pieceA}>
+            <path d="M 30 30 L 130 30 L 130 65 C 145 65 150 72 150 80 C 150 88 145 95 130 95 L 130 130 L 95 130 C 95 145 88 150 80 150 C 72 150 65 145 65 130 L 30 130 Z" />
+          </g>
+          <g className={styles.pieceB}>
+            <path d="M 130 30 L 230 30 L 230 130 L 130 130 L 130 95 C 145 95 150 88 150 80 C 150 72 145 65 130 65 Z" />
+          </g>
+          <g className={styles.pieceC}>
+            <path d="M 30 130 L 65 130 C 65 145 72 150 80 150 C 88 150 95 145 95 130 L 130 130 L 130 230 L 30 230 Z" />
+          </g>
         </svg>
 
         <div className={styles.heroContent}>
