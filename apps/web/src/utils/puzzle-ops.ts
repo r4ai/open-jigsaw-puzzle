@@ -157,11 +157,12 @@ export function getConnectedLoosePieceIds(
   layout: PuzzleLayout,
   tolerance = 0.5,
 ): Set<number> {
+  const pieceById = new Map(pieces.map((piece) => [piece.id, piece]));
   const connected = new Set<number>();
   const queue: number[] = [];
 
   for (const pieceId of seedPieceIds) {
-    const piece = pieces.find((candidate) => candidate.id === pieceId);
+    const piece = pieceById.get(pieceId);
     if (!piece || piece.locked) continue;
     connected.add(piece.id);
     queue.push(piece.id);
@@ -169,7 +170,7 @@ export function getConnectedLoosePieceIds(
 
   while (queue.length) {
     const pieceId = queue.shift()!;
-    const piece = pieces.find((candidate) => candidate.id === pieceId);
+    const piece = pieceById.get(pieceId);
     if (!piece) continue;
 
     for (const candidate of pieces) {
@@ -189,8 +190,9 @@ export function snapLoosePiecesToNeighbors(
   layout: PuzzleLayout,
   threshold: number,
 ): BoardPiece[] {
+  const pieceById = new Map(pieces.map((piece) => [piece.id, piece]));
   const movableIds = new Set([...movedPieceIds].filter((pieceId) => {
-    const piece = pieces.find((candidate) => candidate.id === pieceId);
+    const piece = pieceById.get(pieceId);
     return piece && !piece.locked;
   }));
   if (!movableIds.size) return pieces;

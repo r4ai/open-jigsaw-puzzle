@@ -182,8 +182,9 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     if (next === before) return;
     piecesRef.current = next;
     setPieces(next);
+    const beforeById = new Map(before.map((piece) => [piece.id, piece]));
     for (const piece of next) {
-      const previous = before.find((p) => p.id === piece.id);
+      const previous = beforeById.get(piece.id);
       if (previous && previous.z !== piece.z) {
         broadcastRef.current({ type: "piece-front", pieceId: piece.id, z: piece.z, by: myIdRef.current ?? "local" });
       }
@@ -290,8 +291,9 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     const pointer = getPoint(event);
     if (!pointer) return;
     const startPieces = new Map<number, BoardPiece>();
+    const pieceById = new Map(piecesRef.current.map((currentPiece) => [currentPiece.id, currentPiece]));
     for (const id of activePieceIds) {
-      const selectedPiece = piecesRef.current.find((p) => p.id === id);
+      const selectedPiece = pieceById.get(id);
       if (selectedPiece) startPieces.set(id, selectedPiece);
     }
     draggingRef.current = {
@@ -326,8 +328,9 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     const pointer = getPoint(event);
     if (!pointer) return;
     const startPieces = new Map<number, BoardPiece>();
+    const pieceById = new Map(piecesRef.current.map((currentPiece) => [currentPiece.id, currentPiece]));
     for (const id of nextSelection.pieceIds) {
-      const selectedPiece = piecesRef.current.find((p) => p.id === id);
+      const selectedPiece = pieceById.get(id);
       if (selectedPiece) startPieces.set(id, selectedPiece);
     }
     if (startPieces.size) {
