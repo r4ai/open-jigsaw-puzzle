@@ -30,6 +30,7 @@ import {
 } from "../utils/puzzle-history";
 
 type DragState = {
+  pointerId: number;
   pieceIds: number[];
   startPointer: { x: number; y: number };
   startPieces: Map<number, BoardPiece>;
@@ -42,7 +43,7 @@ type PendingDragMove = {
   deltaY: number;
   onImageOverlayDelta?: (deltaX: number, deltaY: number) => void;
 };
-type SelectionBoxState = { start: { x: number; y: number }; end: { x: number; y: number } };
+type SelectionBoxState = { pointerId: number; start: { x: number; y: number }; end: { x: number; y: number } };
 export type RemoteSelection = { participantId: string; pieceIds: number[]; imageOverlaySelected: boolean };
 
 type Props = {
@@ -254,6 +255,11 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     margin: number,
   ) {
     if (event.button !== 0) return;
+    if (draggingRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     const selectionBefore = currentSelection();
     let nextSelection: SelectionState;
     if (event.shiftKey) {
@@ -297,6 +303,7 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
       if (selectedPiece) startPieces.set(id, selectedPiece);
     }
     draggingRef.current = {
+      pointerId: event.pointerId,
       pieceIds: [...activePieceIds],
       startPointer: pointer,
       startPieces,
@@ -314,6 +321,11 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     getPoint: (e: React.PointerEvent) => { x: number; y: number } | null,
   ) {
     if (event.button !== 0) return;
+    if (draggingRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     const selectionBefore = currentSelection();
     let nextSelection: SelectionState;
     if (event.ctrlKey || event.metaKey) {
@@ -336,6 +348,7 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     if (startPieces.size) {
       bringSelectionToFront(nextSelection.pieceIds);
       draggingRef.current = {
+        pointerId: event.pointerId,
         pieceIds: [...nextSelection.pieceIds],
         startPointer: pointer,
         startPieces,
@@ -354,6 +367,7 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
   ) {
     const dragging = draggingRef.current;
     if (!dragging) return;
+    if (event.pointerId !== dragging.pointerId) return;
     const pointer = getPoint(event);
     if (!pointer) return;
     const deltaX = pointer.x - dragging.startPointer.x;
@@ -400,9 +414,10 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     dragging.lastDeltaY = deltaY;
   }
 
-  function handleDragEnd(threshold: number) {
+  function handleDragEnd(threshold: number, pointerId?: number) {
     const dragging = draggingRef.current;
     if (!dragging) return;
+    if (pointerId !== undefined && pointerId !== dragging.pointerId) return;
     if (dragFrameRef.current !== null) {
       cancelAnimationFrame(dragFrameRef.current);
       dragFrameRef.current = null;
@@ -438,9 +453,10 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     getPoint: (e: React.PointerEvent) => { x: number; y: number } | null,
   ): boolean {
     if (event.button !== 0 || !event.shiftKey) return false;
+    if (selectionBoxRef.current) return false;
     const pointer = getPoint(event);
     if (!pointer) return false;
-    selectionBoxRef.current = { start: pointer, end: pointer };
+    selectionBoxRef.current = { pointerId: event.pointerId, start: pointer, end: pointer };
     setSelectionBox(normalizeRect(pointer, pointer));
     event.currentTarget.setPointerCapture(event.pointerId);
     event.preventDefault();
@@ -454,6 +470,7 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
   ): boolean {
     const box = selectionBoxRef.current;
     if (!box) return false;
+    if (event.pointerId !== box.pointerId) return false;
     const pointer = getPoint(event);
     if (!pointer) return true;
     box.end = pointer;
@@ -466,9 +483,11 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     currentLayout: PuzzleLayout,
     imageOverlayRect: Rect | null,
     margin: number,
+    pointerId?: number,
   ): boolean {
     const box = selectionBoxRef.current;
     if (!box) return false;
+    if (pointerId !== undefined && pointerId !== box.pointerId) return false;
     selectionBoxRef.current = null;
     const worldRect = normalizeRect(box.start, box.end);
     const rect = { ...worldRect, x: worldRect.x - margin, y: worldRect.y - margin };

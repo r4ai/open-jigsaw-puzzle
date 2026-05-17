@@ -3,7 +3,7 @@ import type { ChannelMessage } from "@open-jigsaw-puzzle/shared/protocol";
 import type { PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 
 type Position = { x: number; y: number };
-type DragState = { startX: number; startY: number; originX: number; originY: number };
+type DragState = { pointerId: number; startX: number; startY: number; originX: number; originY: number };
 
 type Props = {
   broadcast: (msg: ChannelMessage) => void;
@@ -36,9 +36,15 @@ export function useImageOverlay({ broadcast }: Props) {
     getPoint: (e: React.PointerEvent) => Position | null,
   ) {
     if (lockedRef.current) return;
+    if (draggingRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     const pointer = getPoint(event);
     if (!pointer || !positionRef.current) return;
     draggingRef.current = {
+      pointerId: event.pointerId,
       startX: pointer.x,
       startY: pointer.y,
       originX: positionRef.current.x,
@@ -55,6 +61,7 @@ export function useImageOverlay({ broadcast }: Props) {
   ) {
     const dragging = draggingRef.current;
     if (!dragging) return;
+    if (event.pointerId !== dragging.pointerId) return;
     const pointer = getPoint(event);
     if (!pointer) return;
     const pos = {
@@ -75,7 +82,9 @@ export function useImageOverlay({ broadcast }: Props) {
     broadcast_(pos);
   }
 
-  function handleDragEnd() {
+  function handleDragEnd(pointerId?: number) {
+    const dragging = draggingRef.current;
+    if (pointerId !== undefined && dragging && pointerId !== dragging.pointerId) return;
     draggingRef.current = null;
   }
 

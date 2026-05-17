@@ -259,21 +259,25 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
     );
   }
 
-  function handlePointerUp() {
+  function handlePointerUp(e: React.PointerEvent) {
     if (layout) {
       const imageOverlayRect = imageOverlay.position
         ? { x: imageOverlay.position.x, y: imageOverlay.position.y, width: layout.boardWidth, height: layout.boardHeight }
         : null;
-      if (puzzle.handleSelectionBoxEnd(layout, imageOverlayRect, margin)) return;
+      if (puzzle.handleSelectionBoxEnd(layout, imageOverlayRect, margin, e.pointerId)) return;
     }
-    if (viewport.handlePanEnd()) return;
-    imageOverlay.handleDragEnd();
+    if (viewport.handlePanEnd(e.pointerId)) return;
+    imageOverlay.handleDragEnd(e.pointerId);
     if (!layout) return;
     const threshold = Math.min(layout.pieceWidth, layout.pieceHeight) * 0.22;
-    puzzle.handleDragEnd(threshold);
+    puzzle.handleDragEnd(threshold, e.pointerId);
   }
 
   function handleViewportPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (viewport.isPinchingRef.current) {
+      e.preventDefault();
+      return;
+    }
     if (layout && puzzle.handleSelectionBoxPointerDown(e, viewport.getWorkspacePoint)) return;
     if (e.button === 0 && !e.shiftKey) puzzle.clearSelection();
     viewport.handleViewportPointerDown(e);
@@ -353,7 +357,17 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
             onZoomOut={() => viewport.changeZoom(-ZOOM_STEP)}
             onResetZoom={viewport.resetZoom}
             onApplyPinch={(f, px, py, nx, ny) => viewport.applyPinch(f, px, py, nx, ny)}
-            onSetPinching={(v) => { viewport.isPinchingRef.current = v; }}
+            onSetPinching={(v) => {
+              viewport.isPinchingRef.current = v;
+              if (v) {
+                viewport.cancelPan();
+                imageOverlay.handleDragEnd();
+                if (layout) {
+                  const threshold = Math.min(layout.pieceWidth, layout.pieceHeight) * 0.22;
+                  puzzle.handleDragEnd(threshold);
+                }
+              }
+            }}
           />
         ) : (
           <EmptyBoard

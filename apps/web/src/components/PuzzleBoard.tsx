@@ -36,8 +36,8 @@ type Props = {
   onImageOverlayPointerDown: (e: React.PointerEvent) => void;
   onPiecePointerDown: (e: React.PointerEvent, piece: BoardPiece) => void;
   onPointerMove: (e: React.PointerEvent) => void;
-  onPointerUp: () => void;
-  onPointerCancel: () => void;
+  onPointerUp: (e: React.PointerEvent) => void;
+  onPointerCancel: (e: React.PointerEvent) => void;
   onPointerLeave: () => void;
   onViewportPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
   onWheel: (e: React.WheelEvent<HTMLDivElement>) => void;
@@ -181,6 +181,7 @@ export function PuzzleBoard({
       if (touches.size === 2) {
         const { midX, midY, dist } = midAndDist();
         prevMidX = midX; prevMidY = midY; prevDist = dist;
+        e.preventDefault();
         onSetPinchingRef.current(true);
       }
     }
@@ -190,6 +191,11 @@ export function PuzzleBoard({
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (touches.size < 2) return;
       const { midX, midY, dist } = midAndDist();
+      e.preventDefault();
+      if (prevDist <= 0 || dist <= 0) {
+        prevMidX = midX; prevMidY = midY; prevDist = dist;
+        return;
+      }
       onApplyPinchRef.current(dist / prevDist, prevMidX, prevMidY, midX, midY);
       prevMidX = midX; prevMidY = midY; prevDist = dist;
     }
@@ -356,9 +362,10 @@ export function PuzzleBoard({
           <div
             ref={toolbarRef}
             className={styles.imageOverlayToolbar}
+            role="toolbar"
+            aria-label="画像オーバーレイ"
             style={{ left: `${left}px`, top: `${top}px` }}
             onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => e.stopPropagation()}
           >
             <button
               className={`${styles.toolbarBtn} ${imageOverlayLocked ? styles.toolbarBtnActive : ""}`}

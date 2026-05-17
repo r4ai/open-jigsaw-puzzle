@@ -101,6 +101,7 @@ export function useViewport() {
   }
 
   function handleViewportPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (isPinchingRef.current) return;
     if (!shouldStartViewportPan(event.button, event.target)) return;
     if (!viewportRef.current) return;
     const nextPanning = {
@@ -137,6 +138,7 @@ export function useViewport() {
     if (isPinchingRef.current) return true;
     const currentPanning = panningRef.current;
     if (!currentPanning) return false;
+    if (event.pointerId !== currentPanning.pointerId) return false;
     schedulePan({
       x: currentPanning.panX + event.clientX - currentPanning.startX,
       y: currentPanning.panY + event.clientY - currentPanning.startY,
@@ -145,11 +147,19 @@ export function useViewport() {
     return true;
   }
 
-  function handlePanEnd(): boolean {
-    if (!panningRef.current) return false;
+  function handlePanEnd(pointerId?: number): boolean {
+    const currentPanning = panningRef.current;
+    if (!currentPanning) return false;
+    if (pointerId !== undefined && pointerId !== currentPanning.pointerId) return false;
     panningRef.current = null;
     setPanning(null);
     return true;
+  }
+
+  function cancelPan() {
+    if (!panningRef.current) return;
+    panningRef.current = null;
+    setPanning(null);
   }
 
   return {
@@ -167,5 +177,6 @@ export function useViewport() {
     handleViewportPointerDown,
     handlePanMove,
     handlePanEnd,
+    cancelPan,
   };
 }
