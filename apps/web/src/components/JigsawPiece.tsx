@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import type { PieceGeometry, PuzzleLayout } from "@open-puzzle/shared/puzzle";
 import { createPiecePath } from "../utils/piece-path";
 import styles from "./JigsawPiece.module.css";
@@ -16,7 +16,10 @@ type Props = {
 
 export const JigsawPiece = memo(function JigsawPiece({ geometry, imageDataUrl, layout, pieceId, locked, selected, selectionColor, remoteColor }: Props) {
   const tabSize = layout.tabSize;
-  const path = createPiecePath(layout.pieceWidth, layout.pieceHeight, geometry, tabSize);
+  const path = useMemo(
+    () => createPiecePath(layout.pieceWidth, layout.pieceHeight, geometry, tabSize),
+    [geometry, layout.pieceHeight, layout.pieceWidth, tabSize],
+  );
 
   return (
     <svg
