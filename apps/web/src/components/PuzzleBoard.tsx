@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Lock, LockOpen, Maximize2, Minus, MousePointer2, Plus } from "lucide-react";
 import type { BoardPiece, PuzzleLayout } from "@open-puzzle/shared/puzzle";
 import type { RemoteSelection } from "../hooks/usePuzzle";
@@ -81,6 +82,7 @@ export function PuzzleBoard({
   onZoomOut,
   onResetZoom,
 }: Props) {
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const myColor = myId ? participantColor(myId) : null;
   const remotePieceColors = new Map<number, string>();
   let remoteImageOverlayColor: string | null = null;
@@ -208,42 +210,54 @@ export function PuzzleBoard({
         </div>
       </div>
 
-      {imageOverlaySelected && imageOverlayPosition && (
-        <div
-          className={styles.imageOverlayToolbar}
-          style={{
-            left: `${pan.x + (margin + imageOverlayPosition.x + layout.boardWidth / 2) * zoom}px`,
-            top: `${Math.max(8, pan.y + (margin + imageOverlayPosition.y) * zoom - 60)}px`,
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            className={`${styles.toolbarBtn} ${imageOverlayLocked ? styles.toolbarBtnActive : ""}`}
-            onClick={onToggleImageLock}
-            title={imageOverlayLocked ? "ロック解除" : "ロック"}
+      {imageOverlaySelected && imageOverlayPosition && (() => {
+        const vpW = viewportRef.current?.clientWidth ?? 0;
+        const vpH = viewportRef.current?.clientHeight ?? 0;
+        const imgLeft = pan.x + (margin + imageOverlayPosition.x) * zoom;
+        const imgTop = pan.y + (margin + imageOverlayPosition.y) * zoom;
+        const imgRight = pan.x + (margin + imageOverlayPosition.x + layout.boardWidth) * zoom;
+        const imgBottom = pan.y + (margin + imageOverlayPosition.y + layout.boardHeight) * zoom;
+        if (vpW <= 0 || vpH <= 0 || imgLeft >= vpW || imgRight <= 0 || imgTop >= vpH || imgBottom <= 0) return null;
+        const tbW = toolbarRef.current?.offsetWidth ?? 220;
+        const tbH = toolbarRef.current?.offsetHeight ?? 36;
+        const M = 8;
+        const rawX = pan.x + (margin + imageOverlayPosition.x + layout.boardWidth / 2) * zoom;
+        const rawTop = pan.y + (margin + imageOverlayPosition.y) * zoom - tbH - M;
+        const left = Math.max(tbW / 2 + M, Math.min(vpW - tbW / 2 - M, rawX));
+        const top = Math.max(M, Math.min(vpH - tbH - M, rawTop));
+        return (
+          <div
+            ref={toolbarRef}
+            className={styles.imageOverlayToolbar}
+            style={{ left: `${left}px`, top: `${top}px` }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
-            {imageOverlayLocked ? <Lock size={13} /> : <LockOpen size={13} />}
-          </button>
-          <div className={styles.toolbarDivider} />
-          <div className={styles.toolbarOpacityGroup}>
-            <span className={styles.toolbarLabel}>不透明度</span>
-            <input
-              className={styles.toolbarSlider}
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={imageOverlayOpacity}
-              style={{
-                background: `linear-gradient(to right, var(--teal) ${imageOverlayOpacity * 100}%, var(--canvas-glass-border) ${imageOverlayOpacity * 100}%)`,
-              }}
-              onChange={(e) => onChangeImageOpacity(Number(e.target.value))}
-            />
-            <span className={styles.toolbarVal}>{Math.round(imageOverlayOpacity * 100)}%</span>
+            <button
+              className={`${styles.toolbarBtn} ${imageOverlayLocked ? styles.toolbarBtnActive : ""}`}
+              onClick={onToggleImageLock}
+              title={imageOverlayLocked ? "ロック解除" : "ロック"}
+            >
+              {imageOverlayLocked ? <Lock size={13} /> : <LockOpen size={13} />}
+            </button>
+            <div className={styles.toolbarDivider} />
+            <div className={styles.toolbarOpacityGroup}>
+              <span className={styles.toolbarLabel}>不透明度</span>
+              <input
+                className={styles.toolbarSlider}
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={imageOverlayOpacity}
+                style={{ "--slider-pct": `${imageOverlayOpacity * 100}%` } as React.CSSProperties}
+                onChange={(e) => onChangeImageOpacity(Number(e.target.value))}
+              />
+              <span className={styles.toolbarVal}>{Math.round(imageOverlayOpacity * 100)}%</span>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <div className={styles.zoomControls}>
         <button onClick={onZoomOut} disabled={zoom <= MIN_ZOOM} title="縮小">

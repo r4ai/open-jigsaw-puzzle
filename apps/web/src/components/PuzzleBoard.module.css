@@ -160,7 +160,7 @@
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--canvas-glass-border);
   border-radius: 10px;
-  padding: 3px;
+  padding: 3px 6px;
   transform: translateX(-50%);
   pointer-events: all;
   white-space: nowrap;
@@ -229,12 +229,22 @@
   -webkit-appearance: none;
   appearance: none;
   width: 88px;
-  height: 3px;
-  border-radius: 2px;
+  height: 20px;
   outline: none;
   border: none;
   cursor: pointer;
   flex-shrink: 0;
+  background: transparent;
+}
+
+.toolbarSlider::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--teal) var(--slider-pct, 100%),
+    var(--canvas-glass-border) var(--slider-pct, 100%)
+  );
 }
 
 .toolbarSlider::-webkit-slider-thumb {
@@ -247,10 +257,23 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   cursor: pointer;
   transition: transform 100ms;
+  margin-top: -5.5px;
 }
 
 .toolbarSlider:hover::-webkit-slider-thumb {
   transform: scale(1.1);
+}
+
+.toolbarSlider::-moz-range-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--canvas-glass-border);
+}
+
+.toolbarSlider::-moz-range-progress {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--teal);
 }
 
 .toolbarSlider::-moz-range-thumb {
@@ -261,12 +284,6 @@
   border: 2.5px solid var(--canvas);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   cursor: pointer;
-}
-
-.toolbarSlider::-moz-range-track {
-  height: 3px;
-  border-radius: 2px;
-  background: transparent;
 }
 
 .toolbarVal {
