@@ -204,8 +204,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !signaling.room) return;
-    setStatus("画像を参加者へ配布しています");
-    void imageTransfer.handleImageUpload(file, signaling.room);
+    void uploadImage(file, signaling.room);
   }
 
   function handleDragOver(e: React.DragEvent<HTMLElement>) {
@@ -216,7 +215,18 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
     if (!isHost || !signaling.room) return;
     e.preventDefault();
     const file = [...e.dataTransfer.files].find((f) => f.type.startsWith("image/")) ?? null;
-    if (file) void imageTransfer.handleImageUpload(file, signaling.room);
+    if (file) void uploadImage(file, signaling.room);
+  }
+
+  async function uploadImage(file: File, currentRoom: RoomSummary) {
+    setStatus("画像を参加者へ配布しています");
+    setError(null);
+    try {
+      await imageTransfer.handleImageUpload(file, currentRoom);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "画像の読み込みに失敗しました。");
+      setStatus("画像の読み込みに失敗しました");
+    }
   }
 
   async function copyShareUrl() {
