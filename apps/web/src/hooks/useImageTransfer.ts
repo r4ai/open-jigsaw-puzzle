@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { BoardPiece, PuzzleLayout } from "@open-puzzle/shared/puzzle";
-import { createPuzzleLayout } from "@open-puzzle/shared/puzzle";
+import { createInitialPieces, createPuzzleLayout } from "@open-puzzle/shared/puzzle";
 import type { ChannelMessage, RoomSummary, SyncedPiece } from "@open-puzzle/shared/protocol";
 import { chunkString, resizeImage } from "../image";
 import { createIncomingImage, rememberIncomingImage, storeIncomingImageChunk } from "../incoming-image";
@@ -110,9 +110,10 @@ export function useImageTransfer({ send, broadcast, room, getPieces, onImageComp
     setLoadingProgress({ phase: "resizing", fileName: file.name, sourceBytes: file.size, startedAt: Date.now() });
     const resized = await resizeImage(file);
     const nextLayout = createPuzzleLayout(currentRoom.difficulty, resized.width, resized.height);
+    const nextPieces = createInitialPieces(nextLayout);
     setImage(resized.dataUrl, resized.width, resized.height);
     onImageCompleteRef.current(resized.dataUrl, resized.width, resized.height, nextLayout);
-    sendSnapshot(undefined, undefined);
+    sendSnapshot(undefined, nextPieces);
   }
 
   function handleMessage(_from: string, msg: ChannelMessage) {

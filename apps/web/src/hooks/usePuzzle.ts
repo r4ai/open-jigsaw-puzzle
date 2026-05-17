@@ -201,7 +201,7 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
 
   function receiveImage(nextLayout: PuzzleLayout) {
     setPieces((cur) => {
-      const base = cur.length ? cur : createInitialPieces(nextLayout);
+      const base = createInitialPieces(nextLayout);
       const pending = pendingSyncRef.current;
       pendingSyncRef.current = null;
       clearMoveHistory(true);
