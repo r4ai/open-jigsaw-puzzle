@@ -74,7 +74,7 @@ export function Topbar({
         </button>
         <button onClick={onCopyShareUrl} title="共有リンクをコピー">
           {copied ? <Check size={15} /> : <Copy size={15} />}
-          {copied ? "コピー済み" : "共有"}
+          <span className={styles.shareText}>{copied ? "コピー済み" : "共有"}</span>
         </button>
         <button
           className={styles.themeToggle}

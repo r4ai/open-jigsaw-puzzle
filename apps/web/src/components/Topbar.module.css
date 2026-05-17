@@ -147,7 +147,27 @@
 
   .topbarSep { display: none; }
 
-  .topbarStats { flex-wrap: wrap; }
+  .topbarLeft {
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  .roomInfo {
+    min-width: 0;
+  }
+
+  .roomId {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 120px;
+  }
+
+  .topbarStats {
+    flex-wrap: wrap;
+    flex-shrink: 1;
+    min-width: 0;
+  }
 
   .topActions {
     width: 100%;
@@ -167,4 +187,6 @@
   }
 
   .sidebarToggle { display: none; }
+
+  .shareText { display: none; }
 }
