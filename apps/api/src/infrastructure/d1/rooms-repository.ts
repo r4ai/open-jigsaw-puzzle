@@ -1,5 +1,5 @@
-import type { Difficulty } from "@open-puzzle/shared/protocol";
-import { expiresAt } from "@open-puzzle/shared/rooms";
+import type { Difficulty } from "@open-jigsaw-puzzle/shared/protocol";
+import { expiresAt } from "@open-jigsaw-puzzle/shared/rooms";
 import type { RoomEventRepository, RoomRepository, StoredRoom } from "../../application/rooms";
 import type { Clock } from "../../application/clock";
 

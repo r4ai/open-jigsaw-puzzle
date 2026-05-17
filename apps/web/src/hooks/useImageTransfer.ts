@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import type { BoardPiece, PuzzleLayout } from "@open-puzzle/shared/puzzle";
-import { createInitialPieces, createPuzzleLayout } from "@open-puzzle/shared/puzzle";
-import type { ChannelMessage, RoomSummary, SyncedPiece } from "@open-puzzle/shared/protocol";
+import type { BoardPiece, PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
+import { createInitialPieces, createPuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
+import type { ChannelMessage, RoomSummary, SyncedPiece } from "@open-jigsaw-puzzle/shared/protocol";
 import { chunkString, resizeImage } from "../image";
 import { createIncomingImage, rememberIncomingImage, storeIncomingImageChunk } from "../incoming-image";
 import type { IncomingImage } from "../incoming-image";

@@ -1,5 +1,5 @@
 import { Check, ChevronLeft, ChevronRight, Copy, Moon, MousePointer2, Rows3, Sun, Users } from "lucide-react";
-import { MAX_PARTICIPANTS } from "@open-puzzle/shared/protocol";
+import { MAX_PARTICIPANTS } from "@open-jigsaw-puzzle/shared/protocol";
 import styles from "./Topbar.module.css";
 
 type Props = {

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { openSignaling, PeerMesh } from "./realtime";
-import type { ChannelMessage, IceConfig, Participant, PeerSignal } from "@open-puzzle/shared/protocol";
+import type { ChannelMessage, IceConfig, Participant, PeerSignal } from "@open-jigsaw-puzzle/shared/protocol";
 
 class FakeWebSocket {
   static instances: FakeWebSocket[] = [];

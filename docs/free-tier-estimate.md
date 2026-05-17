@@ -8,7 +8,7 @@ Pricing references checked on 2026-05-17:
 
 ## Current Backend Cost Shape
 
-Open Puzzle keeps images out of backend storage. Images are resized in the browser and shared peer-to-peer through WebRTC DataChannels, so backend usage is mostly room metadata, WebSocket signaling, and small lifecycle event rows.
+Open Jigsaw Puzzle keeps images out of backend storage. Images are resized in the browser and shared peer-to-peer through WebRTC DataChannels, so backend usage is mostly room metadata, WebSocket signaling, and small lifecycle event rows.
 
 Per room, the expected D1 writes are roughly:
 

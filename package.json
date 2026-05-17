@@ -1,20 +1,20 @@
 {
-  "name": "open-puzzle",
+  "name": "open-jigsaw-puzzle",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter @open-puzzle/web dev",
-    "dev:api": "pnpm --filter @open-puzzle/api dev",
-    "dev:web": "pnpm --filter @open-puzzle/web dev",
+    "dev": "pnpm --filter @open-jigsaw-puzzle/web dev",
+    "dev:api": "pnpm --filter @open-jigsaw-puzzle/api dev",
+    "dev:web": "pnpm --filter @open-jigsaw-puzzle/web dev",
     "build": "pnpm -r build",
     "generate:openapi": "tsx apps/api/scripts/generate-openapi.ts && openapi-typescript apps/api/openapi.json -o apps/web/src/api/openapi.d.ts",
     "check:openapi": "pnpm generate:openapi && git diff --exit-code -- apps/api/openapi.json apps/web/src/api/openapi.d.ts",
-    "preview": "pnpm --filter @open-puzzle/web preview",
+    "preview": "pnpm --filter @open-jigsaw-puzzle/web preview",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "db:migrate:remote": "pnpm --filter @open-puzzle/api prepare:wrangler && pnpm --filter @open-puzzle/api exec wrangler d1 migrations apply open-puzzle --remote --config wrangler.generated.jsonc",
-    "deploy": "pnpm build && pnpm --filter @open-puzzle/api deploy"
+    "db:migrate:remote": "pnpm --filter @open-jigsaw-puzzle/api prepare:wrangler && pnpm --filter @open-jigsaw-puzzle/api exec wrangler d1 migrations apply open-jigsaw-puzzle --remote --config wrangler.generated.jsonc",
+    "deploy": "pnpm build && pnpm --filter @open-jigsaw-puzzle/api deploy"
   },
   "devDependencies": {
     "@types/node": "^24.10.2",

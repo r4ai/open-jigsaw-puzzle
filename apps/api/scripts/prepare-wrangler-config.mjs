@@ -11,7 +11,7 @@ await loadLocalEnv(join(appDir, ".dev.vars"));
 await loadLocalEnv(join(appDir, ".env"));
 
 const databaseIdsByBinding = {
-	DB: process.env.OPEN_PUZZLE_D1_DATABASE_ID,
+	open_jigsaw_puzzle: process.env.OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID,
 };
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -27,7 +27,7 @@ for (const [binding, databaseId] of Object.entries(databaseIdsByBinding)) {
 	}
 
 	if (!databaseId) {
-		missing.push(`${token}: set OPEN_PUZZLE_D1_DATABASE_ID`);
+		missing.push(`${token}: set OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID`);
 		continue;
 	}
 

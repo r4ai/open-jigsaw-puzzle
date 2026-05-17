@@ -1,4 +1,4 @@
-import type { BoardPiece } from "@open-puzzle/shared/puzzle";
+import type { BoardPiece } from "@open-jigsaw-puzzle/shared/puzzle";
 
 export type PieceHistorySnapshot = Pick<BoardPiece, "id" | "x" | "y" | "z" | "locked">;
 export type HistoryResult = "applied" | "blocked" | "empty";

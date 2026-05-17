@@ -1,4 +1,4 @@
-import type { PieceEdgeProfile, PieceGeometry } from "@open-puzzle/shared/puzzle";
+import type { PieceEdgeProfile, PieceGeometry } from "@open-jigsaw-puzzle/shared/puzzle";
 
 type Point = { x: number; y: number };
 type EdgeSide = "top" | "right" | "bottom" | "left";

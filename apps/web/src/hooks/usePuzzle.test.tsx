@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { createPuzzleLayout } from "@open-puzzle/shared/puzzle";
-import type { ChannelMessage } from "@open-puzzle/shared/protocol";
+import { createPuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
+import type { ChannelMessage } from "@open-jigsaw-puzzle/shared/protocol";
 import { usePuzzle } from "./usePuzzle";
 
 type PuzzleApi = ReturnType<typeof usePuzzle>;

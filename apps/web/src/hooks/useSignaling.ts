@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { ChannelMessage, IceConfig, Participant, RoomSummary } from "@open-puzzle/shared/protocol";
+import type { ChannelMessage, IceConfig, Participant, RoomSummary } from "@open-jigsaw-puzzle/shared/protocol";
 import { fetchIceConfig, openSignaling, PeerMesh } from "../realtime";
 
 const MAX_RECONNECT_ATTEMPTS = 3;

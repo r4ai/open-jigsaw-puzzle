@@ -1,5 +1,5 @@
-import type { Difficulty, RoomSummary } from "@open-puzzle/shared/protocol";
-import { createRoomId } from "@open-puzzle/shared/rooms";
+import type { Difficulty, RoomSummary } from "@open-jigsaw-puzzle/shared/protocol";
+import { createRoomId } from "@open-jigsaw-puzzle/shared/rooms";
 import type { Clock } from "./clock";
 
 export type StoredRoom = {

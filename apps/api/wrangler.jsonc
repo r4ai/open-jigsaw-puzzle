@@ -1,6 +1,6 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "open-puzzle",
+  "name": "open-jigsaw-puzzle",
   "main": "src/index.ts",
   "compatibility_date": "2026-05-16",
   "assets": {
@@ -26,9 +26,9 @@
   },
   "d1_databases": [
     {
-      "binding": "DB",
-      "database_name": "open-puzzle",
-      "database_id": "__DB_DATABASE_ID__",
+      "binding": "open_jigsaw_puzzle",
+      "database_name": "open-jigsaw-puzzle",
+      "database_id": "__OPEN_JIGSAW_PUZZLE_DATABASE_ID__",
       "migrations_dir": "migrations"
     }
   ],

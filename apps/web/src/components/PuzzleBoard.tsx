@@ -1,6 +1,6 @@
 import { memo, useCallback, useMemo, useRef } from "react";
 import { Lock, LockOpen, Maximize2, Minus, MousePointer2, Plus } from "lucide-react";
-import type { BoardPiece, PuzzleLayout } from "@open-puzzle/shared/puzzle";
+import type { BoardPiece, PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import type { RemoteSelection } from "../hooks/usePuzzle";
 import type { RemoteCursor } from "../hooks/useRemoteCursors";
 import type { PanOffset } from "../hooks/useViewport";

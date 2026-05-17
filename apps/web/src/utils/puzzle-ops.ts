@@ -1,5 +1,5 @@
-import type { BoardPiece, PuzzleLayout } from "@open-puzzle/shared/puzzle";
-import type { SyncedPiece } from "@open-puzzle/shared/protocol";
+import type { BoardPiece, PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
+import type { SyncedPiece } from "@open-jigsaw-puzzle/shared/protocol";
 
 export const MAX_CANVAS_COORDINATE = 1_000_000_000;
 

@@ -1,5 +1,5 @@
 import { memo, useMemo } from "react";
-import type { PieceGeometry, PuzzleLayout } from "@open-puzzle/shared/puzzle";
+import type { PieceGeometry, PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import { createPiecePath } from "../utils/piece-path";
 import styles from "./JigsawPiece.module.css";
 

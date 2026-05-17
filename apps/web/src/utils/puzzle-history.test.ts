@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { BoardPiece } from "@open-puzzle/shared/puzzle";
+import type { BoardPiece } from "@open-jigsaw-puzzle/shared/puzzle";
 import { applyPieceSnapshots, createMoveHistoryEntry, createPieceHistory } from "./puzzle-history";
 
 describe("piece move history", () => {

@@ -1,7 +1,7 @@
 import { Link, Moon, Play, Sun } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { DIFFICULTIES, type Difficulty } from "@open-puzzle/shared/protocol";
+import { DIFFICULTIES, type Difficulty } from "@open-jigsaw-puzzle/shared/protocol";
 import { apiClient, apiErrorMessage } from "../api/client";
 import styles from "./HomePage.module.css";
 

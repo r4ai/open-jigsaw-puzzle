@@ -1,5 +1,5 @@
 {
-  "name": "@open-puzzle/web",
+  "name": "@open-jigsaw-puzzle/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@open-puzzle/shared": "workspace:*",
+    "@open-jigsaw-puzzle/shared": "workspace:*",
     "@tanstack/react-router": "^1.169.2",
     "@vitejs/plugin-react": "^5.1.1",
     "lucide-react": "^0.561.0",

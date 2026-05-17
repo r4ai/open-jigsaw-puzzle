@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import type { ChannelMessage } from "@open-puzzle/shared/protocol";
-import type { PuzzleLayout } from "@open-puzzle/shared/puzzle";
+import type { ChannelMessage } from "@open-jigsaw-puzzle/shared/protocol";
+import type { PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 
 type Position = { x: number; y: number };
 type DragState = { startX: number; startY: number; originX: number; originY: number };

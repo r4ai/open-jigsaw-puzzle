@@ -49,7 +49,7 @@ jobs:
 
       - name: Validate Worker bundle
         env:
-          OPEN_PUZZLE_D1_DATABASE_ID: 00000000-0000-4000-8000-000000000000
+          OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID: 00000000-0000-4000-8000-000000000000
         run: |
-          pnpm --filter @open-puzzle/api prepare:wrangler
-          pnpm --filter @open-puzzle/api exec wrangler deploy --dry-run --outdir dist/worker --config wrangler.generated.jsonc
+          pnpm --filter @open-jigsaw-puzzle/api prepare:wrangler
+          pnpm --filter @open-jigsaw-puzzle/api exec wrangler deploy --dry-run --outdir dist/worker --config wrangler.generated.jsonc

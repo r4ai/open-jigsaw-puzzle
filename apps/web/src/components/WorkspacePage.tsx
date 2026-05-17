@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { createPuzzleLayout, getWorkspaceMargin } from "@open-puzzle/shared/puzzle";
-import type { PuzzleLayout } from "@open-puzzle/shared/puzzle";
-import type { ChannelMessage, Participant, RoomSummary } from "@open-puzzle/shared/protocol";
-import { sanitizeName } from "@open-puzzle/shared/rooms";
+import { createPuzzleLayout, getWorkspaceMargin } from "@open-jigsaw-puzzle/shared/puzzle";
+import type { PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
+import type { ChannelMessage, Participant, RoomSummary } from "@open-jigsaw-puzzle/shared/protocol";
+import { sanitizeName } from "@open-jigsaw-puzzle/shared/rooms";
 import { useSignaling } from "../hooks/useSignaling";
 import { useImageTransfer } from "../hooks/useImageTransfer";
 import { usePuzzle } from "../hooks/usePuzzle";

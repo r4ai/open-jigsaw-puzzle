@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Open Puzzle API",
+    "title": "Open Jigsaw Puzzle API",
     "description": "REST contract for room metadata and WebRTC ICE configuration.",
     "version": "0.1.0"
   },

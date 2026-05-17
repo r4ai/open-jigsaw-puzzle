@@ -1,25 +1,25 @@
 # Deployment
 
-Open Puzzle deploys the Vite SPA and Cloudflare Worker together with Wrangler. The deployed Worker serves both API routes and the built web assets.
+Open Jigsaw Puzzle deploys the Vite SPA and Cloudflare Worker together with Wrangler. The deployed Worker serves both API routes and the built web assets.
 
 ## Cloudflare Setup
 
 Authenticate locally:
 
 ```bash
-pnpm --filter @open-puzzle/api exec wrangler login
+pnpm --filter @open-jigsaw-puzzle/api exec wrangler login
 ```
 
 Create the production D1 database:
 
 ```bash
-pnpm --filter @open-puzzle/api exec wrangler d1 create open-puzzle
+pnpm --filter @open-jigsaw-puzzle/api exec wrangler d1 create open-jigsaw-puzzle
 ```
 
 Store the returned `database_id` outside Git:
 
-- Local development: set `OPEN_PUZZLE_D1_DATABASE_ID` in `apps/api/.env` or your shell.
-- GitHub Actions: add repository or `production` environment secret `OPEN_PUZZLE_D1_DATABASE_ID`.
+- Local development: set `OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID` in `apps/api/.env` or your shell.
+- GitHub Actions: add repository or `production` environment secret `OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID`.
 
 `apps/api/wrangler.jsonc` contains a placeholder. The deploy scripts generate the ignored `apps/api/wrangler.generated.jsonc` file before running Wrangler.
 
@@ -37,7 +37,7 @@ pnpm deploy
 The deploy workflow runs on pushes to `main` and manual dispatch. Configure these under repository Settings > Secrets and variables > Actions:
 
 - Secret: `CLOUDFLARE_API_TOKEN`
-- Secret: `OPEN_PUZZLE_D1_DATABASE_ID`
+- Secret: `OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID`
 - Variable: `CLOUDFLARE_ACCOUNT_ID`
 
 `CLOUDFLARE_ACCOUNT_ID` can also be stored as a secret. The Cloudflare API token should be scoped to the target account and must allow Workers deployment and D1 migration access.
@@ -50,8 +50,8 @@ The workflow uses the `production` GitHub Environment, so configure environment 
 pnpm typecheck
 pnpm test
 pnpm build
-pnpm --filter @open-puzzle/api prepare:wrangler
-pnpm --filter @open-puzzle/api exec wrangler deploy --dry-run --outdir dist/worker --config wrangler.generated.jsonc
+pnpm --filter @open-jigsaw-puzzle/api prepare:wrangler
+pnpm --filter @open-jigsaw-puzzle/api exec wrangler deploy --dry-run --outdir dist/worker --config wrangler.generated.jsonc
 ```
 
 ## Runtime Configuration

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createInitialPieces, createPuzzleLayout } from "@open-puzzle/shared/puzzle";
-import type { BoardPiece } from "@open-puzzle/shared/puzzle";
+import { createInitialPieces, createPuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
+import type { BoardPiece } from "@open-jigsaw-puzzle/shared/puzzle";
 import {
   addPieceRangeSelection,
   arrangeLoosePieces,

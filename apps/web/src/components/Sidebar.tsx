@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import type { Participant } from "@open-puzzle/shared/protocol";
+import type { Participant } from "@open-jigsaw-puzzle/shared/protocol";
 import { participantColor } from "../utils/participant";
 import styles from "./Sidebar.module.css";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createPuzzleLayout } from "@open-puzzle/shared/puzzle";
+import { createPuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import { createPiecePath, samplePieceEdge } from "./piece-path";
 
 describe("piece paths", () => {

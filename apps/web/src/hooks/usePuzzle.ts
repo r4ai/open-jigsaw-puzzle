@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { createInitialPieces, isComplete, snapPiece } from "@open-puzzle/shared/puzzle";
-import type { BoardPiece, PuzzleLayout } from "@open-puzzle/shared/puzzle";
-import type { ChannelMessage, SyncedPiece } from "@open-puzzle/shared/protocol";
+import { createInitialPieces, isComplete, snapPiece } from "@open-jigsaw-puzzle/shared/puzzle";
+import type { BoardPiece, PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
+import type { ChannelMessage, SyncedPiece } from "@open-jigsaw-puzzle/shared/protocol";
 import {
   arrangeLoosePieces,
   bringSelectedPiecesToFront,

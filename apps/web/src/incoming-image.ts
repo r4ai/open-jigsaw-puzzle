@@ -1,4 +1,4 @@
-import { MAX_IMAGE_BYTES, MAX_IMAGE_CHUNKS, MAX_IMAGE_EDGE, MAX_IMAGE_CHUNK_BYTES } from "@open-puzzle/shared/protocol";
+import { MAX_IMAGE_BYTES, MAX_IMAGE_CHUNKS, MAX_IMAGE_EDGE, MAX_IMAGE_CHUNK_BYTES } from "@open-jigsaw-puzzle/shared/protocol";
 
 export const MAX_INCOMING_IMAGE_TRANSFERS = 2;
 

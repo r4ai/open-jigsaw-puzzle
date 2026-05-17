@@ -18,7 +18,7 @@ export default {
   async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(
       deleteExpiredRooms(
-        createD1RoomRepository(env.DB, systemClock),
+        createD1RoomRepository(env.open_jigsaw_puzzle, systemClock),
         systemClock,
         readPositiveIntegerEnv(env.EXPIRED_ROOM_RETENTION_SECONDS, EXPIRED_ROOM_RETENTION_SECONDS),
         readPositiveIntegerEnv(env.CLEANUP_BATCH_SIZE, CLEANUP_BATCH_SIZE),

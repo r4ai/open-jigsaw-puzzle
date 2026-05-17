@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { ChannelMessage } from "@open-puzzle/shared/protocol";
+import type { ChannelMessage } from "@open-jigsaw-puzzle/shared/protocol";
 
 export type RemoteCursor = {
   participantId: string;

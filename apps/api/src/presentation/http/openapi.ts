@@ -3,11 +3,11 @@ import {
   ErrorResponseSchema,
   IceConfigSchema,
   RoomResponseSchema,
-} from "@open-puzzle/shared/protocol";
+} from "@open-jigsaw-puzzle/shared/protocol";
 
 export const OPENAPI_DOCUMENTATION = {
   info: {
-    title: "Open Puzzle API",
+    title: "Open Jigsaw Puzzle API",
     version: "0.1.0",
     description: "REST contract for room metadata and WebRTC ICE configuration.",
   },

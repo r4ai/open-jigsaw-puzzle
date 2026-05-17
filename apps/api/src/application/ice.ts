@@ -1,4 +1,4 @@
-import type { IceConfig, IceServerConfig } from "@open-puzzle/shared/protocol";
+import type { IceConfig, IceServerConfig } from "@open-jigsaw-puzzle/shared/protocol";
 
 export type IceConfigSource = {
   TURN_URLS?: string;

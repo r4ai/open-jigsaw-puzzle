@@ -1,4 +1,4 @@
-import { MAX_CHANNEL_MESSAGE_BYTES, parseChannelMessage, parseSignalEnvelope, type ChannelMessage, type IceConfig, type Participant, type PeerSignal, type RoomSummary } from "@open-puzzle/shared/protocol";
+import { MAX_CHANNEL_MESSAGE_BYTES, parseChannelMessage, parseSignalEnvelope, type ChannelMessage, type IceConfig, type Participant, type PeerSignal, type RoomSummary } from "@open-jigsaw-puzzle/shared/protocol";
 import { apiClient, apiErrorMessage } from "./api/client";
 
 type SignalingHandlers = {
