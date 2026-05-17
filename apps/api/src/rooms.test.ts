@@ -69,7 +69,7 @@ describe("worker REST API contract", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ difficulty: 96 }),
-    }, fakeEnv({ open_jigsaw_puzzle: db as unknown as D1Database }));
+    }, fakeEnv({ DB: db as unknown as D1Database }));
     const payload = await response.json() as { room: { id: string; difficulty: number; participantCount: number } };
 
     expect(response.status).toBe(201);
@@ -134,12 +134,12 @@ describe("worker REST API contract", () => {
 
   it("handles room lookup errors without changing response shapes", async () => {
     const db = new FakeD1();
-    const missing = await createApp().request("/api/rooms/ABCDEFGHJK", {}, fakeEnv({ open_jigsaw_puzzle: db as unknown as D1Database }));
+    const missing = await createApp().request("/api/rooms/ABCDEFGHJK", {}, fakeEnv({ DB: db as unknown as D1Database }));
     expect(missing.status).toBe(404);
     expect(await missing.json()).toEqual({ error: "Room not found." });
 
     db.rows.set("ABCDEFGHJK", { id: "ABCDEFGHJK", difficulty: 48, expires_at: 0, participant_count: 0 });
-    const expired = await createApp().request("/api/rooms/ABCDEFGHJK", {}, fakeEnv({ open_jigsaw_puzzle: db as unknown as D1Database }));
+    const expired = await createApp().request("/api/rooms/ABCDEFGHJK", {}, fakeEnv({ DB: db as unknown as D1Database }));
     expect(expired.status).toBe(410);
     expect(await expired.json()).toEqual({ error: "Room has expired." });
   });
@@ -226,7 +226,7 @@ describe("worker REST API contract", () => {
 
 function fakeEnv(overrides: Partial<Env> = {}): Env {
   return {
-    open_jigsaw_puzzle: {} as D1Database,
+    DB: {} as D1Database,
     ROOMS: {} as DurableObjectNamespace,
     ASSETS: { fetch: async () => new Response(null, { status: 404 }) } as unknown as Fetcher,
     ...overrides,

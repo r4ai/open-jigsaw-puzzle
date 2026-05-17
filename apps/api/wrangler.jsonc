@@ -26,9 +26,9 @@
   },
   "d1_databases": [
     {
-      "binding": "open_jigsaw_puzzle",
+      "binding": "DB",
       "database_name": "open-jigsaw-puzzle",
-      "database_id": "__OPEN_JIGSAW_PUZZLE_DATABASE_ID__",
+      "database_id": "__DB_DATABASE_ID__",
       "migrations_dir": "migrations"
     }
   ],

@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 export type Env = {
-  open_jigsaw_puzzle: D1Database;
+  DB: D1Database;
   ROOMS: DurableObjectNamespace;
   ASSETS: Fetcher;
   ROOM_TTL_SECONDS?: string;

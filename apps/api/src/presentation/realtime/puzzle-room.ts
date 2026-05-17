@@ -45,8 +45,8 @@ export class PuzzleRoom implements DurableObject {
     if (!isAllowedWebSocketOrigin(request)) return json({ error: "Forbidden origin." }, 403);
     if (!roomId) return json({ error: "Room id is required." }, 400);
 
-    const rooms = createD1RoomRepository(this.env.open_jigsaw_puzzle, systemClock);
-    const events = createD1RoomEventRepository(this.env.open_jigsaw_puzzle, systemClock);
+    const rooms = createD1RoomRepository(this.env.DB, systemClock);
+    const events = createD1RoomEventRepository(this.env.DB, systemClock);
     const room = await rooms.read(roomId);
     if (!room) return json({ error: "Room not found." }, 404);
 
@@ -123,7 +123,7 @@ export class PuzzleRoom implements DurableObject {
         participant,
         participants,
       });
-      this.state.waitUntil(createD1RoomEventRepository(this.env.open_jigsaw_puzzle, systemClock).record(this.state.id.name || "", "rename", { participantId: sender.participantId, name: nextName }));
+      this.state.waitUntil(createD1RoomEventRepository(this.env.DB, systemClock).record(this.state.id.name || "", "rename", { participantId: sender.participantId, name: nextName }));
       return;
     }
 
@@ -168,8 +168,8 @@ export class PuzzleRoom implements DurableObject {
     }
 
     const roomId = this.state.id.name || "";
-    const rooms = createD1RoomRepository(this.env.open_jigsaw_puzzle, systemClock);
-    const events = createD1RoomEventRepository(this.env.open_jigsaw_puzzle, systemClock);
+    const rooms = createD1RoomRepository(this.env.DB, systemClock);
+    const events = createD1RoomEventRepository(this.env.DB, systemClock);
     this.state.waitUntil(rooms.touch(roomId, this.sessions.size, readEnvPositiveInteger(this.env.ROOM_TTL_SECONDS, ROOM_TTL_SECONDS)));
     this.state.waitUntil(events.record(roomId, "leave", { participantId: attachment.participantId }));
 

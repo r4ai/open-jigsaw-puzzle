@@ -47,8 +47,8 @@ export function createApp(): Hono<{ Bindings: Env }> {
       const body = c.req.valid("json");
       const clock = systemClock;
       const room = await createRoom(
-        createD1RoomRepository(c.env.open_jigsaw_puzzle, clock),
-        createD1RoomEventRepository(c.env.open_jigsaw_puzzle, clock),
+        createD1RoomRepository(c.env.DB, clock),
+        createD1RoomEventRepository(c.env.DB, clock),
         body.difficulty,
         readEnvPositiveInteger(c.env.ROOM_TTL_SECONDS, ROOM_TTL_SECONDS),
       );
@@ -77,7 +77,7 @@ export function createApp(): Hono<{ Bindings: Env }> {
     async (c) => {
       const roomId = normalizeRoomId(c.req.valid("param").roomId);
       if (!roomId) return c.json({ error: "Room id is required." }, 400);
-      const room = await getRoom(createD1RoomRepository(c.env.open_jigsaw_puzzle, systemClock), roomId, systemClock);
+      const room = await getRoom(createD1RoomRepository(c.env.DB, systemClock), roomId, systemClock);
       if (room === "not-found") return c.json({ error: "Room not found." }, 404);
       if (room === "expired") return c.json({ error: "Room has expired." }, 410);
       return c.json({ room });
