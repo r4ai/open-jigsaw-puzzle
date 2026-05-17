@@ -54,16 +54,6 @@ export function HomePage({ theme, name, onNameChange, onToggleTheme }: Props) {
                L 20 240 Z"
             stroke="currentColor" strokeWidth="2"
           />
-          <path
-            d="M 160 -20 L 310 -20 L 310 120
-               C 325 120 334 127 334 135
-               C 334 143 325 150 310 150
-               L 310 240 L 240 240
-               C 240 255 233 263 225 263
-               C 217 263 210 255 210 240
-               L 160 240 Z"
-            stroke="currentColor" strokeWidth="1.5" opacity="0.35"
-          />
         </svg>
 
         <div className={styles.heroContent}>
