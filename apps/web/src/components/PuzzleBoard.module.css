@@ -57,21 +57,21 @@
 
 .selected {
   box-shadow:
-    0 0 0 3px var(--my-selection-color, var(--teal)),
-    0 0 0 8px color-mix(in srgb, var(--my-selection-color, var(--teal)) 28%, transparent);
+    0 0 0 3px color-mix(in srgb, var(--my-selection-color, var(--teal)) 70%, transparent),
+    0 0 0 8px color-mix(in srgb, var(--my-selection-color, var(--teal)) 18%, transparent);
 }
 
 .remoteSelected {
   box-shadow:
-    0 0 0 2.5px color-mix(in srgb, var(--remote-selection-color) 85%, transparent),
-    0 0 0 7px color-mix(in srgb, var(--remote-selection-color) 22%, transparent);
+    0 0 0 2.5px color-mix(in srgb, var(--remote-selection-color) 65%, transparent),
+    0 0 0 7px color-mix(in srgb, var(--remote-selection-color) 14%, transparent);
 }
 
 .selected.remoteSelected {
   box-shadow:
-    0 0 0 3px var(--my-selection-color, var(--teal)),
-    0 0 0 8px color-mix(in srgb, var(--my-selection-color, var(--teal)) 28%, transparent),
-    0 0 0 6px color-mix(in srgb, var(--remote-selection-color) 60%, transparent);
+    0 0 0 3px color-mix(in srgb, var(--my-selection-color, var(--teal)) 70%, transparent),
+    0 0 0 8px color-mix(in srgb, var(--my-selection-color, var(--teal)) 18%, transparent),
+    0 0 0 6px color-mix(in srgb, var(--remote-selection-color) 45%, transparent);
 }
 
 .imageOverlay:active { cursor: grabbing; }

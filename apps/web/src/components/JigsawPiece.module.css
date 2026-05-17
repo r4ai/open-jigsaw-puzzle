@@ -24,7 +24,7 @@
 .selectionGlow {
   fill: none;
   stroke: var(--selection-color, var(--teal));
-  stroke-opacity: 0.28;
+  stroke-opacity: 0.18;
   stroke-width: 9;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
@@ -33,6 +33,7 @@
 .selectionStroke {
   fill: none;
   stroke: var(--selection-color, var(--teal));
+  stroke-opacity: 0.7;
   stroke-width: 3;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
@@ -41,7 +42,7 @@
 .remoteSelectionGlow {
   fill: none;
   stroke: var(--remote-color, transparent);
-  stroke-opacity: 0.22;
+  stroke-opacity: 0.14;
   stroke-width: 8;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
@@ -50,7 +51,7 @@
 .remoteSelectionStroke {
   fill: none;
   stroke: var(--remote-color, transparent);
-  stroke-opacity: 0.85;
+  stroke-opacity: 0.65;
   stroke-width: 2.5;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
