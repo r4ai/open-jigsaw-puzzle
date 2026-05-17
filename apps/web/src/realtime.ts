@@ -1,4 +1,5 @@
-import { MAX_CHANNEL_MESSAGE_BYTES, parseChannelMessage, type ChannelMessage, type IceConfig, type Participant, type PeerSignal, type RoomSummary, type SignalEnvelope } from "@open-puzzle/shared/protocol";
+import { MAX_CHANNEL_MESSAGE_BYTES, parseChannelMessage, parseSignalEnvelope, type ChannelMessage, type IceConfig, type Participant, type PeerSignal, type RoomSummary } from "@open-puzzle/shared/protocol";
+import { apiClient, apiErrorMessage } from "./api/client";
 
 type SignalingHandlers = {
   onHello: (participantId: string, participants: Participant[], room: RoomSummary) => void;
@@ -22,9 +23,9 @@ const CHANNEL_BUFFERED_AMOUNT_LOW_THRESHOLD = 256_000;
 const RECONNECT_DELAY_MS = 750;
 
 export async function fetchIceConfig(): Promise<IceConfig> {
-  const response = await fetch("/api/ice");
-  if (!response.ok) throw new Error("ICE configuration could not be loaded.");
-  return response.json() as Promise<IceConfig>;
+  const { data, error } = await apiClient.GET("/api/ice");
+  if (!data) throw new Error(apiErrorMessage(error, "ICE configuration could not be loaded."));
+  return data;
 }
 
 export function openSignaling(roomId: string, name: string, handlers: SignalingHandlers): WebSocket {
@@ -32,32 +33,31 @@ export function openSignaling(roomId: string, name: string, handlers: SignalingH
   const socket = new WebSocket(`${protocol}//${window.location.host}/api/rooms/${encodeURIComponent(roomId)}/socket?name=${encodeURIComponent(name)}`);
 
   socket.addEventListener("message", (event) => {
-    let message: SignalEnvelope;
     try {
-      message = JSON.parse(event.data as string) as SignalEnvelope;
+      const message = parseSignalEnvelope(JSON.parse(event.data as string));
+      if (!message) throw new Error("Invalid signaling message.");
+      switch (message.type) {
+        case "hello":
+          handlers.onHello(message.participantId, message.participants, message.room);
+          break;
+        case "peer-joined":
+          handlers.onPeerJoined(message.participant, message.participants);
+          break;
+        case "peer-left":
+          handlers.onPeerLeft(message.participantId, message.participants);
+          break;
+        case "participant-updated":
+          handlers.onParticipantUpdated(message.participant, message.participants);
+          break;
+        case "signal":
+          handlers.onSignal(message.from, message.payload);
+          break;
+        case "error":
+          handlers.onError(message.message);
+          break;
+      }
     } catch {
       handlers.onError("Signaling server sent an invalid message.");
-      return;
-    }
-    switch (message.type) {
-      case "hello":
-        handlers.onHello(message.participantId, message.participants, message.room);
-        break;
-      case "peer-joined":
-        handlers.onPeerJoined(message.participant, message.participants);
-        break;
-      case "peer-left":
-        handlers.onPeerLeft(message.participantId, message.participants);
-        break;
-      case "participant-updated":
-        handlers.onParticipantUpdated(message.participant, message.participants);
-        break;
-      case "signal":
-        handlers.onSignal(message.from, message.payload);
-        break;
-      case "error":
-        handlers.onError(message.message);
-        break;
     }
   });
 
@@ -103,7 +103,12 @@ export class PeerMesh {
         await this.flushPendingIce(from, peer);
         const answer = await peer.createAnswer();
         await peer.setLocalDescription(answer);
-        if (peer.localDescription) this.sendSignal(from, { type: "answer", description: peer.localDescription });
+        if (peer.localDescription) {
+          this.sendSignal(from, {
+            type: "answer",
+            description: { type: "answer", sdp: peer.localDescription.sdp },
+          });
+        }
         return;
       }
 
@@ -169,7 +174,10 @@ export class PeerMesh {
       .then((offer) => peer.setLocalDescription(offer))
       .then(() => {
         if (peer.localDescription && this.peers.get(participantId) === peer) {
-          this.sendSignal(participantId, { type: "offer", description: peer.localDescription });
+          this.sendSignal(participantId, {
+            type: "offer",
+            description: { type: "offer", sdp: peer.localDescription.sdp },
+          });
         }
       })
       .catch(() => {

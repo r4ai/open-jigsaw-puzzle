@@ -8,6 +8,8 @@
     "dev:api": "pnpm --filter @open-puzzle/api dev",
     "dev:web": "pnpm --filter @open-puzzle/web dev",
     "build": "pnpm -r build",
+    "generate:openapi": "tsx apps/api/scripts/generate-openapi.ts && openapi-typescript apps/api/openapi.json -o apps/web/src/api/openapi.d.ts",
+    "check:openapi": "pnpm generate:openapi && git diff --exit-code -- apps/api/openapi.json apps/web/src/api/openapi.d.ts",
     "preview": "pnpm --filter @open-puzzle/web preview",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
@@ -16,6 +18,8 @@
   },
   "devDependencies": {
     "@types/node": "^24.10.2",
+    "openapi-typescript": "^7.13.0",
+    "tsx": "^4.22.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.15"
   },

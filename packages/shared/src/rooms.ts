@@ -1,16 +1,13 @@
-import { DIFFICULTIES, MAX_PARTICIPANTS, ROOM_ID_LENGTH, ROOM_TTL_SECONDS, type Difficulty } from "./protocol";
+import * as v from "valibot";
+import { DIFFICULTIES, DifficultySchema, MAX_PARTICIPANTS, ROOM_ID_ALPHABET, ROOM_ID_LENGTH, ROOM_TTL_SECONDS, type Difficulty } from "./protocol";
 
-const ROOM_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const ROOM_ID_PATTERN = new RegExp(`^[${ROOM_ID_ALPHABET}]{${ROOM_ID_LENGTH}}$`);
 type RandomBytes = (bytes: Uint8Array) => Uint8Array;
 
-function isDifficulty(value: unknown): value is Difficulty {
-  return typeof value === "number" && DIFFICULTIES.includes(value as Difficulty);
-}
-
 export function parseDifficulty(value: unknown): Difficulty | null {
   const parsed = typeof value === "string" ? Number(value) : value;
-  return isDifficulty(parsed) ? parsed : null;
+  const result = v.safeParse(DifficultySchema, parsed);
+  return result.success ? result.output : null;
 }
 
 export function sanitizeName(value: unknown): string {

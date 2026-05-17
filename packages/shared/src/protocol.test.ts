@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_CHANNEL_MESSAGE_BYTES, parseChannelMessage } from "./protocol";
+import { MAX_CHANNEL_MESSAGE_BYTES, parseChannelMessage, parseClientSignalMessage, parseSignalEnvelope } from "./protocol";
 
 describe("channel message validation", () => {
   it("accepts well-formed messages", () => {
@@ -43,5 +43,44 @@ describe("channel message validation", () => {
     expect(parseChannelMessage({ type: "selection-presence", participantId: "peer-1", pieceIds: [1, 1], imageOverlaySelected: false })).toBeNull();
     expect(parseChannelMessage({ type: "selection-presence", participantId: "peer-1", pieceIds: [192], imageOverlaySelected: false })).toBeNull();
     expect(parseChannelMessage({ type: "selection-presence", participantId: "peer-1", pieceIds: Array.from({ length: 193 }, (_, id) => id), imageOverlaySelected: false })).toBeNull();
+  });
+});
+
+describe("signaling message validation", () => {
+  it("accepts valid server and client signaling messages", () => {
+    expect(parseSignalEnvelope({
+      type: "signal",
+      from: "peer-1",
+      to: "peer-2",
+      payload: { type: "offer", description: { type: "offer", sdp: "v=0" } },
+    })).toEqual({
+      type: "signal",
+      from: "peer-1",
+      to: "peer-2",
+      payload: { type: "offer", description: { type: "offer", sdp: "v=0" } },
+    });
+    expect(parseClientSignalMessage({
+      type: "signal",
+      to: "peer-2",
+      payload: { type: "ice", candidate: { candidate: "candidate" } },
+    })).toEqual({
+      type: "signal",
+      to: "peer-2",
+      payload: { type: "ice", candidate: { candidate: "candidate" } },
+    });
+  });
+
+  it("rejects malformed peer signals", () => {
+    expect(parseSignalEnvelope({
+      type: "signal",
+      from: "peer-1",
+      to: "peer-2",
+      payload: { type: "offer", description: { type: "answer", sdp: "v=0" } },
+    })).toBeNull();
+    expect(parseClientSignalMessage({
+      type: "signal",
+      to: "peer-2",
+      payload: { type: "ice", candidate: { candidate: "x".repeat(4097) } },
+    })).toBeNull();
   });
 });

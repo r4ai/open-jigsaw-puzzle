@@ -64,10 +64,12 @@ export function useImageTransfer({ send, broadcast, room, getPieces, onImageComp
     const chunks = chunkString(dataUrl);
     const startedAt = Date.now();
     setLoadingProgress({ phase: "sending", chunksSent: 0, totalChunks: chunks.length, byteLength: dataUrl.length, target: to ? "peer" : "all", startedAt });
+    const mimeType = dataUrl.slice(5, dataUrl.indexOf(";"));
+    if (mimeType !== "image/jpeg" && mimeType !== "image/png") return;
     const meta: ChannelMessage = {
       type: "image-meta",
       imageId,
-      mimeType: dataUrl.slice(5, dataUrl.indexOf(";")),
+      mimeType,
       width,
       height,
       chunks: chunks.length,

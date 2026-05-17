@@ -2,6 +2,7 @@ import { Link, Moon, Play, Sun } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { DIFFICULTIES, type Difficulty } from "@open-puzzle/shared/protocol";
+import { apiClient, apiErrorMessage } from "../api/client";
 import styles from "./HomePage.module.css";
 
 type Props = {
@@ -23,17 +24,14 @@ export function HomePage({ theme, name, onNameChange, onToggleTheme }: Props) {
     setError(null);
     setCreating(true);
     try {
-      const response = await fetch("/api/rooms", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ difficulty }),
+      const { data, error } = await apiClient.POST("/api/rooms", {
+        body: { difficulty },
       });
-      const payload = (await response.json()) as { room?: { id: string }; error?: string };
-      if (!response.ok || !payload.room) {
-        setError(payload.error ?? "部屋を作成できませんでした");
+      if (!data) {
+        setError(apiErrorMessage(error, "部屋を作成できませんでした"));
         return;
       }
-      await navigate({ to: "/rooms/$roomId", params: { roomId: payload.room.id } });
+      await navigate({ to: "/rooms/$roomId", params: { roomId: data.room.id } });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unexpected error.");
     } finally {

@@ -1,4 +1,7 @@
+import * as v from "valibot";
+
 export const DIFFICULTIES = [48, 96, 192] as const;
+export const ROOM_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const ROOM_ID_LENGTH = 10;
 export const ROOM_TTL_SECONDS = 60 * 60 * 2;
 export const MAX_PARTICIPANTS = 6;
@@ -10,223 +13,267 @@ export const MAX_IMAGE_EDGE = 1280;
 export const MAX_SYNCED_PIECES = 192;
 export const MAX_COORDINATE = 1_000_000_000;
 export const MAX_Z_INDEX = 1_000_000_000;
+export const MAX_SIGNALING_MESSAGE_BYTES = 64 * 1024;
 
-export type Difficulty = (typeof DIFFICULTIES)[number];
+export const DifficultySchema = v.picklist(DIFFICULTIES);
 
-export type RoomSummary = {
-  id: string;
-  difficulty: Difficulty;
-  expiresAt: number;
-  participantCount: number;
-};
+const NonEmptyStringSchema = v.pipe(v.string(), v.minLength(1));
+export const RoomIdSchema = v.pipe(
+  v.string(),
+  v.trim(),
+  v.toUpperCase(),
+  v.length(ROOM_ID_LENGTH),
+  v.regex(new RegExp(`^[${ROOM_ID_ALPHABET}]+$`)),
+);
+const ParticipantIdSchema = v.pipe(v.string(), v.minLength(1), v.maxLength(64));
+const SafeNameSchema = v.pipe(v.string(), v.minLength(1), v.maxLength(24));
+const ImageIdSchema = v.pipe(v.string(), v.minLength(1), v.maxLength(80));
+const PieceIdSchema = v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(MAX_SYNCED_PIECES - 1));
+const CoordinateSchema = v.pipe(v.number(), v.finite(), v.minValue(-MAX_COORDINATE), v.maxValue(MAX_COORDINATE));
+const ZIndexSchema = v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(MAX_Z_INDEX));
+const PositiveIntegerSchema = v.pipe(v.number(), v.integer(), v.minValue(1));
+const NonNegativeIntegerSchema = v.pipe(v.number(), v.integer(), v.minValue(0));
 
-export type IceConfig = {
-  iceServers: IceServerConfig[];
-};
+export const ErrorResponseSchema = v.object({
+  error: v.string(),
+});
 
-export type IceServerConfig = {
-  urls: string | string[];
-  username?: string;
-  credential?: string;
-};
+export const RoomSummarySchema = v.object({
+  id: NonEmptyStringSchema,
+  difficulty: DifficultySchema,
+  expiresAt: NonNegativeIntegerSchema,
+  participantCount: NonNegativeIntegerSchema,
+});
 
-export type Participant = {
-  id: string;
-  name: string;
-  isHost: boolean;
-};
+export const RoomResponseSchema = v.object({
+  room: RoomSummarySchema,
+});
 
-export type SignalEnvelope =
-  | {
-      type: "hello";
-      participantId: string;
-      participants: Participant[];
-      room: RoomSummary;
-    }
-  | {
-      type: "peer-joined";
-      participant: Participant;
-      participants: Participant[];
-    }
-  | {
-      type: "peer-left";
-      participantId: string;
-      hostId: string | null;
-      participants: Participant[];
-    }
-  | {
-      type: "participant-updated";
-      participant: Participant;
-      participants: Participant[];
-    }
-  | {
-      type: "signal";
-      from: string;
-      to: string;
-      payload: PeerSignal;
-    }
-  | {
-      type: "error";
-      message: string;
-    };
+export const CreateRoomRequestSchema = v.object({
+  difficulty: DifficultySchema,
+});
 
-export type PeerSignal =
-  | { type: "offer"; description: SessionDescriptionInit }
-  | { type: "answer"; description: SessionDescriptionInit }
-  | { type: "ice"; candidate: IceCandidateInit };
+export const RoomIdParamsSchema = v.object({
+  roomId: RoomIdSchema,
+});
 
-export type SessionDescriptionInit = {
-  type: "offer" | "answer" | "pranswer" | "rollback";
-  sdp?: string;
-};
+export const IceServerConfigSchema = v.object({
+  urls: v.union([v.string(), v.array(v.string())]),
+  username: v.optional(v.string()),
+  credential: v.optional(v.string()),
+});
 
-export type IceCandidateInit = {
-  candidate?: string;
-  sdpMid?: string | null;
-  sdpMLineIndex?: number | null;
-  usernameFragment?: string | null;
-};
+export const IceConfigSchema = v.object({
+  iceServers: v.array(IceServerConfigSchema),
+});
 
-export type ChannelMessage =
-  | { type: "presence"; participantId: string; name: string; cursor: { x: number; y: number } | null }
-  | { type: "request-image"; participantId: string }
-  | { type: "image-meta"; imageId: string; mimeType: string; width: number; height: number; chunks: number; byteLength: number }
-  | { type: "image-chunk"; imageId: string; index: number; data: string }
-  | { type: "piece-front"; pieceId: number; z: number; by: string }
-  | { type: "piece-move"; pieceId: number; x: number; y: number; z: number; by: string }
-  | { type: "piece-lock"; pieceId: number; x: number; y: number; z: number; by: string }
-  | { type: "selection-presence"; participantId: string; pieceIds: number[]; imageOverlaySelected: boolean }
-  | { type: "state-sync"; pieces: SyncedPiece[]; lockedCount: number }
-  | { type: "image-overlay"; x: number; y: number; locked: boolean; opacity: number };
+export const ParticipantSchema = v.object({
+  id: ParticipantIdSchema,
+  name: SafeNameSchema,
+  isHost: v.boolean(),
+});
 
-export type SyncedPiece = {
-  id: number;
-  x: number;
-  y: number;
-  z: number;
-  locked: boolean;
-};
+export const SessionDescriptionInitSchema = v.object({
+  type: v.picklist(["offer", "answer", "pranswer", "rollback"] as const),
+  sdp: v.optional(v.pipe(v.string(), v.maxLength(MAX_SIGNALING_MESSAGE_BYTES))),
+});
+
+export const IceCandidateInitSchema = v.object({
+  candidate: v.optional(v.pipe(v.string(), v.maxLength(4096))),
+  sdpMid: v.optional(v.union([v.pipe(v.string(), v.maxLength(128)), v.null_()])),
+  sdpMLineIndex: v.optional(v.union([v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(256)), v.null_()])),
+  usernameFragment: v.optional(v.union([v.pipe(v.string(), v.maxLength(256)), v.null_()])),
+});
+
+export const PeerSignalSchema = v.variant("type", [
+  v.object({
+    type: v.literal("offer"),
+    description: v.object({
+      type: v.literal("offer"),
+      sdp: v.optional(v.pipe(v.string(), v.maxLength(MAX_SIGNALING_MESSAGE_BYTES))),
+    }),
+  }),
+  v.object({
+    type: v.literal("answer"),
+    description: v.object({
+      type: v.literal("answer"),
+      sdp: v.optional(v.pipe(v.string(), v.maxLength(MAX_SIGNALING_MESSAGE_BYTES))),
+    }),
+  }),
+  v.object({
+    type: v.literal("ice"),
+    candidate: IceCandidateInitSchema,
+  }),
+]);
+
+export const SignalEnvelopeSchema = v.variant("type", [
+  v.object({
+    type: v.literal("hello"),
+    participantId: ParticipantIdSchema,
+    participants: v.array(ParticipantSchema),
+    room: RoomSummarySchema,
+  }),
+  v.object({
+    type: v.literal("peer-joined"),
+    participant: ParticipantSchema,
+    participants: v.array(ParticipantSchema),
+  }),
+  v.object({
+    type: v.literal("peer-left"),
+    participantId: ParticipantIdSchema,
+    hostId: v.union([ParticipantIdSchema, v.null_()]),
+    participants: v.array(ParticipantSchema),
+  }),
+  v.object({
+    type: v.literal("participant-updated"),
+    participant: ParticipantSchema,
+    participants: v.array(ParticipantSchema),
+  }),
+  v.object({
+    type: v.literal("signal"),
+    from: ParticipantIdSchema,
+    to: ParticipantIdSchema,
+    payload: PeerSignalSchema,
+  }),
+  v.object({
+    type: v.literal("error"),
+    message: v.string(),
+  }),
+]);
+
+export const ClientSignalMessageSchema = v.variant("type", [
+  v.object({
+    type: v.literal("signal"),
+    to: ParticipantIdSchema,
+    payload: PeerSignalSchema,
+  }),
+  v.object({
+    type: v.literal("update-name"),
+    name: v.unknown(),
+  }),
+]);
+
+const CursorSchema = v.object({
+  x: CoordinateSchema,
+  y: CoordinateSchema,
+});
+
+const SyncedPieceSchema = v.object({
+  id: PieceIdSchema,
+  x: CoordinateSchema,
+  y: CoordinateSchema,
+  z: ZIndexSchema,
+  locked: v.boolean(),
+});
+
+const SelectionPieceIdsSchema = v.pipe(
+  v.array(PieceIdSchema),
+  v.maxLength(MAX_SYNCED_PIECES),
+  v.check((pieceIds) => new Set(pieceIds).size === pieceIds.length, "Piece ids must be unique."),
+);
+
+const SyncedPiecesSchema = v.pipe(v.array(SyncedPieceSchema), v.maxLength(MAX_SYNCED_PIECES));
+
+export const ChannelMessageSchema = v.variant("type", [
+  v.object({
+    type: v.literal("presence"),
+    participantId: ParticipantIdSchema,
+    name: SafeNameSchema,
+    cursor: v.union([CursorSchema, v.null_()]),
+  }),
+  v.object({
+    type: v.literal("request-image"),
+    participantId: ParticipantIdSchema,
+  }),
+  v.object({
+    type: v.literal("image-meta"),
+    imageId: ImageIdSchema,
+    mimeType: v.picklist(["image/jpeg", "image/png"] as const),
+    width: v.pipe(PositiveIntegerSchema, v.maxValue(MAX_IMAGE_EDGE)),
+    height: v.pipe(PositiveIntegerSchema, v.maxValue(MAX_IMAGE_EDGE)),
+    chunks: v.pipe(PositiveIntegerSchema, v.maxValue(MAX_IMAGE_CHUNKS)),
+    byteLength: v.pipe(PositiveIntegerSchema, v.maxValue(MAX_IMAGE_BYTES)),
+  }),
+  v.object({
+    type: v.literal("image-chunk"),
+    imageId: ImageIdSchema,
+    index: NonNegativeIntegerSchema,
+    data: v.pipe(v.string(), v.minLength(1), v.maxLength(MAX_IMAGE_CHUNK_BYTES)),
+  }),
+  v.object({
+    type: v.literal("piece-front"),
+    pieceId: PieceIdSchema,
+    z: ZIndexSchema,
+    by: ParticipantIdSchema,
+  }),
+  v.object({
+    type: v.literal("piece-move"),
+    pieceId: PieceIdSchema,
+    x: CoordinateSchema,
+    y: CoordinateSchema,
+    z: ZIndexSchema,
+    by: ParticipantIdSchema,
+  }),
+  v.object({
+    type: v.literal("piece-lock"),
+    pieceId: PieceIdSchema,
+    x: CoordinateSchema,
+    y: CoordinateSchema,
+    z: ZIndexSchema,
+    by: ParticipantIdSchema,
+  }),
+  v.object({
+    type: v.literal("selection-presence"),
+    participantId: ParticipantIdSchema,
+    pieceIds: SelectionPieceIdsSchema,
+    imageOverlaySelected: v.boolean(),
+  }),
+  v.pipe(
+    v.object({
+      type: v.literal("state-sync"),
+      pieces: SyncedPiecesSchema,
+      lockedCount: NonNegativeIntegerSchema,
+    }),
+    v.check((message) => message.lockedCount <= message.pieces.length, "Locked count cannot exceed piece count."),
+  ),
+  v.object({
+    type: v.literal("image-overlay"),
+    x: CoordinateSchema,
+    y: CoordinateSchema,
+    locked: v.optional(v.boolean(), false),
+    opacity: v.optional(v.pipe(v.number(), v.finite(), v.minValue(0), v.maxValue(1)), 1),
+  }),
+]);
+
+export type Difficulty = v.InferOutput<typeof DifficultySchema>;
+export type RoomSummary = v.InferOutput<typeof RoomSummarySchema>;
+export type IceConfig = v.InferOutput<typeof IceConfigSchema>;
+export type IceServerConfig = v.InferOutput<typeof IceServerConfigSchema>;
+export type Participant = v.InferOutput<typeof ParticipantSchema>;
+export type SignalEnvelope = v.InferOutput<typeof SignalEnvelopeSchema>;
+export type PeerSignal = v.InferOutput<typeof PeerSignalSchema>;
+export type SessionDescriptionInit = v.InferOutput<typeof SessionDescriptionInitSchema>;
+export type IceCandidateInit = v.InferOutput<typeof IceCandidateInitSchema>;
+export type ChannelMessage = v.InferOutput<typeof ChannelMessageSchema>;
+export type SyncedPiece = v.InferOutput<typeof SyncedPieceSchema>;
+export type ClientSignalMessage = v.InferOutput<typeof ClientSignalMessageSchema>;
+export type CreateRoomRequest = v.InferOutput<typeof CreateRoomRequestSchema>;
 
 export function parseChannelMessage(value: unknown): ChannelMessage | null {
-  if (!isRecord(value) || typeof value.type !== "string") return null;
-
-  switch (value.type) {
-    case "presence":
-      if (!isParticipantId(value.participantId) || !isSafeName(value.name)) return null;
-      {
-        const cursor = parseCursor(value.cursor);
-        if (cursor === undefined) return null;
-        return { type: "presence", participantId: value.participantId, name: value.name, cursor };
-      }
-    case "request-image":
-      return isParticipantId(value.participantId) ? { type: "request-image", participantId: value.participantId } : null;
-    case "image-meta":
-      if (!isImageId(value.imageId) || !isSafeImageMimeType(value.mimeType)) return null;
-      if (!isPositiveInteger(value.width) || !isPositiveInteger(value.height)) return null;
-      if (value.width > MAX_IMAGE_EDGE || value.height > MAX_IMAGE_EDGE) return null;
-      if (!isPositiveInteger(value.chunks) || value.chunks > MAX_IMAGE_CHUNKS) return null;
-      if (!isPositiveInteger(value.byteLength) || value.byteLength > MAX_IMAGE_BYTES) return null;
-      return {
-        type: "image-meta",
-        imageId: value.imageId,
-        mimeType: value.mimeType,
-        width: value.width,
-        height: value.height,
-        chunks: value.chunks,
-        byteLength: value.byteLength,
-      };
-    case "image-chunk":
-      if (!isImageId(value.imageId) || !isNonNegativeInteger(value.index)) return null;
-      if (typeof value.data !== "string" || value.data.length === 0 || value.data.length > MAX_IMAGE_CHUNK_BYTES) return null;
-      return { type: "image-chunk", imageId: value.imageId, index: value.index, data: value.data };
-    case "piece-front":
-      if (!isPieceId(value.pieceId) || !isZIndex(value.z) || !isParticipantId(value.by)) return null;
-      return { type: "piece-front", pieceId: value.pieceId, z: value.z, by: value.by };
-    case "piece-move":
-      if (!isPieceId(value.pieceId) || !isCoordinate(value.x) || !isCoordinate(value.y) || !isZIndex(value.z) || !isParticipantId(value.by)) return null;
-      return { type: "piece-move", pieceId: value.pieceId, x: value.x, y: value.y, z: value.z, by: value.by };
-    case "piece-lock":
-      if (!isPieceId(value.pieceId) || !isCoordinate(value.x) || !isCoordinate(value.y) || !isZIndex(value.z) || !isParticipantId(value.by)) return null;
-      return { type: "piece-lock", pieceId: value.pieceId, x: value.x, y: value.y, z: value.z, by: value.by };
-    case "selection-presence":
-      if (!isParticipantId(value.participantId) || !Array.isArray(value.pieceIds) || typeof value.imageOverlaySelected !== "boolean") return null;
-      if (value.pieceIds.length > MAX_SYNCED_PIECES) return null;
-      {
-        const pieceIds = value.pieceIds.flatMap((pieceId) => (isPieceId(pieceId) ? [pieceId] : []));
-        if (pieceIds.length !== value.pieceIds.length) return null;
-        if (new Set(pieceIds).size !== pieceIds.length) return null;
-        return { type: "selection-presence", participantId: value.participantId, pieceIds, imageOverlaySelected: value.imageOverlaySelected };
-      }
-    case "state-sync":
-      if (!Array.isArray(value.pieces) || value.pieces.length > MAX_SYNCED_PIECES) return null;
-      if (!isNonNegativeInteger(value.lockedCount) || value.lockedCount > value.pieces.length) return null;
-      {
-        const pieces = value.pieces.flatMap((piece) => {
-          const parsed = parseSyncedPiece(piece);
-          return parsed ? [parsed] : [];
-        });
-        if (pieces.length !== value.pieces.length) return null;
-        return { type: "state-sync", pieces, lockedCount: value.lockedCount };
-      }
-    case "image-overlay": {
-      if (!isCoordinate(value.x) || !isCoordinate(value.y)) return null;
-      const locked = typeof value.locked === "boolean" ? value.locked : false;
-      const rawOpacity = typeof value.opacity === "number" && Number.isFinite(value.opacity) ? value.opacity : 1;
-      return { type: "image-overlay", x: value.x, y: value.y, locked, opacity: Math.max(0, Math.min(1, rawOpacity)) };
-    }
-    default:
-      return null;
-  }
+  const result = v.safeParse(ChannelMessageSchema, value);
+  return result.success ? result.output : null;
 }
 
-function parseSyncedPiece(value: unknown): SyncedPiece | null {
-  if (!isRecord(value)) return null;
-  if (!isPieceId(value.id) || !isCoordinate(value.x) || !isCoordinate(value.y) || !isZIndex(value.z) || typeof value.locked !== "boolean") return null;
-  return { id: value.id, x: value.x, y: value.y, z: value.z, locked: value.locked };
+export function parseSignalEnvelope(value: unknown): SignalEnvelope | null {
+  const result = v.safeParse(SignalEnvelopeSchema, value);
+  return result.success ? result.output : null;
 }
 
-function parseCursor(value: unknown): { x: number; y: number } | null | undefined {
-  if (value === null) return null;
-  if (!isRecord(value) || !isCoordinate(value.x) || !isCoordinate(value.y)) return undefined;
-  return { x: value.x, y: value.y };
+export function parseClientSignalMessage(value: unknown): ClientSignalMessage | null {
+  const result = v.safeParse(ClientSignalMessageSchema, value);
+  return result.success ? result.output : null;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isSafeImageMimeType(value: unknown): value is "image/jpeg" | "image/png" {
-  return value === "image/jpeg" || value === "image/png";
-}
-
-function isParticipantId(value: unknown): value is string {
-  return typeof value === "string" && value.length > 0 && value.length <= 64;
-}
-
-function isImageId(value: unknown): value is string {
-  return typeof value === "string" && value.length > 0 && value.length <= 80;
-}
-
-function isSafeName(value: unknown): value is string {
-  return typeof value === "string" && value.length > 0 && value.length <= 24;
-}
-
-function isPieceId(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value < MAX_SYNCED_PIECES;
-}
-
-function isCoordinate(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= MAX_COORDINATE;
-}
-
-function isZIndex(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= MAX_Z_INDEX;
-}
-
-function isPositiveInteger(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value > 0;
-}
-
-function isNonNegativeInteger(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+export function isPeerSignal(value: unknown): value is PeerSignal {
+  return v.safeParse(PeerSignalSchema, value).success;
 }
