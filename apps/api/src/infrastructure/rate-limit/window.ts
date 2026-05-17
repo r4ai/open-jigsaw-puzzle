@@ -1,4 +1,7 @@
-import type { RateBucket } from "./types";
+export type RateBucket = {
+  windowStartedAt: number;
+  count: number;
+};
 
 export function consumeRateLimit(buckets: Map<string, RateBucket>, key: string, limit: number, now = Date.now()): boolean {
   for (const [bucketKey, bucket] of buckets) {

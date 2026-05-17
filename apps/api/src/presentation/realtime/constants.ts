@@ -1,0 +1,1 @@
+export const MAX_WS_MESSAGES_PER_MINUTE = 1_800;

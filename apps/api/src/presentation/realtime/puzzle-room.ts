@@ -7,14 +7,20 @@ import {
   type SignalEnvelope,
 } from "@open-puzzle/shared/protocol";
 import { assertCanJoin, normalizeRoomId, sanitizeName } from "@open-puzzle/shared/rooms";
+import { roomSummary } from "../../application/rooms";
+import type { Env } from "../../infrastructure/cloudflare/bindings";
+import { readEnvPositiveInteger } from "../../infrastructure/cloudflare/env";
+import { createD1RoomEventRepository, createD1RoomRepository } from "../../infrastructure/d1/rooms-repository";
+import { json, parseJson } from "../../infrastructure/http/json";
+import { consumeSocketRateLimit, type RateBucket } from "../../infrastructure/rate-limit/window";
+import { systemClock } from "../../infrastructure/time/clock";
 import { MAX_WS_MESSAGES_PER_MINUTE } from "./constants";
-import { readEnvPositiveInteger } from "./env";
-import { json, parseJson } from "./http";
-import { consumeSocketRateLimit } from "./rate-limit";
-import { readRoom, recordEvent, touchRoom } from "./rooms-repository";
-import { roomSummary } from "./rooms-service";
-import { systemClock } from "./time";
-import type { Env, RateBucket, SocketAttachment } from "./types";
+
+type SocketAttachment = {
+  participantId: string;
+  name: string;
+  isHost: boolean;
+};
 
 export class PuzzleRoom implements DurableObject {
   private sessions = new Map<WebSocket, SocketAttachment>();
@@ -38,13 +44,15 @@ export class PuzzleRoom implements DurableObject {
     if (upgradeHeader !== "websocket") return json({ error: "Expected WebSocket upgrade." }, 426);
     if (!roomId) return json({ error: "Room id is required." }, 400);
 
-    const room = await readRoom(this.env.DB, roomId);
+    const rooms = createD1RoomRepository(this.env.DB, systemClock);
+    const events = createD1RoomEventRepository(this.env.DB, systemClock);
+    const room = await rooms.read(roomId);
     if (!room) return json({ error: "Room not found." }, 404);
 
     const now = systemClock();
     const maxParticipants = readEnvPositiveInteger(this.env.MAX_PARTICIPANTS, MAX_PARTICIPANTS);
     try {
-      assertCanJoin(this.sessions.size, now, room.expires_at, maxParticipants);
+      assertCanJoin(this.sessions.size, now, room.expiresAt, maxParticipants);
     } catch (error) {
       return json({ error: error instanceof Error ? error.message : "Unable to join room." }, 409);
     }
@@ -65,7 +73,7 @@ export class PuzzleRoom implements DurableObject {
     this.sessions.set(server, attachment);
 
     const participant = toParticipant(attachment);
-    const updatedRoom = await touchRoom(this.env.DB, roomId, this.sessions.size, readEnvPositiveInteger(this.env.ROOM_TTL_SECONDS, ROOM_TTL_SECONDS), systemClock);
+    const updatedRoom = await rooms.touch(roomId, this.sessions.size, readEnvPositiveInteger(this.env.ROOM_TTL_SECONDS, ROOM_TTL_SECONDS));
     const participants = this.participants();
 
     this.send(server, {
@@ -83,7 +91,7 @@ export class PuzzleRoom implements DurableObject {
       server,
     );
 
-    await recordEvent(this.env.DB, roomId, "join", { participantId, name }, systemClock);
+    await events.record(roomId, "join", { participantId, name });
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -114,7 +122,7 @@ export class PuzzleRoom implements DurableObject {
         participant,
         participants,
       });
-      this.state.waitUntil(recordEvent(this.env.DB, this.state.id.name || "", "rename", { participantId: sender.participantId, name: nextName }, systemClock));
+      this.state.waitUntil(createD1RoomEventRepository(this.env.DB, systemClock).record(this.state.id.name || "", "rename", { participantId: sender.participantId, name: nextName }));
       return;
     }
 
@@ -159,8 +167,10 @@ export class PuzzleRoom implements DurableObject {
     }
 
     const roomId = this.state.id.name || "";
-    this.state.waitUntil(touchRoom(this.env.DB, roomId, this.sessions.size, readEnvPositiveInteger(this.env.ROOM_TTL_SECONDS, ROOM_TTL_SECONDS), systemClock));
-    this.state.waitUntil(recordEvent(this.env.DB, roomId, "leave", { participantId: attachment.participantId }, systemClock));
+    const rooms = createD1RoomRepository(this.env.DB, systemClock);
+    const events = createD1RoomEventRepository(this.env.DB, systemClock);
+    this.state.waitUntil(rooms.touch(roomId, this.sessions.size, readEnvPositiveInteger(this.env.ROOM_TTL_SECONDS, ROOM_TTL_SECONDS)));
+    this.state.waitUntil(events.record(roomId, "leave", { participantId: attachment.participantId }));
 
     const participants = this.participants();
     this.broadcast({

@@ -1,7 +1,7 @@
-export { createApp } from "./app";
-export { readEnvPositiveInteger } from "./env";
-export { PuzzleRoom } from "./puzzle-room";
+export { createApp } from "./presentation/http/app";
+export { readEnvPositiveInteger } from "./infrastructure/cloudflare/env";
+export { PuzzleRoom } from "./presentation/realtime/puzzle-room";
 
-import { createApp } from "./app";
+import { createApp } from "./presentation/http/app";
 
 export default createApp();

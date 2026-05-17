@@ -1,7 +1,12 @@
 import type { IceConfig, IceServerConfig } from "@open-puzzle/shared/protocol";
-import type { Env } from "./types";
 
-export function getIceConfig(env: Env): IceConfig {
+export type IceConfigSource = {
+  TURN_URLS?: string;
+  TURN_USERNAME?: string;
+  TURN_CREDENTIAL?: string;
+};
+
+export function getIceConfig(env: IceConfigSource): IceConfig {
   const servers: IceServerConfig[] = [{ urls: "stun:stun.cloudflare.com:3478" }];
   const turnUrls = env.TURN_URLS?.split(",").flatMap((url) => {
     const trimmed = url.trim();

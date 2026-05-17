@@ -1,16 +1,18 @@
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { describeRoute, openAPIRouteHandler, validator } from "hono-openapi";
-import { CreateRoomRequestSchema, RoomIdParamsSchema } from "@open-puzzle/shared/protocol";
+import { CreateRoomRequestSchema, ROOM_TTL_SECONDS, RoomIdParamsSchema } from "@open-puzzle/shared/protocol";
 import { normalizeRoomId } from "@open-puzzle/shared/rooms";
-import { serveAssetOrSpa } from "./assets";
+import { getIceConfig } from "../../application/ice";
+import { createRoom, getRoom } from "../../application/rooms";
+import { serveAssetOrSpa } from "../../infrastructure/cloudflare/assets";
+import { readEnvPositiveInteger } from "../../infrastructure/cloudflare/env";
+import type { Env } from "../../infrastructure/cloudflare/bindings";
+import { createD1RoomEventRepository, createD1RoomRepository } from "../../infrastructure/d1/rooms-repository";
+import { getClientKey, consumeRateLimit, type RateBucket } from "../../infrastructure/rate-limit/window";
+import { systemClock } from "../../infrastructure/time/clock";
 import { MAX_CREATE_ROOM_BODY_BYTES, MAX_CREATE_ROOM_REQUESTS_PER_MINUTE, SECURITY_HEADERS } from "./constants";
-import { getIceConfig } from "./ice";
 import { ERROR_RESPONSES, ICE_RESPONSE_CONTENT, OPENAPI_DOCUMENTATION, ROOM_RESPONSE_CONTENT } from "./openapi";
-import { getClientKey, consumeRateLimit } from "./rate-limit";
-import { createRoom, getRoom } from "./rooms-service";
-import { systemClock } from "./time";
-import type { Env, RateBucket } from "./types";
 
 const createRoomRateLimits = new Map<string, RateBucket>();
 
@@ -42,7 +44,13 @@ export function createApp(): Hono<{ Bindings: Env }> {
     }),
     async (c) => {
       const body = c.req.valid("json");
-      const room = await createRoom(c.env, body.difficulty, systemClock);
+      const clock = systemClock;
+      const room = await createRoom(
+        createD1RoomRepository(c.env.DB, clock),
+        createD1RoomEventRepository(c.env.DB, clock),
+        body.difficulty,
+        readEnvPositiveInteger(c.env.ROOM_TTL_SECONDS, ROOM_TTL_SECONDS),
+      );
       if (!room) return c.json({ error: "Unable to create room." }, 500);
       return c.json({ room }, 201);
     },
@@ -68,7 +76,7 @@ export function createApp(): Hono<{ Bindings: Env }> {
     async (c) => {
       const roomId = normalizeRoomId(c.req.valid("param").roomId);
       if (!roomId) return c.json({ error: "Room id is required." }, 400);
-      const room = await getRoom(c.env, roomId, systemClock);
+      const room = await getRoom(createD1RoomRepository(c.env.DB, systemClock), roomId, systemClock);
       if (room === "not-found") return c.json({ error: "Room not found." }, 404);
       if (room === "expired") return c.json({ error: "Room has expired." }, 410);
       return c.json({ room });

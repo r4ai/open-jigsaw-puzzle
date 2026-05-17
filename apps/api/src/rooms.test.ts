@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { MAX_PARTICIPANTS, ROOM_TTL_SECONDS } from "@open-puzzle/shared/protocol";
 import { assertCanJoin, expiresAt, parseDifficulty } from "@open-puzzle/shared/rooms";
-import { createApp } from "./app";
-import { getIceConfig } from "./ice";
+import { getIceConfig } from "./application/ice";
+import type { Env } from "./infrastructure/cloudflare/bindings";
+import { createApp } from "./presentation/http/app";
 import { readEnvPositiveInteger } from "./index";
-import type { Env } from "./types";
 
 describe("worker room constraints", () => {
   it("uses the approved difficulty set", () => {

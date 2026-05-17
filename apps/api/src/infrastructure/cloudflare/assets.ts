@@ -1,4 +1,4 @@
-import type { Env } from "./types";
+import type { Env } from "./bindings";
 
 export async function serveAssetOrSpa(request: Request, env: Env): Promise<Response> {
   const assetResponse = await env.ASSETS.fetch(request);

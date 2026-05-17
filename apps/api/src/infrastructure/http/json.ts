@@ -1,4 +1,4 @@
-import { JSON_HEADERS } from "./constants";
+const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
 
 export function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: JSON_HEADERS });

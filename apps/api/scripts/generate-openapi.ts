@@ -1,8 +1,8 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { generateSpecs } from "hono-openapi";
-import { createApp } from "../src/app";
-import { OPENAPI_DOCUMENTATION } from "../src/openapi";
+import { createApp } from "../src/presentation/http/app";
+import { OPENAPI_DOCUMENTATION } from "../src/presentation/http/openapi";
 
 const outputPath = resolve("apps/api/openapi.json");
 const spec = await generateSpecs(createApp(), {
