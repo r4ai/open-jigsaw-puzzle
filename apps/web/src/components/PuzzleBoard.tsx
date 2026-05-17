@@ -134,7 +134,6 @@ export function PuzzleBoard({
                   top: `${margin + imageOverlayPosition.y}px`,
                   width: `${layout.boardWidth}px`,
                   height: `${layout.boardHeight}px`,
-                  opacity: imageOverlayOpacity,
                   "--my-selection-color": myColor ?? "transparent",
                   "--remote-selection-color": remoteImageOverlayColor ?? "transparent",
                 } as React.CSSProperties & Record<"--my-selection-color" | "--remote-selection-color", string>}
@@ -144,6 +143,7 @@ export function PuzzleBoard({
                   src={imageDataUrl}
                   alt="元の画像"
                   className={styles.imageOverlayImg}
+                  style={{ opacity: imageOverlayOpacity }}
                   draggable={false}
                 />
               </div>
