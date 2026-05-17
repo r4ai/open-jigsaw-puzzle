@@ -30,7 +30,30 @@ describe("puzzle geometry", () => {
     }
   });
 
-  it("shares reversed organic edge profiles between neighboring pieces", () => {
+  it("keeps outside puzzle edges straight", () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+
+    for (const piece of layout.pieces) {
+      if (piece.row === 0) {
+        expect(piece.edges.top).toBe(0);
+        expect(piece.edgeProfiles.top).toBeNull();
+      }
+      if (piece.col === layout.cols - 1) {
+        expect(piece.edges.right).toBe(0);
+        expect(piece.edgeProfiles.right).toBeNull();
+      }
+      if (piece.row === layout.rows - 1) {
+        expect(piece.edges.bottom).toBe(0);
+        expect(piece.edgeProfiles.bottom).toBeNull();
+      }
+      if (piece.col === 0) {
+        expect(piece.edges.left).toBe(0);
+        expect(piece.edgeProfiles.left).toBeNull();
+      }
+    }
+  });
+
+  it("shares reversed interlocking edge profiles between neighboring pieces", () => {
     const layout = createPuzzleLayout(48, 1200, 800);
 
     for (const piece of layout.pieces) {
@@ -38,12 +61,13 @@ describe("puzzle geometry", () => {
         const right = layout.pieces[piece.id + 1]!;
         expect(piece.edgeProfiles.right).not.toBeNull();
         expect(right.edgeProfiles.left).toMatchObject({
-          shoulderStart: 1 - piece.edgeProfiles.right!.shoulderEnd,
-          shoulderEnd: 1 - piece.edgeProfiles.right!.shoulderStart,
-          headStart: 1 - piece.edgeProfiles.right!.headEnd,
-          headEnd: 1 - piece.edgeProfiles.right!.headStart,
-          shoulderDepth: piece.edgeProfiles.right!.waistDepth,
-          waistDepth: piece.edgeProfiles.right!.shoulderDepth,
+          center: 1 - piece.edgeProfiles.right!.center,
+          neckWidth: piece.edgeProfiles.right!.neckWidth,
+          headWidth: piece.edgeProfiles.right!.headWidth,
+          tabDepth: piece.edgeProfiles.right!.tabDepth,
+          waistDepth: piece.edgeProfiles.right!.waistDepth,
+          shoulderWidth: piece.edgeProfiles.right!.shoulderWidth,
+          skew: -piece.edgeProfiles.right!.skew,
           reverse: true,
         });
       }
@@ -52,15 +76,37 @@ describe("puzzle geometry", () => {
         const below = layout.pieces[piece.id + layout.cols]!;
         expect(piece.edgeProfiles.bottom).not.toBeNull();
         expect(below.edgeProfiles.top).toMatchObject({
-          shoulderStart: 1 - piece.edgeProfiles.bottom!.shoulderEnd,
-          shoulderEnd: 1 - piece.edgeProfiles.bottom!.shoulderStart,
-          headStart: 1 - piece.edgeProfiles.bottom!.headEnd,
-          headEnd: 1 - piece.edgeProfiles.bottom!.headStart,
-          shoulderDepth: piece.edgeProfiles.bottom!.waistDepth,
-          waistDepth: piece.edgeProfiles.bottom!.shoulderDepth,
+          center: 1 - piece.edgeProfiles.bottom!.center,
+          neckWidth: piece.edgeProfiles.bottom!.neckWidth,
+          headWidth: piece.edgeProfiles.bottom!.headWidth,
+          tabDepth: piece.edgeProfiles.bottom!.tabDepth,
+          waistDepth: piece.edgeProfiles.bottom!.waistDepth,
+          shoulderWidth: piece.edgeProfiles.bottom!.shoulderWidth,
+          skew: -piece.edgeProfiles.bottom!.skew,
           reverse: true,
         });
       }
+    }
+  });
+
+  it("creates finite classic tab and blank profile values", () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const profiles = layout.pieces.flatMap((piece) =>
+      [piece.edgeProfiles.top, piece.edgeProfiles.right, piece.edgeProfiles.bottom, piece.edgeProfiles.left].filter((profile) => profile !== null),
+    );
+
+    expect(layout.tabSize).toBeCloseTo(Math.min(layout.pieceWidth, layout.pieceHeight) * 0.24);
+    expect(profiles.length).toBeGreaterThan(0);
+    for (const profile of profiles) {
+      expect(Object.values(profile).every((value) => typeof value === "boolean" || Number.isFinite(value))).toBe(true);
+      expect(profile.center).toBeGreaterThanOrEqual(0.34);
+      expect(profile.center).toBeLessThanOrEqual(0.66);
+      expect(profile.neckWidth).toBeGreaterThanOrEqual(0.16);
+      expect(profile.neckWidth).toBeLessThanOrEqual(0.2);
+      expect(profile.headWidth).toBeGreaterThan(profile.neckWidth);
+      expect(profile.tabDepth).toBeGreaterThan(0.89);
+      expect(profile.waistDepth).toBeGreaterThan(0.11);
+      expect(profile.shoulderWidth).toBeGreaterThan(profile.headWidth);
     }
   });
 

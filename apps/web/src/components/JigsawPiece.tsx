@@ -15,7 +15,7 @@ type Props = {
 };
 
 export const JigsawPiece = memo(function JigsawPiece({ geometry, imageDataUrl, layout, pieceId, locked, selected, selectionColor, remoteColor }: Props) {
-  const tabSize = Math.min(layout.pieceWidth, layout.pieceHeight) * 0.22;
+  const tabSize = layout.tabSize;
   const path = createPiecePath(layout.pieceWidth, layout.pieceHeight, geometry, tabSize);
 
   return (

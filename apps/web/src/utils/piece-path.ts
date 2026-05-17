@@ -70,37 +70,60 @@ function createCurvedSegments(
   tabSize: number,
 ): Array<{ from: Point; cp1: Point; cp2: Point; to: Point }> {
   const p = profile ?? fallbackProfile;
-  const headLeft = p.headStart + (p.headEnd - p.headStart) * 0.36;
-  const headRight = p.headStart + (p.headEnd - p.headStart) * 0.64;
-  const curves = p.reverse
-    ? [p.startCurve, 0.04, 0.12, 0, -0.12, -0.05, p.endCurve]
-    : [p.startCurve, 0.05, 0.12, 0, -0.12, -0.04, p.endCurve];
-  const knots: Array<[number, number, number]> = [
-    [p.shoulderStart, 0, curves[0]!],
-    [p.headStart, p.shoulderDepth, curves[1]!],
-    [p.neckStart, p.neckDepth, curves[2]!],
-    [headLeft, p.headDepth, curves[3]!],
-    [headRight, p.headDepth, curves[4]!],
-    [p.neckEnd, p.neckDepth, curves[5]!],
-    [p.headEnd, p.waistDepth, curves[6]!],
-    [p.shoulderEnd, 0, 0],
-  ];
+  const knots = createInterlockKnots(p);
   const point = edgePointFactory(start, end, edge, normalX, normalY, tabSize);
   const segments: Array<{ from: Point; cp1: Point; cp2: Point; to: Point }> = [];
 
   for (let index = 0; index < knots.length - 1; index += 1) {
-    const [fromT, fromDepth, curve] = knots[index]!;
-    const [toT, toDepth] = knots[index + 1]!;
-    const span = (toT - fromT) * 0.48;
+    const from = knots[index]!;
+    const to = knots[index + 1]!;
+    const span = (to.t - from.t) / 3;
+    const fromSlope = knotSlope(knots, index);
+    const toSlope = knotSlope(knots, index + 1);
     segments.push({
-      from: point(fromT, fromDepth),
-      cp1: point(fromT + span, fromDepth + curve),
-      cp2: point(toT - span, toDepth - curve),
-      to: point(toT, toDepth),
+      from: point(from.t, from.depth),
+      cp1: point(from.t + span, from.depth + fromSlope * span),
+      cp2: point(to.t - span, to.depth - toSlope * span),
+      to: point(to.t, to.depth),
     });
   }
 
   return segments;
+}
+
+function createInterlockKnots(profile: PieceEdgeProfile): Array<{ t: number; depth: number }> {
+  const shoulderHalf = profile.shoulderWidth / 2;
+  const headHalf = profile.headWidth / 2;
+  const neckHalf = profile.neckWidth / 2;
+  const center = clamp(profile.center, 0.34, 0.66);
+  const leftShoulder = clamp(center - shoulderHalf, 0.08, 0.32);
+  const leftHead = clamp(center - headHalf - profile.skew * 0.25, leftShoulder + 0.04, center - neckHalf - 0.03);
+  const leftNeck = clamp(center - neckHalf + profile.skew * 0.15, leftHead + 0.035, center - 0.035);
+  const rightNeck = clamp(center + neckHalf + profile.skew * 0.15, center + 0.035, center + headHalf - 0.035);
+  const rightHead = clamp(center + headHalf - profile.skew * 0.25, rightNeck + 0.035, center + shoulderHalf - 0.04);
+  const rightShoulder = clamp(center + shoulderHalf, 0.68, 0.92);
+  const crownLeft = center - profile.headWidth * 0.14;
+  const crownRight = center + profile.headWidth * 0.14;
+  const neckDepth = 0.28;
+
+  return [
+    { t: leftShoulder, depth: 0 },
+    { t: leftHead, depth: -profile.waistDepth },
+    { t: leftNeck, depth: neckDepth },
+    { t: crownLeft, depth: profile.tabDepth },
+    { t: center, depth: profile.tabDepth * 1.06 },
+    { t: crownRight, depth: profile.tabDepth },
+    { t: rightNeck, depth: neckDepth },
+    { t: rightHead, depth: -profile.waistDepth },
+    { t: rightShoulder, depth: 0 },
+  ];
+}
+
+function knotSlope(knots: Array<{ t: number; depth: number }>, index: number): number {
+  const previous = knots[Math.max(0, index - 1)]!;
+  const next = knots[Math.min(knots.length - 1, index + 1)]!;
+  const dt = next.t - previous.t;
+  return dt === 0 ? 0 : (next.depth - previous.depth) / dt;
 }
 
 function sampleEdge(
@@ -144,20 +167,19 @@ function cubicPoint(a: Point, b: Point, c: Point, d: Point, t: number): Point {
 }
 
 const fallbackProfile: PieceEdgeProfile = {
-  shoulderStart: 0.24,
-  neckStart: 0.43,
-  headStart: 0.36,
-  headEnd: 0.64,
-  neckEnd: 0.57,
-  shoulderEnd: 0.76,
-  neckDepth: 0.45,
-  headDepth: 1.03,
-  waistDepth: 0.35,
-  shoulderDepth: 0,
-  startCurve: 0,
-  endCurve: 0,
+  center: 0.5,
+  neckWidth: 0.18,
+  headWidth: 0.38,
+  tabDepth: 1,
+  waistDepth: 0.15,
+  shoulderWidth: 0.62,
+  skew: 0,
   reverse: false,
 };
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
 
 function formatPoint(point: { x: number; y: number }): string {
   return `${r(point.x)} ${r(point.y)}`;

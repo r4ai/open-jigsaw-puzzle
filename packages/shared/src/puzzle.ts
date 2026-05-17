@@ -3,18 +3,13 @@ import type { Difficulty, SyncedPiece } from "./protocol";
 export type PieceEdge = -1 | 0 | 1;
 
 export type PieceEdgeProfile = {
-  shoulderStart: number;
-  neckStart: number;
-  headStart: number;
-  headEnd: number;
-  neckEnd: number;
-  shoulderEnd: number;
-  neckDepth: number;
-  headDepth: number;
+  center: number;
+  neckWidth: number;
+  headWidth: number;
+  tabDepth: number;
   waistDepth: number;
-  shoulderDepth: number;
-  startCurve: number;
-  endCurve: number;
+  shoulderWidth: number;
+  skew: number;
   reverse: boolean;
 };
 
@@ -50,6 +45,7 @@ export type PuzzleLayout = {
   boardHeight: number;
   pieceWidth: number;
   pieceHeight: number;
+  tabSize: number;
   pieces: PieceGeometry[];
 };
 
@@ -79,6 +75,7 @@ export function createPuzzleLayout(difficulty: Difficulty, imageWidth: number, i
   const { rows, cols } = factorGrid(difficulty, imageWidth, imageHeight);
   const pieceWidth = imageWidth / cols;
   const pieceHeight = imageHeight / rows;
+  const tabSize = Math.min(pieceWidth, pieceHeight) * 0.24;
   const pieces: PieceGeometry[] = [];
   const horizontalEdges = Array.from({ length: Math.max(0, rows - 1) }, (_, row) =>
     Array.from({ length: cols }, (_, col) => edgeDirection(row, col, "horizontal")),
@@ -134,6 +131,7 @@ export function createPuzzleLayout(difficulty: Difficulty, imageWidth: number, i
     boardHeight: imageHeight,
     pieceWidth,
     pieceHeight,
+    tabSize,
     pieces,
   };
 }
@@ -144,58 +142,42 @@ function edgeDirection(row: number, col: number, axis: "horizontal" | "vertical"
 
 function createEdgeProfile(row: number, col: number, axis: "horizontal" | "vertical", imageWidth: number, imageHeight: number): PieceEdgeProfile {
   const seed = Math.round(imageWidth * 13 + imageHeight * 29) + row * 10_007 + col * 1_009 + (axis === "horizontal" ? 3_001 : 7_003);
-  const center = 0.5 + (hashNoise(seed, 11) - 0.5) * 0.18;
-  const neckWidth = 0.14 + hashNoise(seed, 23) * 0.06;
-  const headWidth = 0.28 + hashNoise(seed, 37) * 0.07;
-  const shoulderWidth = 0.5 + hashNoise(seed, 41) * 0.08;
-  const neckStart = clamp(center - neckWidth / 2, 0.27, 0.46);
-  const neckEnd = clamp(center + neckWidth / 2, 0.54, 0.73);
-  const headStart = clamp(center - headWidth / 2, 0.19, neckStart - 0.02);
-  const headEnd = clamp(center + headWidth / 2, neckEnd + 0.02, 0.81);
-  const shoulderStart = clamp(center - shoulderWidth / 2, 0.12, headStart - 0.03);
-  const shoulderEnd = clamp(center + shoulderWidth / 2, headEnd + 0.03, 0.88);
+  const center = 0.5 + (hashNoise(seed, 11) - 0.5) * 0.12;
+  const neckWidth = 0.16 + hashNoise(seed, 23) * 0.04;
+  const headWidth = 0.34 + hashNoise(seed, 37) * 0.07;
+  const shoulderWidth = 0.58 + hashNoise(seed, 41) * 0.08;
 
   return {
-    shoulderStart,
-    neckStart,
-    headStart,
-    headEnd,
-    neckEnd,
-    shoulderEnd,
-    neckDepth: 0.35 + hashNoise(seed, 53) * 0.13,
-    headDepth: 0.86 + hashNoise(seed, 67) * 0.2,
-    waistDepth: 0.23 + hashNoise(seed, 71) * 0.14,
-    shoulderDepth: 0.04 + hashNoise(seed, 83) * 0.1,
-    startCurve: 0.015 + hashNoise(seed, 97) * 0.04,
-    endCurve: -0.015 - hashNoise(seed, 101) * 0.04,
+    center,
+    neckWidth,
+    headWidth,
+    tabDepth: 0.9 + hashNoise(seed, 53) * 0.16,
+    waistDepth: 0.12 + hashNoise(seed, 67) * 0.06,
+    shoulderWidth,
+    skew: (hashNoise(seed, 71) - 0.5) * 0.08,
     reverse: false,
   };
 }
 
 function reverseEdgeProfile(profile: PieceEdgeProfile): PieceEdgeProfile {
   return {
-    shoulderStart: 1 - profile.shoulderEnd,
-    neckStart: 1 - profile.neckEnd,
-    headStart: 1 - profile.headEnd,
-    headEnd: 1 - profile.headStart,
-    neckEnd: 1 - profile.neckStart,
-    shoulderEnd: 1 - profile.shoulderStart,
-    neckDepth: profile.neckDepth,
-    headDepth: profile.headDepth,
-    waistDepth: profile.shoulderDepth,
-    shoulderDepth: profile.waistDepth,
-    startCurve: -profile.endCurve,
-    endCurve: -profile.startCurve,
+    center: 1 - profile.center,
+    neckWidth: profile.neckWidth,
+    headWidth: profile.headWidth,
+    tabDepth: profile.tabDepth,
+    waistDepth: profile.waistDepth,
+    shoulderWidth: profile.shoulderWidth,
+    skew: -profile.skew,
     reverse: !profile.reverse,
   };
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
 export function getWorkspaceMargin(layout: PuzzleLayout): number {
-  return Math.max(layout.pieceWidth * 3.1, layout.pieceHeight * 3.1, Math.min(layout.boardWidth, layout.boardHeight) * 0.3);
+  return Math.max(
+    layout.pieceWidth * 3.1 + layout.tabSize,
+    layout.pieceHeight * 3.1 + layout.tabSize,
+    Math.min(layout.boardWidth, layout.boardHeight) * 0.3,
+  );
 }
 
 export function createInitialPieces(layout: PuzzleLayout): BoardPiece[] {
@@ -246,15 +228,15 @@ function createSlotSpatialIndex(layout: PuzzleLayout, padding: number): {
   add: (slot: { x: number; y: number }) => void;
   overlaps: (slot: { x: number; y: number }) => boolean;
 } {
-  const cellSize = Math.max(layout.pieceWidth, layout.pieceHeight) + padding;
+  const cellSize = Math.max(layout.pieceWidth, layout.pieceHeight) + layout.tabSize * 2 + padding;
   const cells = new Map<string, Array<{ x: number; y: number }>>();
 
   function cellRange(slot: { x: number; y: number }): { minX: number; maxX: number; minY: number; maxY: number } {
     return {
-      minX: Math.floor((slot.x - padding) / cellSize),
-      maxX: Math.floor((slot.x + layout.pieceWidth + padding) / cellSize),
-      minY: Math.floor((slot.y - padding) / cellSize),
-      maxY: Math.floor((slot.y + layout.pieceHeight + padding) / cellSize),
+      minX: Math.floor((slot.x - layout.tabSize - padding) / cellSize),
+      maxX: Math.floor((slot.x + layout.pieceWidth + layout.tabSize + padding) / cellSize),
+      minY: Math.floor((slot.y - layout.tabSize - padding) / cellSize),
+      maxY: Math.floor((slot.y + layout.pieceHeight + layout.tabSize + padding) / cellSize),
     };
   }
 
@@ -350,19 +332,19 @@ function createFallbackScatterSlot(index: number, layout: PuzzleLayout, radiusX:
 
 function isOutsideFrame(slot: { x: number; y: number }, layout: PuzzleLayout, padding: number): boolean {
   return (
-    slot.x + layout.pieceWidth <= -padding ||
-    slot.x >= layout.boardWidth + padding ||
-    slot.y + layout.pieceHeight <= -padding ||
-    slot.y >= layout.boardHeight + padding
+    slot.x + layout.pieceWidth + layout.tabSize <= -padding ||
+    slot.x - layout.tabSize >= layout.boardWidth + padding ||
+    slot.y + layout.pieceHeight + layout.tabSize <= -padding ||
+    slot.y - layout.tabSize >= layout.boardHeight + padding
   );
 }
 
 function rectanglesOverlap(a: { x: number; y: number }, b: { x: number; y: number }, layout: PuzzleLayout, padding: number): boolean {
   return (
-    a.x < b.x + layout.pieceWidth + padding &&
-    a.x + layout.pieceWidth + padding > b.x &&
-    a.y < b.y + layout.pieceHeight + padding &&
-    a.y + layout.pieceHeight + padding > b.y
+    a.x - layout.tabSize < b.x + layout.pieceWidth + layout.tabSize + padding &&
+    a.x + layout.pieceWidth + layout.tabSize + padding > b.x - layout.tabSize &&
+    a.y - layout.tabSize < b.y + layout.pieceHeight + layout.tabSize + padding &&
+    a.y + layout.pieceHeight + layout.tabSize + padding > b.y - layout.tabSize
   );
 }
 
