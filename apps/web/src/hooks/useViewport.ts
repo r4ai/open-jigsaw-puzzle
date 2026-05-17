@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { clamp, roundZoom, shouldStartViewportPan } from "../utils/puzzle-ops";
 
 export const MIN_ZOOM = 0.35;
@@ -15,33 +15,71 @@ export function useViewport() {
   const [panning, setPanning] = useState<PanState | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const worldRef = useRef<HTMLDivElement | null>(null);
+  const zoomRef = useRef(zoom);
+  const panRef = useRef(pan);
+  const panningRef = useRef<PanState | null>(panning);
+  const pendingPanRef = useRef<PanOffset | null>(null);
+  const panFrameRef = useRef<number | null>(null);
+
+  zoomRef.current = zoom;
+  if (!pendingPanRef.current) panRef.current = pan;
+  panningRef.current = panning;
+
+  useEffect(() => {
+    return () => {
+      if (panFrameRef.current !== null) cancelAnimationFrame(panFrameRef.current);
+    };
+  }, []);
+
+  function commitPan(nextPan: PanOffset) {
+    panRef.current = nextPan;
+    setPan(nextPan);
+  }
+
+  function schedulePan(nextPan: PanOffset) {
+    panRef.current = nextPan;
+    pendingPanRef.current = nextPan;
+    if (panFrameRef.current !== null) return;
+    panFrameRef.current = requestAnimationFrame(() => {
+      panFrameRef.current = null;
+      const pending = pendingPanRef.current;
+      pendingPanRef.current = null;
+      if (pending) setPan(pending);
+    });
+  }
 
   function getWorkspacePoint(event: React.PointerEvent): { x: number; y: number } | null {
     const world = worldRef.current;
     if (!world) return null;
     const rect = viewportRef.current?.getBoundingClientRect() ?? world.getBoundingClientRect();
+    const currentPan = panRef.current;
+    const currentZoom = zoomRef.current;
     return {
-      x: (event.clientX - rect.left - pan.x) / zoom,
-      y: (event.clientY - rect.top - pan.y) / zoom,
+      x: (event.clientX - rect.left - currentPan.x) / currentZoom,
+      y: (event.clientY - rect.top - currentPan.y) / currentZoom,
     };
   }
 
   function zoomAtClientPoint(nextZoom: number, clientX: number, clientY: number) {
     const viewport = viewportRef.current;
-    if (!viewport || nextZoom === zoom) return;
+    const currentZoom = zoomRef.current;
+    const currentPan = panRef.current;
+    if (!viewport || nextZoom === currentZoom) return;
     const rect = viewport.getBoundingClientRect();
     const vx = clientX - rect.left;
     const vy = clientY - rect.top;
-    const wx = (vx - pan.x) / zoom;
-    const wy = (vy - pan.y) / zoom;
+    const wx = (vx - currentPan.x) / currentZoom;
+    const wy = (vy - currentPan.y) / currentZoom;
+    zoomRef.current = nextZoom;
     setZoom(nextZoom);
-    setPan({ x: vx - wx * nextZoom, y: vy - wy * nextZoom });
+    commitPan({ x: vx - wx * nextZoom, y: vy - wy * nextZoom });
   }
 
   function changeZoom(delta: number) {
     const viewport = viewportRef.current;
-    const nextZoom = clamp(roundZoom(zoom + delta), MIN_ZOOM, MAX_ZOOM);
+    const nextZoom = clamp(roundZoom(zoomRef.current + delta), MIN_ZOOM, MAX_ZOOM);
     if (!viewport) {
+      zoomRef.current = nextZoom;
       setZoom(nextZoom);
       return;
     }
@@ -50,42 +88,47 @@ export function useViewport() {
   }
 
   function resetZoom() {
+    zoomRef.current = 0.8;
     setZoom(0.8);
-    setPan({ x: 0, y: 0 });
+    commitPan({ x: 0, y: 0 });
   }
 
   function handleWheel(event: React.WheelEvent<HTMLDivElement>) {
     event.preventDefault();
     const factor = event.deltaY < 0 ? WHEEL_ZOOM_FACTOR : 1 / WHEEL_ZOOM_FACTOR;
-    zoomAtClientPoint(clamp(roundZoom(zoom * factor), MIN_ZOOM, MAX_ZOOM), event.clientX, event.clientY);
+    zoomAtClientPoint(clamp(roundZoom(zoomRef.current * factor), MIN_ZOOM, MAX_ZOOM), event.clientX, event.clientY);
   }
 
   function handleViewportPointerDown(event: React.PointerEvent<HTMLDivElement>) {
     if (!shouldStartViewportPan(event.button, event.target)) return;
     if (!viewportRef.current) return;
-    setPanning({
+    const nextPanning = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      panX: pan.x,
-      panY: pan.y,
-    });
+      panX: panRef.current.x,
+      panY: panRef.current.y,
+    };
+    panningRef.current = nextPanning;
+    setPanning(nextPanning);
     event.currentTarget.setPointerCapture(event.pointerId);
     event.preventDefault();
   }
 
   function handlePanMove(event: React.PointerEvent): boolean {
-    if (!panning) return false;
-    setPan({
-      x: panning.panX + event.clientX - panning.startX,
-      y: panning.panY + event.clientY - panning.startY,
+    const currentPanning = panningRef.current;
+    if (!currentPanning) return false;
+    schedulePan({
+      x: currentPanning.panX + event.clientX - currentPanning.startX,
+      y: currentPanning.panY + event.clientY - currentPanning.startY,
     });
     event.preventDefault();
     return true;
   }
 
   function handlePanEnd(): boolean {
-    if (!panning) return false;
+    if (!panningRef.current) return false;
+    panningRef.current = null;
     setPanning(null);
     return true;
   }
