@@ -11,6 +11,16 @@ export type SelectionState = {
 
 export type Rect = { x: number; y: number; width: number; height: number };
 
+type PieceCluster = {
+  pieces: BoardPiece[];
+  minX: number;
+  minY: number;
+  width: number;
+  height: number;
+  columnSpan: number;
+  rowSpan: number;
+};
+
 export function countLockedPieces(pieces: Pick<BoardPiece, "locked">[]): number {
   let count = 0;
   for (const piece of pieces) {
@@ -231,30 +241,30 @@ export function arrangeLoosePieces(
   rng: () => number = Math.random,
 ): BoardPiece[] {
   const gap = Math.max(8, Math.min(layout.pieceWidth, layout.pieceHeight) * 0.12);
-  const loosePieces = pieces.filter((piece) => !piece.locked);
-  const columns = Math.max(1, Math.ceil(Math.sqrt(loosePieces.length)));
+  const looseClusters = getLoosePieceClusters(pieces, layout);
+  const loosePieceCount = looseClusters.reduce((count, cluster) => count + cluster.pieces.length, 0);
+  const columns = Math.max(1, Math.ceil(Math.sqrt(loosePieceCount)), ...looseClusters.map((cluster) => cluster.columnSpan));
   const nextTopZ = Math.max(0, ...pieces.map((p) => p.z)) + 1;
-  const slots = shuffle(
-    loosePieces.map((_, index) => {
-      const col = index % columns;
-      const row = Math.floor(index / columns);
-      return {
-        x: col * (layout.pieceWidth + gap * 2) + rng() * gap,
-        y: layout.boardHeight + gap + row * (layout.pieceHeight + gap * 2) + rng() * gap,
-      };
-    }),
-    rng,
-  );
-  const randomizedPieces = shuffleAvoidingOriginalOrder(loosePieces, rng);
+  const cellWidth = layout.pieceWidth + gap * 2;
+  const cellHeight = layout.pieceHeight + gap * 2;
+  const randomizedClusters = shuffleAvoidingOriginalOrder(looseClusters, rng);
   const arrangedById = new Map<number, BoardPiece>();
+  const occupiedCells = new Set<string>();
+  let zOffset = 0;
 
-  randomizedPieces.forEach((piece, index) => {
-    const slot = slots[index]!;
-    arrangedById.set(piece.id, {
-      ...piece,
-      x: slot.x,
-      y: slot.y,
-      z: nextTopZ + index + 1,
+  randomizedClusters.forEach((cluster) => {
+    const slot = claimClusterSlot(occupiedCells, cluster, columns);
+    const slotX = slot.col * cellWidth + rng() * gap;
+    const slotY = layout.boardHeight + gap + slot.row * cellHeight + rng() * gap;
+    const sortedPieces = cluster.pieces.slice().sort((a, b) => a.z - b.z || a.id - b.id);
+    sortedPieces.forEach((piece) => {
+      zOffset += 1;
+      arrangedById.set(piece.id, {
+        ...piece,
+        x: slotX + piece.x - cluster.minX,
+        y: slotY + piece.y - cluster.minY,
+        z: nextTopZ + zOffset,
+      });
     });
   });
 
@@ -262,6 +272,85 @@ export function arrangeLoosePieces(
     if (piece.locked) return piece;
     return arrangedById.get(piece.id) ?? piece;
   });
+}
+
+function getLoosePieceClusters(pieces: BoardPiece[], layout: PuzzleLayout): PieceCluster[] {
+  const loosePieces = pieces.filter((piece) => !piece.locked);
+  const unvisited = new Set(loosePieces.map((piece) => piece.id));
+  const clusters: PieceCluster[] = [];
+
+  for (const piece of loosePieces) {
+    if (!unvisited.has(piece.id)) continue;
+    const connectedIds = getConnectedLoosePieceIds(pieces, new Set([piece.id]), layout);
+    for (const pieceId of connectedIds) unvisited.delete(pieceId);
+    const clusterPieces = loosePieces.filter((candidate) => connectedIds.has(candidate.id));
+    clusters.push(createPieceCluster(clusterPieces, layout));
+  }
+
+  return clusters;
+}
+
+function createPieceCluster(pieces: BoardPiece[], layout: PuzzleLayout): PieceCluster {
+  const minX = Math.min(...pieces.map((piece) => piece.x));
+  const minY = Math.min(...pieces.map((piece) => piece.y));
+  const maxX = Math.max(...pieces.map((piece) => piece.x + layout.pieceWidth));
+  const maxY = Math.max(...pieces.map((piece) => piece.y + layout.pieceHeight));
+  const width = maxX - minX;
+  const height = maxY - minY;
+  return {
+    pieces,
+    minX,
+    minY,
+    width,
+    height,
+    columnSpan: Math.max(1, Math.ceil((width - 0.5) / layout.pieceWidth)),
+    rowSpan: Math.max(1, Math.ceil((height - 0.5) / layout.pieceHeight)),
+  };
+}
+
+function claimClusterSlot(
+  occupiedCells: Set<string>,
+  cluster: Pick<PieceCluster, "columnSpan" | "rowSpan">,
+  columns: number,
+): { col: number; row: number } {
+  for (let row = 0; ; row += 1) {
+    for (let col = 0; col <= columns - cluster.columnSpan; col += 1) {
+      if (!canPlaceCluster(occupiedCells, col, row, cluster)) continue;
+      occupyClusterCells(occupiedCells, col, row, cluster);
+      return { col, row };
+    }
+  }
+}
+
+function canPlaceCluster(
+  occupiedCells: Set<string>,
+  col: number,
+  row: number,
+  cluster: Pick<PieceCluster, "columnSpan" | "rowSpan">,
+): boolean {
+  for (let y = row; y < row + cluster.rowSpan; y += 1) {
+    for (let x = col; x < col + cluster.columnSpan; x += 1) {
+      if (occupiedCells.has(cellKey(x, y))) return false;
+    }
+  }
+  return true;
+}
+
+function occupyClusterCells(
+  occupiedCells: Set<string>,
+  col: number,
+  row: number,
+  cluster: Pick<PieceCluster, "columnSpan" | "rowSpan">,
+) {
+  for (let y = row; y < row + cluster.rowSpan; y += 1) {
+    for (let x = col; x < col + cluster.columnSpan; x += 1) {
+      occupiedCells.add(cellKey(x, y));
+    }
+  }
+}
+
+function cellKey(col: number, row: number): string {
+  return `${col}:${row}`;
 }
 
 function areSnappedNeighbors(a: BoardPiece, b: BoardPiece, layout: PuzzleLayout, tolerance: number): boolean {

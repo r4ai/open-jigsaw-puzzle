@@ -49,6 +49,43 @@ describe("arrangeLoosePieces", () => {
 
     expect(arranged[0]).toEqual(pieces[0]);
   });
+
+  it("keeps connected loose pieces together", () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const pieces = createInitialPieces(layout).map((piece) => {
+      if (piece.id === 0) return { ...piece, x: 1800, y: 1400 };
+      if (piece.id === 1) return { ...piece, x: 1800 + layout.pieceWidth, y: 1400 };
+      if (piece.id === layout.cols) return { ...piece, x: 1800, y: 1400 + layout.pieceHeight };
+      return piece;
+    });
+
+    const arranged = arrangeLoosePieces(pieces, layout, seededRandom(17));
+
+    expect(arranged[1]!.x - arranged[0]!.x).toBeCloseTo(layout.pieceWidth);
+    expect(arranged[1]!.y - arranged[0]!.y).toBeCloseTo(0);
+    expect(arranged[layout.cols]!.x - arranged[0]!.x).toBeCloseTo(0);
+    expect(arranged[layout.cols]!.y - arranged[0]!.y).toBeCloseTo(layout.pieceHeight);
+  });
+
+  it("packs around connected pieces using normal piece-sized rows", () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const gap = Math.max(8, Math.min(layout.pieceWidth, layout.pieceHeight) * 0.12);
+    const cellHeight = layout.pieceHeight + gap * 2;
+    const pieces: BoardPiece[] = [
+      boardPiece(0, 1800, 1400, layout),
+      boardPiece(1, 1800 + layout.pieceWidth, 1400, layout),
+      boardPiece(layout.cols, 1800, 1400 + layout.pieceHeight, layout),
+      boardPiece(layout.cols + 1, 1800 + layout.pieceWidth, 1400 + layout.pieceHeight, layout),
+      boardPiece(3, 2600, 1400, layout),
+      boardPiece(4, 2800, 1400, layout),
+    ];
+
+    const arranged = arrangeLoosePieces(pieces, layout, () => 0.99);
+    const topY = Math.min(...arranged.map((piece) => piece.y));
+    const rows = arranged.map((piece) => Math.round((piece.y - topY) / cellHeight));
+
+    expect(rows).toEqual([0, 0, 1, 1, 0, 1]);
+  });
 });
 
 describe("viewport pan helpers", () => {
@@ -180,4 +217,9 @@ function seededRandom(seed: number): () => number {
 
 function overlaps(a: BoardPiece, b: BoardPiece, width: number, height: number): boolean {
   return a.x < b.x + width && a.x + width > b.x && a.y < b.y + height && a.y + height > b.y;
+}
+
+function boardPiece(id: number, x: number, y: number, layout: ReturnType<typeof createPuzzleLayout>): BoardPiece {
+  const geometry = layout.pieces[id]!;
+  return { id, targetX: geometry.targetX, targetY: geometry.targetY, x, y, z: id + 1, locked: false };
 }
