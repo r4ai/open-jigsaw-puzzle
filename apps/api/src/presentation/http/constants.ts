@@ -1,5 +1,6 @@
 export const MAX_CREATE_ROOM_BODY_BYTES = 1024;
 export const MAX_CREATE_ROOM_REQUESTS_PER_MINUTE = 20;
+export const API_CACHE_CONTROL = "no-store";
 
 export const SECURITY_HEADERS = {
   "content-security-policy": [

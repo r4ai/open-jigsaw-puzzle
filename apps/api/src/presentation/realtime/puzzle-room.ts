@@ -42,6 +42,7 @@ export class PuzzleRoom implements DurableObject {
     const roomId = normalizeRoomId(url.pathname.split("/")[3]);
 
     if (upgradeHeader !== "websocket") return json({ error: "Expected WebSocket upgrade." }, 426);
+    if (!isAllowedWebSocketOrigin(request)) return json({ error: "Forbidden origin." }, 403);
     if (!roomId) return json({ error: "Room id is required." }, 400);
 
     const rooms = createD1RoomRepository(this.env.DB, systemClock);
@@ -197,6 +198,16 @@ export class PuzzleRoom implements DurableObject {
     } catch {
       this.state.waitUntil(this.removeSocket(socket));
     }
+  }
+}
+
+export function isAllowedWebSocketOrigin(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+  try {
+    return new URL(origin).origin === new URL(request.url).origin;
+  } catch {
+    return false;
   }
 }
 

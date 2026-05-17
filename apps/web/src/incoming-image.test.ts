@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createIncomingImage, storeIncomingImageChunk } from "./incoming-image";
+import { createIncomingImage, MAX_INCOMING_IMAGE_TRANSFERS, rememberIncomingImage, storeIncomingImageChunk } from "./incoming-image";
 
 describe("incoming image transfer", () => {
   it("assembles chunks only after every in-range chunk arrives", () => {
@@ -33,5 +33,25 @@ describe("incoming image transfer", () => {
     const unsafe = createIncomingImage({ imageId: "image-2", mimeType: "image/jpeg", chunks: 1, byteLength: 30, width: 640, height: 480 });
     expect(unsafe).not.toBeNull();
     expect(storeIncomingImageChunk(unsafe!, 0, "data:text/html;base64,aGVsbG8=")).toBeNull();
+  });
+
+  it("caps simultaneous incoming transfers by evicting the oldest buffer", () => {
+    const images = new Map();
+    for (let index = 0; index < MAX_INCOMING_IMAGE_TRANSFERS + 1; index += 1) {
+      const incoming = createIncomingImage({
+        imageId: `image-${index}`,
+        mimeType: "image/jpeg",
+        chunks: 1,
+        byteLength: 31,
+        width: 640,
+        height: 480,
+      });
+      expect(incoming).not.toBeNull();
+      incoming!.createdAt = index;
+      rememberIncomingImage(images, incoming!);
+    }
+
+    expect(images.size).toBe(MAX_INCOMING_IMAGE_TRANSFERS);
+    expect(images.has("image-0")).toBe(false);
   });
 });

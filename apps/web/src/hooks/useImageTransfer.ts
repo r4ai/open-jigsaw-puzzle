@@ -3,7 +3,7 @@ import type { BoardPiece, PuzzleLayout } from "@open-puzzle/shared/puzzle";
 import { createPuzzleLayout } from "@open-puzzle/shared/puzzle";
 import type { ChannelMessage, RoomSummary, SyncedPiece } from "@open-puzzle/shared/protocol";
 import { chunkString, resizeImage } from "../image";
-import { createIncomingImage, storeIncomingImageChunk } from "../incoming-image";
+import { createIncomingImage, rememberIncomingImage, storeIncomingImageChunk } from "../incoming-image";
 import type { IncomingImage } from "../incoming-image";
 import { countLockedPieces } from "../utils/puzzle-ops";
 import { formatBytes } from "../utils/format";
@@ -130,7 +130,7 @@ export function useImageTransfer({ send, broadcast, room, getPieces, onImageComp
           height: msg.height,
         });
         if (!incoming) return;
-        incomingRef.current.set(msg.imageId, incoming);
+        rememberIncomingImage(incomingRef.current, incoming);
         setLoadingProgress({
           phase: "receiving",
           imageId: msg.imageId,

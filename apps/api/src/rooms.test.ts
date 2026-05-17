@@ -7,6 +7,7 @@ import type { RoomRepository } from "./application/rooms";
 import type { Env } from "./infrastructure/cloudflare/bindings";
 import { createD1RoomRepository } from "./infrastructure/d1/rooms-repository";
 import { createApp } from "./presentation/http/app";
+import { isAllowedWebSocketOrigin } from "./presentation/realtime/puzzle-room";
 import { readEnvPositiveInteger } from "./index";
 
 describe("worker room constraints", () => {
@@ -46,6 +47,7 @@ describe("worker REST API contract", () => {
     }, fakeEnv());
 
     expect(response.status).toBe(400);
+    expect(response.headers.get("cache-control")).toBe("no-store");
     expect(await response.json()).toEqual({ error: "Difficulty must be 48, 96, or 192." });
   });
 
@@ -116,6 +118,19 @@ describe("worker REST API contract", () => {
       { urls: "stun:stun.cloudflare.com:3478" },
       { urls: ["turn:a.example", "turn:b.example"], username: "user", credential: "secret" },
     ]);
+  });
+
+  it("rejects cross-origin websocket upgrades", () => {
+    expect(isAllowedWebSocketOrigin(new Request("https://puzzle.example/api/rooms/ABCDEFGHJK/socket"))).toBe(true);
+    expect(isAllowedWebSocketOrigin(new Request("https://puzzle.example/api/rooms/ABCDEFGHJK/socket", {
+      headers: { origin: "https://puzzle.example" },
+    }))).toBe(true);
+    expect(isAllowedWebSocketOrigin(new Request("https://puzzle.example/api/rooms/ABCDEFGHJK/socket", {
+      headers: { origin: "https://evil.example" },
+    }))).toBe(false);
+    expect(isAllowedWebSocketOrigin(new Request("https://puzzle.example/api/rooms/ABCDEFGHJK/socket", {
+      headers: { origin: "not a url" },
+    }))).toBe(false);
   });
 
   it("deletes expired rooms after the configured retention window", async () => {

@@ -282,7 +282,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
         isDark={isDark}
         sidebarOpen={sidebarOpen}
         copied={copied}
-        canOrganize={Boolean(layout && puzzle.pieces.some((p) => !p.locked))}
+        canOrganize={Boolean(isHost && layout && puzzle.pieces.some((p) => !p.locked))}
         onOrganize={handleOrganize}
         onCopyShareUrl={() => void copyShareUrl()}
         onToggleTheme={onToggleTheme}
@@ -394,7 +394,7 @@ export function isAuthorizedPeerMessage(from: string, msg: ChannelMessage, hostI
       return msg.participantId === from;
     case "state-sync":
     case "image-overlay":
-      return true;
+      return hostId === from;
     case "image-meta":
     case "image-chunk":
       return hostId === from;

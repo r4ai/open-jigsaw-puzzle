@@ -11,7 +11,7 @@ import type { Env } from "../../infrastructure/cloudflare/bindings";
 import { createD1RoomEventRepository, createD1RoomRepository } from "../../infrastructure/d1/rooms-repository";
 import { getClientKey, consumeRateLimit, type RateBucket } from "../../infrastructure/rate-limit/window";
 import { systemClock } from "../../infrastructure/time/clock";
-import { MAX_CREATE_ROOM_BODY_BYTES, MAX_CREATE_ROOM_REQUESTS_PER_MINUTE, SECURITY_HEADERS } from "./constants";
+import { API_CACHE_CONTROL, MAX_CREATE_ROOM_BODY_BYTES, MAX_CREATE_ROOM_REQUESTS_PER_MINUTE, SECURITY_HEADERS } from "./constants";
 import { ERROR_RESPONSES, ICE_RESPONSE_CONTENT, OPENAPI_DOCUMENTATION, ROOM_RESPONSE_CONTENT } from "./openapi";
 
 const createRoomRateLimits = new Map<string, RateBucket>();
@@ -21,6 +21,7 @@ export function createApp(): Hono<{ Bindings: Env }> {
 
   app.use("*", async (c, next) => {
     await next();
+    if (c.req.path.startsWith("/api/")) c.header("cache-control", API_CACHE_CONTROL);
     for (const [header, value] of Object.entries(SECURITY_HEADERS)) c.header(header, value);
   });
 

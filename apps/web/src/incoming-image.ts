@@ -1,5 +1,7 @@
 import { MAX_IMAGE_BYTES, MAX_IMAGE_CHUNKS, MAX_IMAGE_EDGE, MAX_IMAGE_CHUNK_BYTES } from "@open-puzzle/shared/protocol";
 
+export const MAX_INCOMING_IMAGE_TRANSFERS = 2;
+
 export type IncomingImage = {
   imageId: string;
   chunks: Array<string | undefined>;
@@ -9,6 +11,7 @@ export type IncomingImage = {
   mimeType: SafeImageMimeType;
   width: number;
   height: number;
+  createdAt: number;
 };
 
 export type IncomingImageMeta = {
@@ -42,7 +45,15 @@ export function createIncomingImage(meta: IncomingImageMeta): IncomingImage | nu
     mimeType,
     width: meta.width,
     height: meta.height,
+    createdAt: Date.now(),
   };
+}
+
+export function rememberIncomingImage(images: Map<string, IncomingImage>, incoming: IncomingImage): void {
+  images.set(incoming.imageId, incoming);
+  if (images.size <= MAX_INCOMING_IMAGE_TRANSFERS) return;
+  const oldest = [...images.values()].sort((a, b) => a.createdAt - b.createdAt)[0];
+  if (oldest) images.delete(oldest.imageId);
 }
 
 export function storeIncomingImageChunk(
