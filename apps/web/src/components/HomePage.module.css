@@ -13,17 +13,16 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 60px 68px;
+  padding: 6rem;
   position: relative;
-  overflow: hidden;
 }
 
 .deco {
   position: absolute;
   top: 50%;
-  right: -140px;
-  width: 800px;
-  height: 800px;
+  right: min(6rem, 10%);
+  height: 80%;
+  max-width: 80%;
   transform: translateY(-50%);
   color: #5de0d8;
   pointer-events: none;
@@ -57,31 +56,57 @@
 }
 
 @keyframes pieceFall {
-  0% { opacity: 0; transform: translate(-20px, -40px) rotate(-6deg); }
-  100% { opacity: 0.22; transform: translate(0, 0) rotate(0); }
+  0% {
+    opacity: 0;
+    transform: translate(-20px, -40px) rotate(-6deg);
+  }
+
+  100% {
+    opacity: 0.22;
+    transform: translate(0, 0) rotate(0);
+  }
 }
 
 @keyframes pieceSlideLeft {
-  0% { opacity: 0; transform: translate(60px, 0) rotate(4deg); }
-  100% { opacity: 0.22; transform: translate(0, 0) rotate(0); }
+  0% {
+    opacity: 0;
+    transform: translate(60px, 0) rotate(4deg);
+  }
+
+  100% {
+    opacity: 0.22;
+    transform: translate(0, 0) rotate(0);
+  }
 }
 
 @keyframes pieceSlideUp {
-  0% { opacity: 0; transform: translate(-30px, 60px) rotate(-3deg); }
-  85% { opacity: 0.22; transform: translate(2px, -4px) rotate(0.5deg); }
-  100% { opacity: 0.22; transform: translate(0, 0) rotate(0); }
+  0% {
+    opacity: 0;
+    transform: translate(-30px, 60px) rotate(-3deg);
+  }
+
+  85% {
+    opacity: 0.22;
+    transform: translate(2px, -4px) rotate(0.5deg);
+  }
+
+  100% {
+    opacity: 0.22;
+    transform: translate(0, 0) rotate(0);
+  }
 }
 
 .heroContent {
-  position: relative;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
   display: grid;
-  gap: 28px;
-  animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  gap: 3rem;
 }
 
 .heading {
   margin: 0;
-  font: 400 clamp(3.5rem, 7vw, 7.5rem) / 0.93 var(--font-display);
+  font: 400 calc(7.5rem) / 0.93 var(--font-display);
   letter-spacing: -0.035em;
   color: var(--on-canvas);
 }
@@ -94,7 +119,7 @@
 .tagline {
   margin: 0;
   color: var(--on-canvas-mid);
-  font-size: 0.9375rem;
+  font-size: 1.4rem;
   line-height: 1.75;
 }
 
@@ -151,7 +176,10 @@
   border-bottom: 1px solid var(--border);
 }
 
-.fieldGroup { display: grid; gap: 10px; }
+.fieldGroup {
+  display: grid;
+  gap: 10px;
+}
 
 .fieldLabel {
   margin: 0;
@@ -228,7 +256,9 @@
   letter-spacing: 0.06em;
 }
 
-.joinRow button { font-weight: 600; }
+.joinRow button {
+  font-weight: 600;
+}
 
 .error {
   color: var(--err);
@@ -243,6 +273,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -251,7 +282,7 @@
 
 /* ─── Mobile ─── */
 
-@media (max-width: 860px) {
+@media (max-width: 960px) {
   .home {
     display: flex;
     flex-direction: column;
@@ -260,16 +291,25 @@
 
   .hero {
     justify-content: flex-start;
-    padding: 52px 28px 44px;
+    padding: 2rem;
+    flex: 1;
+    min-height: 400px;
   }
 
   .deco {
-    width: 340px;
-    height: 340px;
     top: 50%;
-    right: -60px;
+    right: 2rem;
     transform: translateY(-50%);
+    height: 80%;
+    max-width: 60%;
   }
+
+  /* 
+  .heroContent {
+    position: static;
+    transform: none;
+    margin-top: auto;
+  } */
 
   .pieceA,
   .pieceB,
@@ -278,32 +318,64 @@
   }
 
   @keyframes pieceFall {
-    0% { opacity: 0; transform: translate(-12px, -24px) rotate(-6deg); }
-    100% { opacity: 0.18; transform: translate(0, 0) rotate(0); }
+    0% {
+      opacity: 0;
+      transform: translate(-12px, -24px) rotate(-6deg);
+    }
+
+    100% {
+      opacity: 0.18;
+      transform: translate(0, 0) rotate(0);
+    }
   }
 
   @keyframes pieceSlideLeft {
-    0% { opacity: 0; transform: translate(40px, 0) rotate(4deg); }
-    100% { opacity: 0.18; transform: translate(0, 0) rotate(0); }
+    0% {
+      opacity: 0;
+      transform: translate(40px, 0) rotate(4deg);
+    }
+
+    100% {
+      opacity: 0.18;
+      transform: translate(0, 0) rotate(0);
+    }
   }
 
   @keyframes pieceSlideUp {
-    0% { opacity: 0; transform: translate(-20px, 40px) rotate(-3deg); }
-    85% { opacity: 0.18; transform: translate(1px, -2px) rotate(0.5deg); }
-    100% { opacity: 0.18; transform: translate(0, 0) rotate(0); }
+    0% {
+      opacity: 0;
+      transform: translate(-20px, 40px) rotate(-3deg);
+    }
+
+    85% {
+      opacity: 0.18;
+      transform: translate(1px, -2px) rotate(0.5deg);
+    }
+
+    100% {
+      opacity: 0.18;
+      transform: translate(0, 0) rotate(0);
+    }
   }
 
   .heading {
-    font-size: clamp(2.75rem, 13vw, 3.75rem);
+    font-size: clamp(2.75rem, 13vw, 5rem);
+  }
+
+  .tagline {
+    font-size: clamp(1rem, 4vw, 1.25rem);
+    line-height: 1.6;
   }
 
   .panelWrap {
-    flex: 1;
+    /* flex: 1; */
     border-left: none;
     border-top: 1px solid var(--border);
     align-items: flex-start;
     padding: 40px 28px 52px;
   }
 
-  .panelInner { max-width: 100%; }
+  .panelInner {
+    max-width: 100%;
+  }
 }

@@ -43,15 +43,22 @@ export function HomePage({ theme, name, onNameChange, onToggleTheme }: Props) {
     <main className={styles.home}>
       {/* ── Left: dark stage ── */}
       <section className={styles.hero}>
-        <svg className={styles.deco} viewBox="0 0 280 280" fill="none" aria-hidden="true">
+        <svg
+          className={styles.deco}
+          viewBox="0 0 200 200"
+          fill="none"
+          aria-hidden="true"
+        >
           <g className={styles.pieceA}>
-            <path d="M 30 30 L 130 30 L 130 65 C 145 65 150 72 150 80 C 150 88 145 95 130 95 L 130 130 L 95 130 C 95 145 88 150 80 150 C 72 150 65 145 65 130 L 30 130 Z" />
+            <path d="M 0 0 L 100 0 L 100 35 C 115 35 120 42 120 50 C 120 58 115 65 100 65 L 100 100 L 65 100 C 65 115 58 120 50 120 C 42 120 35 115 35 100 L 0 100 Z" />
           </g>
+
           <g className={styles.pieceB}>
-            <path d="M 130 30 L 230 30 L 230 130 L 130 130 L 130 95 C 145 95 150 88 150 80 C 150 72 145 65 130 65 Z" />
+            <path d="M 100 0 L 200 0 L 200 100 L 100 100 L 100 65 C 115 65 120 58 120 50 C 120 42 115 35 100 35 Z" />
           </g>
+
           <g className={styles.pieceC}>
-            <path d="M 30 130 L 65 130 C 65 145 72 150 80 150 C 88 150 95 145 95 130 L 130 130 L 130 230 L 30 230 Z" />
+            <path d="M 0 100 L 35 100 C 35 115 42 120 50 120 C 58 120 65 115 65 100 L 100 100 L 100 200 L 0 200 Z" />
           </g>
         </svg>
 
@@ -62,7 +69,7 @@ export function HomePage({ theme, name, onNameChange, onToggleTheme }: Props) {
             Puzzle
           </h1>
           <p className={styles.tagline}>
-            部屋を作って画像を選ぶだけ。<br />
+            部屋を作って、画像を選ぶ。<br />
             みんなで一緒にパズルを楽しもう。
           </p>
         </div>
