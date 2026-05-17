@@ -87,6 +87,8 @@
 
 .piece {
   position: absolute;
+  top: 0;
+  left: 0;
   min-height: 0;
   padding: 0;
   border: 0;
@@ -95,13 +97,14 @@
   cursor: grab;
   touch-action: none;
   transition: none;
+  will-change: transform;
 }
 
 .piece:hover:not(:disabled) { background: transparent; }
 
 .locked { cursor: default; }
 .piece:not(.locked):active { cursor: grabbing; }
-.piece:active:not(:disabled) { transform: none; }
+.piece:active:not(:disabled) { background: transparent; }
 
 .selectionBox {
   position: absolute;

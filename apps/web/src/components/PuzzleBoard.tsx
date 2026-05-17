@@ -77,8 +77,7 @@ const PuzzlePieceView = memo(function PuzzlePieceView({
     <button
       className={`${styles.piece} ${piece.locked ? styles.locked : ""}`}
       style={{
-        left: `${margin + piece.x}px`,
-        top: `${margin + piece.y}px`,
+        transform: `translate3d(${margin + piece.x}px, ${margin + piece.y}px, 0)`,
         width: `${layout.pieceWidth}px`,
         height: `${layout.pieceHeight}px`,
         zIndex: piece.z,
