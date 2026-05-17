@@ -3,7 +3,8 @@ import { MAX_PARTICIPANTS, ROOM_TTL_SECONDS } from "@open-puzzle/shared/protocol
 import { assertCanJoin, expiresAt, parseDifficulty } from "@open-puzzle/shared/rooms";
 import { getIceConfig } from "./application/ice";
 import { deleteExpiredRooms } from "./application/maintenance";
-import type { RoomRepository } from "./application/rooms";
+import { createRoom } from "./application/rooms";
+import type { RoomEventRepository, RoomRepository } from "./application/rooms";
 import type { Env } from "./infrastructure/cloudflare/bindings";
 import { createD1RoomRepository } from "./infrastructure/d1/rooms-repository";
 import { createApp } from "./presentation/http/app";
@@ -76,6 +77,59 @@ describe("worker REST API contract", () => {
     expect(payload.room.difficulty).toBe(96);
     expect(payload.room.participantCount).toBe(0);
     expect(db.events).toHaveLength(1);
+  });
+
+  it("does not record creation events when room persistence returns no row", async () => {
+    const events: Array<{ roomId: string; eventType: string; payload: unknown }> = [];
+    const rooms: RoomRepository = {
+      async create() {
+        return null;
+      },
+      async read() {
+        return null;
+      },
+      async touch() {
+        throw new Error("Unexpected touch.");
+      },
+      async deleteExpired() {},
+    };
+    const eventRepository: RoomEventRepository = {
+      async record(roomId, eventType, payload) {
+        events.push({ roomId, eventType, payload });
+      },
+    };
+
+    await expect(createRoom(rooms, eventRepository, 48, ROOM_TTL_SECONDS, () => "ABCDEFGHJK")).resolves.toBeNull();
+
+    expect(events).toEqual([]);
+  });
+
+  it("retries room id collisions without duplicating successful room creation on event failures", async () => {
+    const createdIds: string[] = [];
+    const rooms: RoomRepository = {
+      async create(id, difficulty) {
+        createdIds.push(id);
+        if (createdIds.length === 1) throw new Error("UNIQUE constraint failed: rooms.id");
+        return { id, difficulty, expiresAt: 8_200, participantCount: 0 };
+      },
+      async read() {
+        return null;
+      },
+      async touch() {
+        throw new Error("Unexpected touch.");
+      },
+      async deleteExpired() {},
+    };
+    const eventRepository: RoomEventRepository = {
+      async record() {
+        throw new Error("event store unavailable");
+      },
+    };
+    const ids = ["ABCDEFGHJK", "BCDEFGHJKL"];
+
+    await expect(createRoom(rooms, eventRepository, 48, ROOM_TTL_SECONDS, () => ids.shift()!)).rejects.toThrow("event store unavailable");
+
+    expect(createdIds).toEqual(["ABCDEFGHJK", "BCDEFGHJKL"]);
   });
 
   it("handles room lookup errors without changing response shapes", async () => {
