@@ -41,77 +41,106 @@ export function HomePage({ theme, name, onNameChange, onToggleTheme }: Props) {
 
   return (
     <main className={styles.home}>
-      <button
-        className={styles.themeToggle}
-        onClick={onToggleTheme}
-        title={isDark ? "ライトモードに切り替え" : "ダークモードに切り替え"}
-      >
-        {isDark ? <Sun size={16} /> : <Moon size={16} />}
-      </button>
+      {/* ── Left: dark stage ── */}
+      <section className={styles.hero}>
+        <svg className={styles.deco} viewBox="0 0 320 300" fill="none" aria-hidden="true">
+          <path
+            d="M 20 20 L 230 20 L 230 100
+               C 258 100 275 108 275 118
+               C 275 128 258 136 230 136
+               L 230 240 L 130 240
+               C 130 268 120 282 108 282
+               C 96 282 86 268 86 240
+               L 20 240 Z"
+            stroke="currentColor" strokeWidth="2"
+          />
+          <path
+            d="M 160 -20 L 310 -20 L 310 120
+               C 325 120 334 127 334 135
+               C 334 143 325 150 310 150
+               L 310 240 L 240 240
+               C 240 255 233 263 225 263
+               C 217 263 210 255 210 240
+               L 160 240 Z"
+            stroke="currentColor" strokeWidth="1.5" opacity="0.35"
+          />
+        </svg>
 
-      <section className={styles.intro}>
-        <h1 className={styles.heading}>
-          Open<br />
-          <em>Jigsaw</em><br />
-          Puzzle
-        </h1>
-        <p className={styles.introDesc}>
-          部屋を作って画像を選ぶだけ。<br />
-          みんなで一緒にパズルを楽しもう。
-        </p>
+        <div className={styles.heroContent}>
+          <h1 className={styles.heading}>
+            Open<br />
+            <em>Jigsaw</em><br />
+            Puzzle
+          </h1>
+          <p className={styles.tagline}>
+            部屋を作って画像を選ぶだけ。<br />
+            みんなで一緒にパズルを楽しもう。
+          </p>
+        </div>
       </section>
 
-      <section className={styles.startPanel} aria-label="部屋の作成と参加">
-        <p className={styles.panelHeader}>はじめる</p>
-
-        <label>
-          表示名
-          <input
-            value={name}
-            maxLength={24}
-            onChange={(e) => onNameChange(e.target.value)}
-          />
-        </label>
-
-        <div className={styles.fieldGroup}>
-          <p className={styles.fieldLabel}>難易度（ピース数）</p>
-          <div className={styles.difficulty} aria-label="難易度">
-            {DIFFICULTIES.map((value) => (
-              <button
-                key={value}
-                className={difficulty === value ? styles.selected : ""}
-                onClick={() => setDifficulty(value)}
-              >
-                {value}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <button className={styles.primary} onClick={() => void createRoom()} disabled={creating}>
-          <Play size={16} />
-          部屋を作成
+      {/* ── Right: panel ── */}
+      <section className={styles.panelWrap} aria-label="部屋の作成と参加">
+        <button
+          className={styles.themeToggle}
+          onClick={onToggleTheme}
+          title={isDark ? "ライトモードに切り替え" : "ダークモードに切り替え"}
+        >
+          {isDark ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
-        <div className={styles.divider}><span>または参加する</span></div>
+        <div className={styles.panelInner}>
+          <p className={styles.panelHeader}>はじめる</p>
 
-        <div className={styles.joinRow}>
-          <input
-            aria-label="部屋ID"
-            placeholder="部屋ID を入力"
-            value={joinId}
-            onChange={(e) => setJoinId(e.target.value.toUpperCase())}
-          />
-          <button
-            onClick={() => void navigate({ to: "/rooms/$roomId", params: { roomId: joinId.trim().toUpperCase() } })}
-            disabled={!joinId.trim()}
-          >
-            <Link size={16} />
-            参加
+          <label>
+            表示名
+            <input
+              value={name}
+              maxLength={24}
+              onChange={(e) => onNameChange(e.target.value)}
+            />
+          </label>
+
+          <div className={styles.fieldGroup}>
+            <p className={styles.fieldLabel}>難易度（ピース数）</p>
+            <div className={styles.difficulty} aria-label="難易度">
+              {DIFFICULTIES.map((value) => (
+                <button
+                  key={value}
+                  className={difficulty === value ? styles.selected : ""}
+                  onClick={() => setDifficulty(value)}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button className={styles.primary} onClick={() => void createRoom()} disabled={creating}>
+            <Play size={16} />
+            部屋を作成
           </button>
-        </div>
 
-        {error ? <p className={styles.error}>{error}</p> : null}
+          <div className={styles.divider}><span>または参加する</span></div>
+
+          <div className={styles.joinRow}>
+            <input
+              aria-label="部屋ID"
+              placeholder="部屋ID を入力"
+              value={joinId}
+              onChange={(e) => setJoinId(e.target.value.toUpperCase())}
+            />
+            <button
+              onClick={() => void navigate({ to: "/rooms/$roomId", params: { roomId: joinId.trim().toUpperCase() } })}
+              disabled={!joinId.trim()}
+            >
+              <Link size={16} />
+              参加
+            </button>
+          </div>
+
+          {error ? <p className={styles.error}>{error}</p> : null}
+        </div>
       </section>
     </main>
   );
