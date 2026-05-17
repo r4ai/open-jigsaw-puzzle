@@ -213,7 +213,7 @@ export function PuzzleBoard({
           className={styles.imageOverlayToolbar}
           style={{
             left: `${pan.x + (margin + imageOverlayPosition.x + layout.boardWidth / 2) * zoom}px`,
-            top: `${Math.max(8, pan.y + (margin + imageOverlayPosition.y) * zoom - 52)}px`,
+            top: `${Math.max(8, pan.y + (margin + imageOverlayPosition.y) * zoom - 60)}px`,
           }}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
@@ -226,20 +226,22 @@ export function PuzzleBoard({
             {imageOverlayLocked ? <Lock size={13} /> : <LockOpen size={13} />}
           </button>
           <div className={styles.toolbarDivider} />
-          <label className={styles.toolbarOpacityGroup}>
+          <div className={styles.toolbarOpacityGroup}>
             <span className={styles.toolbarLabel}>不透明度</span>
             <input
               className={styles.toolbarSlider}
               type="range"
               min="0"
               max="1"
-              step="0.05"
+              step="0.01"
               value={imageOverlayOpacity}
-              style={{ "--pct": imageOverlayOpacity * 100 } as React.CSSProperties}
+              style={{
+                background: `linear-gradient(to right, var(--teal) ${imageOverlayOpacity * 100}%, var(--canvas-glass-border) ${imageOverlayOpacity * 100}%)`,
+              }}
               onChange={(e) => onChangeImageOpacity(Number(e.target.value))}
             />
             <span className={styles.toolbarVal}>{Math.round(imageOverlayOpacity * 100)}%</span>
-          </label>
+          </div>
         </div>
       )}
 
