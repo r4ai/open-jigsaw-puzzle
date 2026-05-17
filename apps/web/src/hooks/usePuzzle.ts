@@ -32,6 +32,13 @@ type DragState = {
 };
 type SelectionBoxState = { start: { x: number; y: number }; end: { x: number; y: number } };
 export type RemoteSelection = { participantId: string; pieceIds: number[]; imageOverlaySelected: boolean };
+export type HistoryResult = "applied" | "blocked" | "empty";
+type PieceHistorySnapshot = Pick<BoardPiece, "id" | "x" | "y" | "z" | "locked">;
+type PieceHistoryEntry = {
+  before: PieceHistorySnapshot[];
+  after: PieceHistorySnapshot[];
+  remoteMoveVersion: number;
+};
 
 type Props = {
   broadcast: (msg: ChannelMessage) => void;
@@ -54,6 +61,9 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
   const imageOverlaySelectedRef = useRef(false);
   const lastSelectedPieceIdRef = useRef<number | null>(null);
   const selectionBoxRef = useRef<SelectionBoxState | null>(null);
+  const undoStackRef = useRef<PieceHistoryEntry[]>([]);
+  const redoStackRef = useRef<PieceHistoryEntry[]>([]);
+  const remoteMoveVersionRef = useRef(0);
 
   // Keep refs in sync (ref pattern for WS callbacks)
   const broadcastRef = useRef(broadcast);
@@ -106,6 +116,67 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     publishSelection(next.pieceIds, next.imageOverlaySelected);
   }
 
+  function pieceSnapshot(piece: BoardPiece): PieceHistorySnapshot {
+    return { id: piece.id, x: piece.x, y: piece.y, z: piece.z, locked: piece.locked };
+  }
+
+  function snapshotsChanged(a: PieceHistorySnapshot, b: PieceHistorySnapshot): boolean {
+    return a.x !== b.x || a.y !== b.y || a.z !== b.z || a.locked !== b.locked;
+  }
+
+  function rememberMove(startPieces: Map<number, BoardPiece>, nextPieces: BoardPiece[]) {
+    const nextById = new Map(nextPieces.map((piece) => [piece.id, piece]));
+    const before: PieceHistorySnapshot[] = [];
+    const after: PieceHistorySnapshot[] = [];
+
+    for (const startPiece of startPieces.values()) {
+      const nextPiece = nextById.get(startPiece.id);
+      if (!nextPiece) continue;
+      const startSnapshot = pieceSnapshot(startPiece);
+      const nextSnapshot = pieceSnapshot(nextPiece);
+      if (!snapshotsChanged(startSnapshot, nextSnapshot)) continue;
+      before.push(startSnapshot);
+      after.push(nextSnapshot);
+    }
+
+    if (!before.length) return;
+    undoStackRef.current = [...undoStackRef.current, { before, after, remoteMoveVersion: remoteMoveVersionRef.current }].slice(-100);
+    redoStackRef.current = [];
+  }
+
+  function applyHistorySnapshots(snapshots: PieceHistorySnapshot[]) {
+    const byId = new Map(snapshots.map((piece) => [piece.id, piece]));
+    updatePieces((cur) => {
+      const next = cur.map((piece) => {
+        const snapshot = byId.get(piece.id);
+        return snapshot ? { ...piece, x: snapshot.x, y: snapshot.y, z: snapshot.z, locked: snapshot.locked } : piece;
+      });
+      const synced = next.map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
+      broadcastRef.current({ type: "state-sync", pieces: synced, lockedCount: countLockedPieces(synced) });
+      return next;
+    });
+  }
+
+  function undoLastMove(): HistoryResult {
+    const entry = undoStackRef.current.at(-1);
+    if (!entry) return "empty";
+    if (entry.remoteMoveVersion !== remoteMoveVersionRef.current) return "blocked";
+    undoStackRef.current = undoStackRef.current.slice(0, -1);
+    redoStackRef.current = [...redoStackRef.current, entry];
+    applyHistorySnapshots(entry.before);
+    return "applied";
+  }
+
+  function redoLastMove(): HistoryResult {
+    const entry = redoStackRef.current.at(-1);
+    if (!entry) return "empty";
+    if (entry.remoteMoveVersion !== remoteMoveVersionRef.current) return "blocked";
+    redoStackRef.current = redoStackRef.current.slice(0, -1);
+    undoStackRef.current = [...undoStackRef.current, entry];
+    applyHistorySnapshots(entry.after);
+    return "applied";
+  }
+
   function clearSelection() {
     setSelection(createEmptySelection());
   }
@@ -142,6 +213,9 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     const nextPieces = createInitialPieces(newLayout);
     piecesRef.current = nextPieces;
     pendingSyncRef.current = null;
+    undoStackRef.current = [];
+    redoStackRef.current = [];
+    remoteMoveVersionRef.current = 0;
     setPieces(nextPieces);
   }
 
@@ -150,6 +224,9 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
       const base = cur.length ? cur : createInitialPieces(nextLayout);
       const pending = pendingSyncRef.current;
       pendingSyncRef.current = null;
+      undoStackRef.current = [];
+      redoStackRef.current = [];
+      remoteMoveVersionRef.current = 0;
       if (!pending) {
         piecesRef.current = base;
         return base;
@@ -325,7 +402,7 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
         ? snapLoosePiecesToNeighbors(cur, movedPieceIds, layoutRef.current, threshold)
         : cur;
 
-      return neighborSnapped.map((piece) => {
+      const next = neighborSnapped.map((piece) => {
         if (!dragging.startPieces.has(piece.id) || piece.locked) return piece;
         const snapped = snapPiece(piece, threshold);
         if (snapped.locked) {
@@ -338,6 +415,8 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
         }
         return snapped;
       });
+      rememberMove(dragging.startPieces, next);
+      return next;
     });
   }
 
@@ -388,6 +467,7 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
   function handleMessage(_from: string, msg: ChannelMessage) {
     switch (msg.type) {
       case "piece-move":
+        if (msg.by !== myIdRef.current) remoteMoveVersionRef.current += 1;
         onPieceMovedRef.current?.(msg.by);
         updatePieces((cur) =>
           updatePieceById(cur, msg.pieceId, (piece) => {
@@ -398,6 +478,7 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
         );
         break;
       case "piece-lock":
+        if (msg.by !== myIdRef.current) remoteMoveVersionRef.current += 1;
         onPieceLockedRef.current?.(msg.by);
         updatePieces((cur) =>
           updatePieceById(cur, msg.pieceId, (piece) => {
@@ -425,6 +506,7 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
         });
         break;
       case "state-sync":
+        remoteMoveVersionRef.current += 1;
         applySyncedPieces(msg.pieces);
         break;
     }
@@ -459,6 +541,8 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     handleImageOverlayPointerDown,
     handleDragMove,
     handleDragEnd,
+    undoLastMove,
+    redoLastMove,
     handleSelectionBoxPointerDown,
     handleSelectionBoxMove,
     handleSelectionBoxEnd,

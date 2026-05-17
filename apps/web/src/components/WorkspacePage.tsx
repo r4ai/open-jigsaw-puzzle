@@ -165,11 +165,18 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") clearSelectionRef.current();
+      if (event.key === "Escape") {
+        clearSelectionRef.current();
+        return;
+      }
+      if (!isUndoRedoShortcut(event)) return;
+      event.preventDefault();
+      const result = event.shiftKey ? puzzle.redoLastMove() : puzzle.undoLastMove();
+      if (result === "blocked") setStatus("他の参加者が移動したため、この操作は元に戻せません");
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [puzzle]);
 
   // ── Derived values ────────────────────────────────────────────────────────────────
 
@@ -389,4 +396,12 @@ export function isAuthorizedPeerMessage(from: string, msg: ChannelMessage, hostI
     case "image-chunk":
       return hostId === from;
   }
+}
+
+export function isUndoRedoShortcut(event: KeyboardEvent): boolean {
+  if (event.key.toLowerCase() !== "z") return false;
+  if (!event.ctrlKey && !event.metaKey) return false;
+  if (event.altKey) return false;
+  const target = event.target;
+  return !(target instanceof HTMLElement && target.closest("input, textarea, select, [contenteditable='true']"));
 }

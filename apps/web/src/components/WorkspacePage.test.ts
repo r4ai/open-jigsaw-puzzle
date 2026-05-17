@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ChannelMessage } from "@open-puzzle/shared/protocol";
-import { isAuthorizedPeerMessage } from "./WorkspacePage";
+import { isAuthorizedPeerMessage, isUndoRedoShortcut } from "./WorkspacePage";
 
 describe("isAuthorizedPeerMessage", () => {
   it("accepts state sync messages from non-host peers", () => {
@@ -38,5 +38,20 @@ describe("isAuthorizedPeerMessage", () => {
 
     expect(isAuthorizedPeerMessage("peer-1", msg, "host-1")).toBe(true);
     expect(isAuthorizedPeerMessage("peer-2", msg, "host-1")).toBe(false);
+  });
+});
+
+describe("isUndoRedoShortcut", () => {
+  it("accepts ctrl+z and ctrl+shift+z", () => {
+    expect(isUndoRedoShortcut(new KeyboardEvent("keydown", { key: "z", ctrlKey: true }))).toBe(true);
+    expect(isUndoRedoShortcut(new KeyboardEvent("keydown", { key: "Z", ctrlKey: true, shiftKey: true }))).toBe(true);
+  });
+
+  it("ignores typing targets", () => {
+    const input = document.createElement("input");
+    const event = new KeyboardEvent("keydown", { key: "z", ctrlKey: true });
+    Object.defineProperty(event, "target", { value: input });
+
+    expect(isUndoRedoShortcut(event)).toBe(false);
   });
 });
