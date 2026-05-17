@@ -1,15 +1,17 @@
 .workspace {
   height: 100dvh;
+  width: 100%;
+  max-width: 100vw;
   display: grid;
-  grid-template-columns: 1fr 192px;
-  grid-template-rows: auto 1fr;
+  grid-template-columns: minmax(0, 1fr) 192px;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 10px 12px;
   padding: 12px;
   overflow: hidden;
 }
 
 .sidebarCollapsed {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .boardWrap {
@@ -41,8 +43,8 @@
 
 @media (max-width: 760px), (max-width: 1024px) and (orientation: portrait) {
   .workspace {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
     padding: 10px;
     gap: 8px;
   }

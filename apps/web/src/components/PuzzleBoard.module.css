@@ -369,7 +369,7 @@
 }
 
 @media (max-width: 760px), (max-width: 1024px) and (orientation: portrait) {
-  .boardViewport { min-height: 48dvh; }
+  .boardViewport { min-height: 0; }
 
   .canvasStatus {
     bottom: 52px;

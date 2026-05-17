@@ -132,9 +132,10 @@
     grid-row: 2;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
+    min-width: 0;
+    max-height: 30dvh;
     overflow-y: auto;
-    max-height: 220px;
     align-content: unset;
   }
 
@@ -142,13 +143,40 @@
     display: flex;
   }
 
+  .nameEditor {
+    grid-template-columns: minmax(0, 1fr) 36px;
+  }
+
   .memberList {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
     gap: 6px;
+    min-width: 0;
   }
 
   .peopleSubheader {
     margin: 0;
+    flex-basis: 100%;
+  }
+
+  .person {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 32px;
+    padding: 0 8px;
+    gap: 6px;
+  }
+
+  .person span {
+    max-width: 140px;
+    font-size: 0.8125rem;
+  }
+
+  .personAvatar {
+    width: 20px;
+    height: 20px;
+    font-size: 0.68rem;
   }
 }
