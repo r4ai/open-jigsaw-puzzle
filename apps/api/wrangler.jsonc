@@ -28,7 +28,7 @@
     {
       "binding": "DB",
       "database_name": "open-puzzle",
-      "database_id": "replace-with-your-d1-database-id",
+      "database_id": "__DB_DATABASE_ID__",
       "migrations_dir": "migrations"
     }
   ],

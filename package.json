@@ -13,7 +13,7 @@
     "preview": "pnpm --filter @open-puzzle/web preview",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "db:migrate:remote": "pnpm --filter @open-puzzle/api exec wrangler d1 migrations apply open-puzzle --remote --config wrangler.jsonc",
+    "db:migrate:remote": "pnpm --filter @open-puzzle/api prepare:wrangler && pnpm --filter @open-puzzle/api exec wrangler d1 migrations apply open-puzzle --remote --config wrangler.generated.jsonc",
     "deploy": "pnpm build && pnpm --filter @open-puzzle/api deploy"
   },
   "devDependencies": {

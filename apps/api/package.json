@@ -4,9 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --config wrangler.jsonc",
+    "prepare:wrangler": "node scripts/prepare-wrangler-config.mjs",
+    "dev": "pnpm prepare:wrangler && wrangler dev --config wrangler.generated.jsonc",
     "build": "tsc -p tsconfig.json",
-    "deploy": "wrangler deploy --config wrangler.jsonc",
+    "deploy": "pnpm prepare:wrangler && wrangler deploy --config wrangler.generated.jsonc",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json"
   },

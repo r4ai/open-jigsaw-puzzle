@@ -48,4 +48,8 @@ jobs:
         run: pnpm build
 
       - name: Validate Worker bundle
-        run: pnpm --filter @open-puzzle/api exec wrangler deploy --dry-run --outdir dist/worker --config wrangler.jsonc
+        env:
+          OPEN_PUZZLE_D1_DATABASE_ID: 00000000-0000-4000-8000-000000000000
+        run: |
+          pnpm --filter @open-puzzle/api prepare:wrangler
+          pnpm --filter @open-puzzle/api exec wrangler deploy --dry-run --outdir dist/worker --config wrangler.generated.jsonc
