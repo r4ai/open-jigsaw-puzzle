@@ -95,13 +95,13 @@
   gap: 5px;
 }
 
-.themeToggle {
+.topActions .themeToggle {
   width: 32px;
   padding: 0;
   color: var(--ink-60);
 }
 
-.themeToggle:hover:not(:disabled) {
+.topActions .themeToggle:hover:not(:disabled) {
   color: var(--ink);
 }
 
@@ -161,7 +161,7 @@
     justify-content: center;
   }
 
-  .themeToggle {
+  .topActions .themeToggle {
     flex: 0 0 auto;
     width: 38px;
   }
