@@ -56,4 +56,4 @@ jobs:
         run: pnpm db:migrate:remote
 
       - name: Deploy Worker
-        run: pnpm --filter @open-jigsaw-puzzle/api deploy
+        run: pnpm --filter @open-jigsaw-puzzle/api run deploy

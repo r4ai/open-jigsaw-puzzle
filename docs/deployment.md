@@ -29,7 +29,7 @@ Apply D1 migrations and deploy:
 
 ```bash
 pnpm db:migrate:remote
-pnpm deploy
+pnpm run deploy
 ```
 
 ## GitHub Actions Deploy

@@ -14,7 +14,7 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "db:migrate:remote": "pnpm --filter @open-jigsaw-puzzle/api prepare:wrangler && pnpm --filter @open-jigsaw-puzzle/api exec wrangler d1 migrations apply open-jigsaw-puzzle --remote --config wrangler.generated.jsonc",
-    "deploy": "pnpm build && pnpm --filter @open-jigsaw-puzzle/api deploy"
+    "deploy": "pnpm build && pnpm --filter @open-jigsaw-puzzle/api run deploy"
   },
   "devDependencies": {
     "@types/node": "^24.10.2",
