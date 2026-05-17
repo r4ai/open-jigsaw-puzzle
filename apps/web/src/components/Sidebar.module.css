@@ -129,11 +129,12 @@
 @media (max-width: 760px), (max-width: 1024px) and (orientation: portrait) {
   .people {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 2;
     display: flex;
     flex-direction: column;
     gap: 6px;
-    overflow: visible;
+    overflow-y: auto;
+    max-height: 220px;
     align-content: unset;
   }
 
@@ -143,19 +144,11 @@
 
   .memberList {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     gap: 6px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-  }
-
-  .person {
-    flex-shrink: 0;
   }
 
   .peopleSubheader {
-    flex-shrink: 0;
-    align-self: center;
     margin: 0;
   }
 }
