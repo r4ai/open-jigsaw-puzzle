@@ -38,6 +38,24 @@ export function createD1RoomRepository(db: D1Database, clock: Clock): RoomReposi
       if (!row) throw new Error("Room disappeared.");
       return toStoredRoom(row);
     },
+    async deleteExpired(expiredBefore, limit) {
+      const safeLimit = Math.max(1, Math.trunc(limit));
+      await db
+        .prepare(
+          [
+            "DELETE FROM room_events",
+            "WHERE room_id IN (",
+            "  SELECT id FROM rooms WHERE expires_at < ? ORDER BY expires_at LIMIT ?",
+            ")",
+          ].join(" "),
+        )
+        .bind(expiredBefore, safeLimit)
+        .run();
+      await db
+        .prepare("DELETE FROM rooms WHERE id IN (SELECT id FROM rooms WHERE expires_at < ? ORDER BY expires_at LIMIT ?)")
+        .bind(expiredBefore, safeLimit)
+        .run();
+    },
   };
 }
 

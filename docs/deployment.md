@@ -53,6 +53,8 @@ Non-secret defaults are defined in `apps/api/wrangler.jsonc`:
 
 - `ROOM_TTL_SECONDS`
 - `MAX_PARTICIPANTS`
+- `EXPIRED_ROOM_RETENTION_SECONDS`
+- `CLEANUP_BATCH_SIZE`
 - `TURN_URLS`
 - `TURN_USERNAME`
 - `TURN_CREDENTIAL`
@@ -60,3 +62,5 @@ Non-secret defaults are defined in `apps/api/wrangler.jsonc`:
 For production, configure real TURN values before launch. TURN is required for reliable WebRTC connections across restrictive NATs, mobile carriers, and corporate networks.
 
 If TURN credentials are sensitive, manage them as Cloudflare Worker secrets instead of committing values to `wrangler.jsonc`.
+
+Expired rooms are cleaned by the configured cron trigger. By default, room metadata and event rows are retained for 24 hours after room expiry and then deleted in batches of 500 rooms.

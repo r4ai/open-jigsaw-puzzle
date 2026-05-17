@@ -13,6 +13,7 @@ export type RoomRepository = {
   create: (id: string, difficulty: Difficulty, ttlSeconds: number) => Promise<StoredRoom | null>;
   read: (roomId: string) => Promise<StoredRoom | null>;
   touch: (roomId: string, participantCount: number, ttlSeconds: number) => Promise<StoredRoom>;
+  deleteExpired: (expiredBefore: number, limit: number) => Promise<void>;
 };
 
 export type RoomEventRepository = {

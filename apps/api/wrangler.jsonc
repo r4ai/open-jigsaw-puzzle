@@ -21,6 +21,9 @@
       "new_sqlite_classes": ["PuzzleRoom"]
     }
   ],
+  "triggers": {
+    "crons": ["17 * * * *"]
+  },
   "d1_databases": [
     {
       "binding": "DB",
@@ -32,6 +35,8 @@
   "vars": {
     "ROOM_TTL_SECONDS": "7200",
     "MAX_PARTICIPANTS": "6",
+    "EXPIRED_ROOM_RETENTION_SECONDS": "86400",
+    "CLEANUP_BATCH_SIZE": "500",
     "TURN_URLS": "",
     "TURN_USERNAME": "",
     "TURN_CREDENTIAL": ""

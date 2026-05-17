@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { MAX_PARTICIPANTS, ROOM_TTL_SECONDS } from "@open-puzzle/shared/protocol";
 import { assertCanJoin, expiresAt, parseDifficulty } from "@open-puzzle/shared/rooms";
 import { getIceConfig } from "./application/ice";
+import { deleteExpiredRooms } from "./application/maintenance";
+import type { RoomRepository } from "./application/rooms";
 import type { Env } from "./infrastructure/cloudflare/bindings";
+import { createD1RoomRepository } from "./infrastructure/d1/rooms-repository";
 import { createApp } from "./presentation/http/app";
 import { readEnvPositiveInteger } from "./index";
 
@@ -114,6 +117,42 @@ describe("worker REST API contract", () => {
       { urls: ["turn:a.example", "turn:b.example"], username: "user", credential: "secret" },
     ]);
   });
+
+  it("deletes expired rooms after the configured retention window", async () => {
+    const calls: Array<{ expiredBefore: number; limit: number }> = [];
+    const rooms: RoomRepository = {
+      async create() {
+        return null;
+      },
+      async read() {
+        return null;
+      },
+      async touch() {
+        throw new Error("Unexpected touch.");
+      },
+      async deleteExpired(expiredBefore, limit) {
+        calls.push({ expiredBefore, limit });
+      },
+    };
+
+    await deleteExpiredRooms(rooms, () => 1_000, 300, 25);
+
+    expect(calls).toEqual([{ expiredBefore: 700, limit: 25 }]);
+  });
+
+  it("removes expired room metadata and matching event rows in one cleanup batch", async () => {
+    const db = new FakeD1();
+    db.rows.set("OLDROOM001", { id: "OLDROOM001", difficulty: 48, expires_at: 100, participant_count: 0 });
+    db.rows.set("OLDROOM002", { id: "OLDROOM002", difficulty: 96, expires_at: 200, participant_count: 0 });
+    db.rows.set("FRESHROOM1", { id: "FRESHROOM1", difficulty: 96, expires_at: 900, participant_count: 0 });
+    db.events.push(["OLDROOM001", "create", 1, "{}"]);
+    db.events.push(["FRESHROOM1", "create", 1, "{}"]);
+
+    await createD1RoomRepository(db as unknown as D1Database, () => 1_000).deleteExpired(500, 1);
+
+    expect([...db.rows.keys()].sort()).toEqual(["FRESHROOM1", "OLDROOM002"]);
+    expect(db.events).toEqual([["FRESHROOM1", "create", 1, "{}"]]);
+  });
 });
 
 function fakeEnv(overrides: Partial<Env> = {}): Env {
@@ -127,7 +166,7 @@ function fakeEnv(overrides: Partial<Env> = {}): Env {
 
 class FakeD1 {
   readonly rows = new Map<string, { id: string; difficulty: number; expires_at: number; participant_count: number }>();
-  readonly events: unknown[] = [];
+  readonly events: unknown[][] = [];
 
   prepare(sql: string) {
     const db = this;
@@ -140,6 +179,13 @@ class FakeD1 {
               db.rows.set(id, { id, difficulty, expires_at: expiresAt, participant_count: 0 });
             }
             if (sql.startsWith("INSERT INTO room_events")) db.events.push(values);
+            if (sql.startsWith("DELETE FROM room_events")) {
+              const expiredIds = db.expiredRoomIds(values[0] as number, values[1] as number);
+              db.events.splice(0, db.events.length, ...db.events.filter((event) => !expiredIds.has(event[0] as string)));
+            }
+            if (sql.startsWith("DELETE FROM rooms")) {
+              for (const id of db.expiredRoomIds(values[0] as number, values[1] as number)) db.rows.delete(id);
+            }
             return {};
           },
           async first<T>() {
@@ -149,5 +195,15 @@ class FakeD1 {
         };
       },
     };
+  }
+
+  private expiredRoomIds(expiredBefore: number, limit: number): Set<string> {
+    return new Set(
+      [...this.rows.values()]
+        .filter((row) => row.expires_at < expiredBefore)
+        .sort((a, b) => a.expires_at - b.expires_at)
+        .slice(0, limit)
+        .map((row) => row.id),
+    );
   }
 }
