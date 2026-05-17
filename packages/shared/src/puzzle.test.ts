@@ -42,6 +42,8 @@ describe("puzzle geometry", () => {
           shoulderEnd: 1 - piece.edgeProfiles.right!.shoulderStart,
           headStart: 1 - piece.edgeProfiles.right!.headEnd,
           headEnd: 1 - piece.edgeProfiles.right!.headStart,
+          shoulderDepth: piece.edgeProfiles.right!.waistDepth,
+          waistDepth: piece.edgeProfiles.right!.shoulderDepth,
           reverse: true,
         });
       }
@@ -54,6 +56,8 @@ describe("puzzle geometry", () => {
           shoulderEnd: 1 - piece.edgeProfiles.bottom!.shoulderStart,
           headStart: 1 - piece.edgeProfiles.bottom!.headEnd,
           headEnd: 1 - piece.edgeProfiles.bottom!.headStart,
+          shoulderDepth: piece.edgeProfiles.bottom!.waistDepth,
+          waistDepth: piece.edgeProfiles.bottom!.shoulderDepth,
           reverse: true,
         });
       }

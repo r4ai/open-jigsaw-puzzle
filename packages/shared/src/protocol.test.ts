@@ -19,6 +19,15 @@ describe("channel message validation", () => {
     expect(parseChannelMessage({ type: "state-sync", pieces: Array.from({ length: 193 }, (_, id) => ({ id, x: 0, y: 0, z: 0, locked: false })), lockedCount: 0 })).toBeNull();
   });
 
+  it("accepts state sync senders when present", () => {
+    expect(parseChannelMessage({
+      type: "state-sync",
+      pieces: [{ id: 0, x: 0, y: 0, z: 0, locked: false }],
+      lockedCount: 0,
+      by: "peer-1",
+    })).toMatchObject({ type: "state-sync", by: "peer-1" });
+  });
+
   it("rejects invalid participant spoofing fields before app-level authorization", () => {
     expect(parseChannelMessage({ type: "presence", participantId: "", name: "Ada", cursor: null })).toBeNull();
     expect(parseChannelMessage({ type: "piece-lock", pieceId: 1, x: 0, y: 0, z: 1, by: "" })).toBeNull();

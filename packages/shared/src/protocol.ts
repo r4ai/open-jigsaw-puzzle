@@ -233,6 +233,7 @@ export const ChannelMessageSchema = v.variant("type", [
       type: v.literal("state-sync"),
       pieces: SyncedPiecesSchema,
       lockedCount: NonNegativeIntegerSchema,
+      by: v.optional(ParticipantIdSchema),
     }),
     v.check((message) => message.lockedCount <= message.pieces.length, "Locked count cannot exceed piece count."),
   ),

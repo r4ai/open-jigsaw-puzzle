@@ -156,6 +156,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
 
   useEffect(() => {
     if (puzzle.complete) setShowCompletion(true);
+    else setShowCompletion(false);
   }, [puzzle.complete]);
 
   useEffect(() => {
@@ -172,7 +173,9 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
       if (!isUndoRedoShortcut(event)) return;
       event.preventDefault();
       const result = event.shiftKey ? puzzle.redoLastMove() : puzzle.undoLastMove();
-      if (result === "blocked") setStatus("他の参加者が移動したため、この操作は元に戻せません");
+      if (result === "blocked") {
+        setStatus(event.shiftKey ? "他の参加者が移動したため、この操作はやり直せません" : "他の参加者が移動したため、この操作は元に戻せません");
+      }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
