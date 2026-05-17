@@ -81,14 +81,14 @@ export function Topbar({
           onClick={onToggleTheme}
           title={isDark ? "ライトモードに切り替え" : "ダークモードに切り替え"}
         >
-          {isDark ? <Sun size={15} /> : <Moon size={15} />}
+          {isDark ? <Sun size={18} /> : <Moon size={18} />}
         </button>
         <button
           className={`${styles.themeToggle} ${styles.sidebarToggle}`}
           onClick={onToggleSidebar}
           title={sidebarOpen ? "参加者パネルを閉じる" : "参加者パネルを開く"}
         >
-          {sidebarOpen ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+          {sidebarOpen ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
       </div>
     </header>
