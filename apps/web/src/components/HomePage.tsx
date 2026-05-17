@@ -50,14 +50,14 @@ export function HomePage({ theme, name, onNameChange, onToggleTheme }: Props) {
       </button>
 
       <section className={styles.intro}>
-        <p className={styles.eyebrow}>Open Puzzle</p>
         <h1 className={styles.heading}>
-          画像を保存しない、<br />
-          <em>ブラウザ同士</em>の<br />
-          ジグソーパズル。
+          Open<br />
+          <em>Jigsaw</em><br />
+          Puzzle
         </h1>
         <p className={styles.introDesc}>
-          部屋を作って画像を選ぶだけで開始できます。画像はリサイズ後に WebRTC で参加者へ配布され、サーバーには保存されません。
+          部屋を作って画像を選ぶだけ。<br />
+          みんなで一緒にパズルを楽しもう。
         </p>
       </section>
 
