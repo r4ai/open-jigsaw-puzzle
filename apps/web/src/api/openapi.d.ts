@@ -78,7 +78,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {number} */
-                    difficulty: 48 | 96 | 192;
+                    difficulty: 48 | 96 | 192 | 300 | 500 | 1000 | 2000;
                 };
             };
         };
@@ -93,7 +93,7 @@ export interface operations {
                         room: {
                             id: string;
                             /** @enum {number} */
-                            difficulty: 48 | 96 | 192;
+                            difficulty: 48 | 96 | 192 | 300 | 500 | 1000 | 2000;
                             expiresAt: number;
                             participantCount: number;
                         };
@@ -189,7 +189,7 @@ export interface operations {
                         room: {
                             id: string;
                             /** @enum {number} */
-                            difficulty: 48 | 96 | 192;
+                            difficulty: 48 | 96 | 192 | 300 | 500 | 1000 | 2000;
                             expiresAt: number;
                             participantCount: number;
                         };

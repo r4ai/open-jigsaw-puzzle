@@ -16,7 +16,7 @@ describe("channel message validation", () => {
   it("rejects malformed image and sync payloads", () => {
     expect(parseChannelMessage({ type: "image-meta", imageId: "image-1", mimeType: "image/svg+xml", width: 640, height: 480, chunks: 1, byteLength: 10 })).toBeNull();
     expect(parseChannelMessage({ type: "image-chunk", imageId: "image-1", index: 0, data: "x".repeat(MAX_CHANNEL_MESSAGE_BYTES) })).toBeNull();
-    expect(parseChannelMessage({ type: "state-sync", pieces: Array.from({ length: 193 }, (_, id) => ({ id, x: 0, y: 0, z: 0, locked: false })), lockedCount: 0 })).toBeNull();
+    expect(parseChannelMessage({ type: "state-sync", pieces: Array.from({ length: 2001 }, (_, id) => ({ id, x: 0, y: 0, z: 0, locked: false })), lockedCount: 0 })).toBeNull();
   });
 
   it("accepts state sync senders when present", () => {
@@ -50,8 +50,8 @@ describe("channel message validation", () => {
   it("rejects malformed selection presence messages", () => {
     expect(parseChannelMessage({ type: "selection-presence", participantId: "", pieceIds: [1], imageOverlaySelected: false })).toBeNull();
     expect(parseChannelMessage({ type: "selection-presence", participantId: "peer-1", pieceIds: [1, 1], imageOverlaySelected: false })).toBeNull();
-    expect(parseChannelMessage({ type: "selection-presence", participantId: "peer-1", pieceIds: [192], imageOverlaySelected: false })).toBeNull();
-    expect(parseChannelMessage({ type: "selection-presence", participantId: "peer-1", pieceIds: Array.from({ length: 193 }, (_, id) => id), imageOverlaySelected: false })).toBeNull();
+    expect(parseChannelMessage({ type: "selection-presence", participantId: "peer-1", pieceIds: [2000], imageOverlaySelected: false })).toBeNull();
+    expect(parseChannelMessage({ type: "selection-presence", participantId: "peer-1", pieceIds: Array.from({ length: 2001 }, (_, id) => id), imageOverlaySelected: false })).toBeNull();
   });
 });
 

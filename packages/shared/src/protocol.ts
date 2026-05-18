@@ -1,16 +1,18 @@
 import * as v from "valibot";
 
-export const DIFFICULTIES = [48, 96, 192] as const;
+export const DIFFICULTIES = [48, 96, 192, 300, 500, 1000, 2000] as const;
+export const BASIC_DIFFICULTIES = [48, 96, 192] as const;
+export const ADVANCED_DIFFICULTIES = [300, 500, 1000, 2000] as const;
 export const ROOM_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const ROOM_ID_LENGTH = 10;
 export const ROOM_TTL_SECONDS = 60 * 60 * 2;
 export const MAX_PARTICIPANTS = 6;
-export const MAX_CHANNEL_MESSAGE_BYTES = 128 * 1024;
+export const MAX_CHANNEL_MESSAGE_BYTES = 1024 * 1024;
 export const MAX_IMAGE_CHUNK_BYTES = 20_000;
 export const MAX_IMAGE_CHUNKS = 4096;
 export const MAX_IMAGE_BYTES = 64 * 1024 * 1024;
 export const MAX_IMAGE_EDGE = 1280;
-export const MAX_SYNCED_PIECES = 192;
+export const MAX_SYNCED_PIECES = 2000;
 export const MAX_COORDINATE = 1_000_000_000;
 export const MAX_Z_INDEX = 1_000_000_000;
 export const MAX_SIGNALING_MESSAGE_BYTES = 64 * 1024;

@@ -1,7 +1,7 @@
 import { Link, Moon, Play, Sun } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { DIFFICULTIES, type Difficulty } from "@open-jigsaw-puzzle/shared/protocol";
+import { ADVANCED_DIFFICULTIES, BASIC_DIFFICULTIES, type Difficulty } from "@open-jigsaw-puzzle/shared/protocol";
 import { apiClient, apiErrorMessage } from "../api/client";
 import styles from "./HomePage.module.css";
 
@@ -99,16 +99,36 @@ export function HomePage({ theme, name, onNameChange, onToggleTheme }: Props) {
 
           <div className={styles.fieldGroup}>
             <p className={styles.fieldLabel}>難易度（ピース数）</p>
-            <div className={styles.difficulty} aria-label="難易度">
-              {DIFFICULTIES.map((value) => (
-                <button
-                  key={value}
-                  className={difficulty === value ? styles.selected : ""}
-                  onClick={() => setDifficulty(value)}
-                >
-                  {value}
-                </button>
-              ))}
+            <div className={styles.difficultyGroup}>
+              <p className={styles.groupLabel}>基本</p>
+              <div className={styles.difficulty} aria-label="基本の難易度">
+                {BASIC_DIFFICULTIES.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={difficulty === value ? styles.selected : ""}
+                    onClick={() => setDifficulty(value)}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className={styles.difficultyGroup}>
+              <p className={styles.groupLabel}>上級</p>
+              <div className={`${styles.difficulty} ${styles.difficultyAdvanced}`} aria-label="上級の難易度">
+                {ADVANCED_DIFFICULTIES.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={difficulty === value ? styles.selected : ""}
+                    onClick={() => setDifficulty(value)}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
+              <p className={styles.advancedNote}>※ 端末によっては動作が重くなる場合があります</p>
             </div>
           </div>
 

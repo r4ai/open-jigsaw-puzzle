@@ -158,7 +158,7 @@
 
 .panelInner {
   width: 100%;
-  max-width: 320px;
+  max-width: 360px;
   display: grid;
   gap: 18px;
   animation: fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
@@ -188,17 +188,35 @@
   letter-spacing: 0.01em;
 }
 
+.difficultyGroup {
+  display: grid;
+  gap: 6px;
+}
+
+.groupLabel {
+  margin: 0;
+  font: 500 0.6875rem / 1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-40);
+}
+
 .difficulty {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
+.difficultyAdvanced {
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+}
+
 .difficulty button {
-  font: 500 0.9375rem / 1 var(--font-mono);
-  padding: 0;
+  font: 500 0.875rem / 1 var(--font-mono);
+  padding: 0 6px;
   border-radius: 8px;
   min-height: 44px;
+  min-width: 0;
 }
 
 .difficulty .selected {
@@ -211,6 +229,12 @@
   border-color: var(--teal-border);
   background: var(--teal-surf);
   color: var(--teal);
+}
+
+.advancedNote {
+  margin: 2px 0 0;
+  font: 400 0.75rem / 1.4 var(--font-ui);
+  color: var(--ink-40);
 }
 
 .primary {
