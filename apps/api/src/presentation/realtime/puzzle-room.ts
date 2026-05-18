@@ -34,6 +34,7 @@ export class PuzzleRoom implements DurableObject {
       const attachment = socket.deserializeAttachment() as SocketAttachment | undefined;
       if (attachment) this.sessions.set(socket, attachment);
     }
+    this.state.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -98,6 +99,7 @@ export class PuzzleRoom implements DurableObject {
 
   async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
     if (typeof message !== "string") return;
+    if (message === "ping") return;
     if (message.length > MAX_SIGNALING_MESSAGE_BYTES || !consumeSocketRateLimit(this.messageRateLimits, socket, MAX_WS_MESSAGES_PER_MINUTE)) {
       socket.close(1008, "Message limit exceeded.");
       await this.removeSocket(socket);

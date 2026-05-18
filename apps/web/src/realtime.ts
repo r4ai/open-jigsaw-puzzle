@@ -21,6 +21,8 @@ const MAX_PENDING_ICE_CANDIDATES_PER_PEER = 128;
 const MAX_CHANNEL_BUFFERED_AMOUNT = 1_000_000;
 const CHANNEL_BUFFERED_AMOUNT_LOW_THRESHOLD = 256_000;
 const RECONNECT_DELAY_MS = 750;
+const HEARTBEAT_INTERVAL_MS = 25_000;
+const HEARTBEAT_TIMEOUT_MS = 60_000;
 
 export async function fetchIceConfig(): Promise<IceConfig> {
   const { data, error } = await apiClient.GET("/api/ice");
@@ -32,7 +34,41 @@ export function openSignaling(roomId: string, name: string, handlers: SignalingH
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const socket = new WebSocket(`${protocol}//${window.location.host}/api/rooms/${encodeURIComponent(roomId)}/socket?name=${encodeURIComponent(name)}`);
 
+  let lastPongAt = Date.now();
+  let heartbeatTimer: number | null = null;
+  const stopHeartbeat = () => {
+    if (heartbeatTimer !== null) {
+      window.clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
+  };
+
+  socket.addEventListener("open", () => {
+    lastPongAt = Date.now();
+    heartbeatTimer = window.setInterval(() => {
+      if (socket.readyState !== WebSocket.OPEN) return;
+      if (Date.now() - lastPongAt > HEARTBEAT_TIMEOUT_MS) {
+        stopHeartbeat();
+        try {
+          socket.close(4000, "heartbeat-timeout");
+        } catch {
+          // Ignore close errors; the close handler will run regardless.
+        }
+        return;
+      }
+      try {
+        socket.send("ping");
+      } catch {
+        // Ignore send errors; the next close event will surface the problem.
+      }
+    }, HEARTBEAT_INTERVAL_MS);
+  });
+
   socket.addEventListener("message", (event) => {
+    if (event.data === "pong") {
+      lastPongAt = Date.now();
+      return;
+    }
     try {
       const message = parseSignalEnvelope(JSON.parse(event.data as string));
       if (!message) throw new Error("Invalid signaling message.");
@@ -61,8 +97,12 @@ export function openSignaling(roomId: string, name: string, handlers: SignalingH
     }
   });
 
-  socket.addEventListener("error", () => handlers.onError("Signaling connection failed."));
+  socket.addEventListener("error", () => {
+    stopHeartbeat();
+    handlers.onError("Signaling connection failed.");
+  });
   socket.addEventListener("close", (event) => {
+    stopHeartbeat();
     if (event.wasClean) return;
     handlers.onClose(event.reason || "Signaling connection closed unexpectedly.");
   });
