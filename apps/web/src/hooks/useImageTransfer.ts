@@ -14,10 +14,11 @@ type Props = {
   broadcast: (msg: ChannelMessage) => void;
   room: RoomSummary | null;
   getPieces: () => BoardPiece[];
+  getStartedAtMs: () => number | null;
   onImageComplete: (dataUrl: string, width: number, height: number, layout: PuzzleLayout) => void;
 };
 
-export function useImageTransfer({ send, broadcast, room, getPieces, onImageComplete }: Props) {
+export function useImageTransfer({ send, broadcast, room, getPieces, getStartedAtMs, onImageComplete }: Props) {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
   const [loadingProgress, setLoadingProgress] = useState<LoadingProgress>({ phase: "idle" });
@@ -30,11 +31,13 @@ export function useImageTransfer({ send, broadcast, room, getPieces, onImageComp
   const sendRef = useRef(send);
   const broadcastRef = useRef(broadcast);
   const getPiecesRef = useRef(getPieces);
+  const getStartedAtMsRef = useRef(getStartedAtMs);
   const onImageCompleteRef = useRef(onImageComplete);
 
   useEffect(() => { sendRef.current = send; }, [send]);
   useEffect(() => { broadcastRef.current = broadcast; }, [broadcast]);
   useEffect(() => { getPiecesRef.current = getPieces; }, [getPieces]);
+  useEffect(() => { getStartedAtMsRef.current = getStartedAtMs; }, [getStartedAtMs]);
   useEffect(() => { onImageCompleteRef.current = onImageComplete; }, [onImageComplete]);
   useEffect(() => { roomRef.current = room; }, [room]);
 
@@ -96,7 +99,7 @@ export function useImageTransfer({ send, broadcast, room, getPieces, onImageComp
     sendImage(imageDataRef.current, imageSizeRef.current?.width, imageSizeRef.current?.height, to);
     const snapshotPieces = piecesOverride ?? getPiecesRef.current();
     const synced: SyncedPiece[] = snapshotPieces.map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
-    const syncMsg: ChannelMessage = { type: "state-sync", pieces: synced, lockedCount: countLockedPieces(synced) };
+    const syncMsg: ChannelMessage = { type: "state-sync", pieces: synced, lockedCount: countLockedPieces(synced), startedAtMs: getStartedAtMsRef.current() };
     if (to) sendRef.current(to, syncMsg);
     else broadcastRef.current(syncMsg);
   }

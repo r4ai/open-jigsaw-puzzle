@@ -60,6 +60,7 @@ function PuzzleHarness({ onRender }: { onRender: (api: PuzzleApi) => void }) {
   const api = usePuzzle({
     broadcast: (_msg: ChannelMessage) => {},
     myId: "local",
+    isHost: true,
     layout: null,
   });
 

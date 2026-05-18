@@ -75,6 +75,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
     broadcast: signaling.broadcast,
     room: signaling.room,
     getPieces: () => puzzle.piecesRef.current,
+    getStartedAtMs: () => puzzle.startedAtMsRef.current,
     onImageComplete: (_dataUrl, _w, _h, nextLayout: PuzzleLayout) => {
       puzzle.receiveImage(nextLayout);
     },
@@ -93,9 +94,14 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
 
   const cursors = useRemoteCursors({ myId: signaling.myId, name, broadcast: signaling.broadcast });
 
+  const myParticipant = signaling.participants.find((p) => p.id === signaling.myId);
+  const isHost = myParticipant?.isHost ?? false;
+  const hostId = signaling.participants.find((p) => p.isHost)?.id ?? null;
+
   const puzzle = usePuzzle({
     broadcast: signaling.broadcast,
     myId: signaling.myId,
+    isHost,
     layout,
     onPieceMoved: cursors.markActive,
     onPieceLocked: cursors.clearActive,
@@ -188,9 +194,6 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
   // ── Derived values ────────────────────────────────────────────────────────────────
 
   const isDark = theme === "dark";
-  const myParticipant = signaling.participants.find((p) => p.id === signaling.myId);
-  const isHost = myParticipant?.isHost ?? false;
-  const hostId = signaling.participants.find((p) => p.isHost)?.id ?? null;
   const nameChanged = Boolean(myParticipant && sanitizeName(draftName) !== myParticipant.name);
   const loadingSummary = describeLoadingProgress(imageTransfer.loadingProgress) ?? status;
 
@@ -443,6 +446,8 @@ export function isAuthorizedPeerMessage(from: string, msg: ChannelMessage, hostI
     case "state-sync":
     case "image-overlay":
       return hostId === from;
+    case "puzzle-completed":
+      return msg.by === from && hostId === from;
     case "image-meta":
     case "image-chunk":
       return hostId === from;

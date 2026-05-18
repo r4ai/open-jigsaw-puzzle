@@ -236,9 +236,15 @@ export const ChannelMessageSchema = v.variant("type", [
       pieces: SyncedPiecesSchema,
       lockedCount: NonNegativeIntegerSchema,
       by: v.optional(ParticipantIdSchema),
+      startedAtMs: v.optional(v.union([v.pipe(v.number(), v.finite(), v.minValue(0)), v.null_()])),
     }),
     v.check((message) => message.lockedCount <= message.pieces.length, "Locked count cannot exceed piece count."),
   ),
+  v.object({
+    type: v.literal("puzzle-completed"),
+    elapsedMs: v.pipe(v.number(), v.finite(), v.minValue(0)),
+    by: ParticipantIdSchema,
+  }),
   v.object({
     type: v.literal("image-overlay"),
     x: CoordinateSchema,

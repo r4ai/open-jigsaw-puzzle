@@ -49,19 +49,21 @@ export type RemoteSelection = { participantId: string; pieceIds: number[]; image
 type Props = {
   broadcast: (msg: ChannelMessage) => void;
   myId: string | null;
+  isHost: boolean;
   layout: PuzzleLayout | null;
   onPieceMoved?: (participantId: string) => void;
   onPieceLocked?: (participantId: string) => void;
 };
 
-export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked }: Props) {
+export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPieceLocked }: Props) {
   const [pieces, setPieces] = useState<BoardPiece[]>([]);
   const [selectedPieceIds, setSelectedPieceIds] = useState<Set<number>>(new Set());
   const [imageOverlaySelected, setImageOverlaySelected] = useState(false);
   const [selectionBox, setSelectionBox] = useState<Rect | null>(null);
   const [remoteSelections, setRemoteSelections] = useState<RemoteSelection[]>([]);
   const [clearedElapsedMs, setClearedElapsedMs] = useState<number | null>(null);
-  const startedAtRef = useRef<number | null>(null);
+  const startedAtMsRef = useRef<number | null>(null);
+  const clearedElapsedMsRef = useRef<number | null>(null);
   const piecesRef = useRef<BoardPiece[]>([]);
   const pendingSyncRef = useRef<SyncedPiece[] | null>(null);
   const draggingRef = useRef<DragState | null>(null);
@@ -85,6 +87,8 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
   onPieceMovedRef.current = onPieceMoved;
   const onPieceLockedRef = useRef(onPieceLocked);
   onPieceLockedRef.current = onPieceLocked;
+  const isHostRef = useRef(isHost);
+  isHostRef.current = isHost;
 
   useEffect(() => {
     return () => {
@@ -139,7 +143,7 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     updatePieces((cur) => {
       const next = applyPieceSnapshots(cur, snapshots);
       const synced = next.map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
-      broadcastRef.current({ type: "state-sync", pieces: synced, lockedCount: countLockedPieces(synced), by: myIdRef.current ?? "local" });
+      broadcastRef.current({ type: "state-sync", pieces: synced, lockedCount: countLockedPieces(synced), by: myIdRef.current ?? "local", startedAtMs: startedAtMsRef.current });
       return next;
     });
   }
@@ -195,7 +199,8 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
   }
 
   function resetTimer() {
-    startedAtRef.current = null;
+    startedAtMsRef.current = null;
+    clearedElapsedMsRef.current = null;
     setClearedElapsedMs(null);
   }
 
@@ -252,7 +257,7 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
       const next = arrangeLoosePieces(cur, currentLayout);
       piecesRef.current = next;
       const synced = next.map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
-      broadcastRef.current({ type: "state-sync", pieces: synced, lockedCount: countLockedPieces(synced), by: myIdRef.current ?? "local" });
+      broadcastRef.current({ type: "state-sync", pieces: synced, lockedCount: countLockedPieces(synced), by: myIdRef.current ?? "local", startedAtMs: startedAtMsRef.current });
       return next;
     });
   }
@@ -548,7 +553,16 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
         break;
       case "state-sync":
         if (!msg.by || msg.by !== myIdRef.current) remoteMoveVersionRef.current += 1;
+        if (msg.startedAtMs != null && startedAtMsRef.current === null) {
+          startedAtMsRef.current = msg.startedAtMs;
+        }
         applySyncedPieces(msg.pieces);
+        break;
+      case "puzzle-completed":
+        if (clearedElapsedMsRef.current === null) {
+          clearedElapsedMsRef.current = msg.elapsedMs;
+          setClearedElapsedMs(msg.elapsedMs);
+        }
         break;
     }
   }
@@ -563,18 +577,33 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
   useEffect(() => {
     if (pieces.length === 0) return;
     if (complete) {
-      if (clearedElapsedMs === null && startedAtRef.current !== null) {
-        setClearedElapsedMs(Date.now() - startedAtRef.current);
-      }
+      if (!isHostRef.current) return;
+      if (clearedElapsedMsRef.current !== null) return;
+      if (startedAtMsRef.current === null) return;
+      const elapsedMs = Math.max(0, Date.now() - startedAtMsRef.current);
+      clearedElapsedMsRef.current = elapsedMs;
+      setClearedElapsedMs(elapsedMs);
+      broadcastRef.current({ type: "puzzle-completed", elapsedMs, by: myIdRef.current ?? "local" });
       return;
     }
-    if (startedAtRef.current === null) startedAtRef.current = Date.now();
-  }, [pieces, complete, clearedElapsedMs]);
+    if (!isHostRef.current) return;
+    if (startedAtMsRef.current !== null) return;
+    startedAtMsRef.current = Date.now();
+    const synced = piecesRef.current.map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
+    broadcastRef.current({
+      type: "state-sync",
+      pieces: synced,
+      lockedCount: countLockedPieces(synced),
+      by: myIdRef.current ?? "local",
+      startedAtMs: startedAtMsRef.current,
+    });
+  }, [pieces, complete]);
 
   return {
     pieces,
     piecesRef,
     pendingSyncRef,
+    startedAtMsRef,
     draggingRef,
     selectedPieceIds,
     imageOverlaySelected,
