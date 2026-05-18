@@ -60,6 +60,8 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
   const [imageOverlaySelected, setImageOverlaySelected] = useState(false);
   const [selectionBox, setSelectionBox] = useState<Rect | null>(null);
   const [remoteSelections, setRemoteSelections] = useState<RemoteSelection[]>([]);
+  const [clearedElapsedMs, setClearedElapsedMs] = useState<number | null>(null);
+  const startedAtRef = useRef<number | null>(null);
   const piecesRef = useRef<BoardPiece[]>([]);
   const pendingSyncRef = useRef<SyncedPiece[] | null>(null);
   const draggingRef = useRef<DragState | null>(null);
@@ -192,11 +194,17 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     }
   }
 
+  function resetTimer() {
+    startedAtRef.current = null;
+    setClearedElapsedMs(null);
+  }
+
   function setNewPieces(newLayout: PuzzleLayout) {
     const nextPieces = createInitialPieces(newLayout);
     piecesRef.current = nextPieces;
     pendingSyncRef.current = null;
     clearMoveHistory(true);
+    resetTimer();
     setPieces(nextPieces);
   }
 
@@ -206,6 +214,7 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
       const pending = pendingSyncRef.current;
       pendingSyncRef.current = null;
       clearMoveHistory(true);
+      resetTimer();
       if (!pending) {
         piecesRef.current = base;
         return base;
@@ -551,6 +560,17 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
   const complete = isComplete(pieces);
   const lockedCount = countLockedPieces(pieces);
 
+  useEffect(() => {
+    if (pieces.length === 0) return;
+    if (complete) {
+      if (clearedElapsedMs === null && startedAtRef.current !== null) {
+        setClearedElapsedMs(Date.now() - startedAtRef.current);
+      }
+      return;
+    }
+    if (startedAtRef.current === null) startedAtRef.current = Date.now();
+  }, [pieces, complete, clearedElapsedMs]);
+
   return {
     pieces,
     piecesRef,
@@ -561,6 +581,7 @@ export function usePuzzle({ broadcast, myId, layout, onPieceMoved, onPieceLocked
     selectionBox,
     remoteSelections,
     complete,
+    clearedElapsedMs,
     lockedCount,
     constrainPosition,
     bringToFront,

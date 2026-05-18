@@ -416,6 +416,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
       {showCompletion && (
         <CompletionOverlay
           pieceCount={puzzle.pieces.length}
+          elapsedMs={puzzle.clearedElapsedMs}
           onBackToMenu={() => {
             setShowCompletion(false);
             void navigate({ to: "/" });

@@ -27,7 +27,7 @@
 .selectionGlow {
   fill: none;
   stroke: var(--selection-color, var(--teal));
-  stroke-opacity: 0.18;
+  stroke-opacity: calc(var(--piece-edge-opacity-selected, 0.7) * 0.26);
   stroke-width: 9;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;

@@ -1,12 +1,14 @@
+import { formatDuration } from "../utils/format";
 import styles from "./CompletionOverlay.module.css";
 
 type Props = {
   pieceCount: number;
+  elapsedMs: number | null;
   onBackToMenu: () => void;
   onClose: () => void;
 };
 
-export function CompletionOverlay({ pieceCount, onBackToMenu, onClose }: Props) {
+export function CompletionOverlay({ pieceCount, elapsedMs, onBackToMenu, onClose }: Props) {
   return (
     <div className={styles.completionOverlay} role="dialog" aria-modal="true" aria-label="パズル完成">
       <div className={styles.completionCard}>
@@ -15,6 +17,12 @@ export function CompletionOverlay({ pieceCount, onBackToMenu, onClose }: Props) 
         <p className={styles.completionDesc}>
           {pieceCount} ピースのパズルを完成させました。
         </p>
+        {elapsedMs !== null && (
+          <div className={styles.completionTime}>
+            <span className={styles.completionTimeLabel}>クリアタイム</span>
+            <span className={styles.completionTimeValue}>{formatDuration(elapsedMs)}</span>
+          </div>
+        )}
         <div className={styles.completionActions}>
           <button className={`${styles.primary} ${styles.completionBtn}`} onClick={onBackToMenu}>
             メニューに戻る
