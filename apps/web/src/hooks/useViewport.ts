@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { clamp, roundZoom, shouldStartViewportPan } from "../utils/puzzle-ops";
 
-export const MIN_ZOOM = 0.35;
+export const MIN_ZOOM = 0.1;
 export const MAX_ZOOM = 2.5;
 export const ZOOM_STEP = 0.15;
 const WHEEL_ZOOM_FACTOR = 1.12;
