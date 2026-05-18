@@ -10,7 +10,9 @@ import { usePuzzle } from "../hooks/usePuzzle";
 import { useViewport, ZOOM_STEP } from "../hooks/useViewport";
 import { useRemoteCursors } from "../hooks/useRemoteCursors";
 import { useImageOverlay } from "../hooks/useImageOverlay";
+import { useSettings } from "../hooks/useSettings";
 import { describeLoadingProgress } from "../utils/format";
+import { SettingsModal } from "./SettingsModal";
 import { Topbar } from "./Topbar";
 import { PuzzleBoard } from "./PuzzleBoard";
 import { EmptyBoard } from "./EmptyBoard";
@@ -31,6 +33,8 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
   const [draftName, setDraftName] = useState(name);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { settings, update: updateSetting, reset: resetSettings } = useSettings();
   const [showCompletion, setShowCompletion] = useState(false);
   const [copied, setCopied] = useState(false);
   const [status, setStatus] = useState("画像を選ぶとパズルを開始できます");
@@ -286,7 +290,14 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
   // ── Render ────────────────────────────────────────────────────────────────────────
 
   return (
-    <main className={`${styles.workspace} ${!sidebarOpen ? styles.sidebarCollapsed : ""}`}>
+    <main
+      className={`${styles.workspace} ${!sidebarOpen ? styles.sidebarCollapsed : ""}`}
+      style={{
+        "--piece-edge-opacity-locked": settings.edgeOpacityLocked,
+        "--piece-edge-opacity-unlocked": settings.edgeOpacityUnlocked,
+        "--piece-edge-opacity-selected": settings.edgeOpacitySelected,
+      } as React.CSSProperties}
+    >
       <Topbar
         roomId={signaling.room?.id}
         participantCount={signaling.participants.length}
@@ -302,6 +313,15 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
         onCopyShareUrl={() => void copyShareUrl()}
         onToggleTheme={onToggleTheme}
         onToggleSidebar={() => setSidebarOpen((v) => !v)}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
+
+      <SettingsModal
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        settings={settings}
+        onChange={updateSetting}
+        onReset={resetSettings}
       />
 
       <input

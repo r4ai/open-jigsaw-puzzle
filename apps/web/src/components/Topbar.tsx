@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, ChevronRight, Copy, Moon, MousePointer2, Rows3, Sun, Users } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Copy, Moon, MousePointer2, Rows3, Settings, Sun, Users } from "lucide-react";
 import { MAX_PARTICIPANTS } from "@open-jigsaw-puzzle/shared/protocol";
 import styles from "./Topbar.module.css";
 
@@ -17,6 +17,7 @@ type Props = {
   onCopyShareUrl: () => void;
   onToggleTheme: () => void;
   onToggleSidebar: () => void;
+  onOpenSettings: () => void;
 };
 
 export function Topbar({
@@ -34,6 +35,7 @@ export function Topbar({
   onCopyShareUrl,
   onToggleTheme,
   onToggleSidebar,
+  onOpenSettings,
 }: Props) {
   return (
     <header className={styles.topbar}>
@@ -75,6 +77,14 @@ export function Topbar({
         <button onClick={onCopyShareUrl} title="共有リンクをコピー">
           {copied ? <Check size={15} /> : <Copy size={15} />}
           <span className={styles.shareText}>{copied ? "コピー済み" : "共有"}</span>
+        </button>
+        <button
+          className={styles.themeToggle}
+          onClick={onOpenSettings}
+          title="表示設定を開く"
+          aria-label="表示設定を開く"
+        >
+          <Settings size={18} />
         </button>
         <button
           className={styles.themeToggle}

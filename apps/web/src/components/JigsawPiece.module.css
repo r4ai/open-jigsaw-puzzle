@@ -13,13 +13,16 @@
 
 .pieceEdge {
   fill: none;
-  stroke: var(--piece-edge);
+  stroke: #ffffff;
+  stroke-opacity: var(--piece-edge-opacity-unlocked, 0.65);
   stroke-linejoin: round;
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
 }
 
-.pieceEdgeLocked { stroke: var(--piece-edge-locked); }
+.pieceEdgeLocked {
+  stroke-opacity: var(--piece-edge-opacity-locked, 0.18);
+}
 
 .selectionGlow {
   fill: none;
@@ -33,7 +36,7 @@
 .selectionStroke {
   fill: none;
   stroke: var(--selection-color, var(--teal));
-  stroke-opacity: 0.7;
+  stroke-opacity: var(--piece-edge-opacity-selected, 0.7);
   stroke-width: 3;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
