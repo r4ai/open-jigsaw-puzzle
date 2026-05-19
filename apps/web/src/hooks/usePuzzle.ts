@@ -45,6 +45,8 @@ type PendingDragMove = {
 };
 type SelectionBoxState = { pointerId: number; start: { x: number; y: number }; end: { x: number; y: number } };
 export type RemoteSelection = { participantId: string; pieceIds: number[]; imageOverlaySelected: boolean };
+type PieceLockMessage = Extract<ChannelMessage, { type: "piece-lock" }>;
+type BatchedPieceMove = Extract<ChannelMessage, { type: "piece-moves" }>["moves"][number];
 
 type Props = {
   broadcast: (msg: ChannelMessage) => void;
@@ -124,6 +126,17 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
       pieceIds: [...pieceIds].sort((a, b) => a - b),
       imageOverlaySelected: imageSelected,
     });
+  }
+
+  function publishPieceMoves(moves: BatchedPieceMove[]) {
+    const by = myIdRef.current ?? "local";
+    if (moves.length === 0) return;
+    if (moves.length === 1) {
+      const move = moves[0]!;
+      broadcastRef.current({ type: "piece-move", ...move, by });
+      return;
+    }
+    broadcastRef.current({ type: "piece-moves", moves, by });
   }
 
   function setSelection(next: SelectionState) {
@@ -413,14 +426,19 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
   ) {
     const dragging = draggingRef.current;
     if (!dragging) return;
-    updatePieces((cur) => cur.map((piece) => {
-      if (!dragging.startPieces.has(piece.id) || piece.locked) return piece;
-      const startPiece = dragging.startPieces.get(piece.id)!;
-      const constrained = constrainPosition(piece.id, startPiece.x + deltaX, startPiece.y + deltaY);
-      const next = { ...piece, x: constrained.x, y: constrained.y };
-      broadcastRef.current({ type: "piece-move", pieceId: piece.id, x: next.x, y: next.y, z: next.z, by: myIdRef.current ?? "local" });
-      return next;
-    }));
+    updatePieces((cur) => {
+      const moves: BatchedPieceMove[] = [];
+      const nextPieces = cur.map((piece) => {
+        if (!dragging.startPieces.has(piece.id) || piece.locked) return piece;
+        const startPiece = dragging.startPieces.get(piece.id)!;
+        const constrained = constrainPosition(piece.id, startPiece.x + deltaX, startPiece.y + deltaY);
+        const next = { ...piece, x: constrained.x, y: constrained.y };
+        moves.push({ pieceId: piece.id, x: next.x, y: next.y, z: next.z });
+        return next;
+      });
+      publishPieceMoves(moves);
+      return nextPieces;
+    });
     if (dragging.moveImageOverlay && onImageOverlayDelta) {
       onImageOverlayDelta(deltaX - dragging.lastDeltaX, deltaY - dragging.lastDeltaY);
     }
@@ -444,19 +462,25 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
         ? snapLoosePiecesToNeighbors(cur, movedPieceIds, layoutRef.current, threshold)
         : cur;
 
+      const moves: BatchedPieceMove[] = [];
+      const locks: PieceLockMessage[] = [];
       const next = neighborSnapped.map((piece) => {
         if (!dragging.startPieces.has(piece.id) || piece.locked) return piece;
         const snapped = snapPiece(piece, threshold);
         if (snapped.locked) {
-          broadcastRef.current({ type: "piece-lock", pieceId: snapped.id, x: snapped.x, y: snapped.y, z: snapped.z, by: myIdRef.current ?? "local" });
+          locks.push({ type: "piece-lock", pieceId: snapped.id, x: snapped.x, y: snapped.y, z: snapped.z, by: myIdRef.current ?? "local" });
         } else {
           const previous = cur.find((candidate) => candidate.id === snapped.id);
           if (previous && (previous.x !== snapped.x || previous.y !== snapped.y)) {
-            broadcastRef.current({ type: "piece-move", pieceId: snapped.id, x: snapped.x, y: snapped.y, z: snapped.z, by: myIdRef.current ?? "local" });
+            moves.push({ pieceId: snapped.id, x: snapped.x, y: snapped.y, z: snapped.z });
           }
         }
         return snapped;
       });
+      for (const lock of locks) {
+        broadcastRef.current(lock);
+      }
+      publishPieceMoves(moves);
       rememberMove(dragging.startPieces, next);
       return next;
     });
@@ -522,6 +546,19 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
             return { ...piece, x, y, z: msg.z };
           }),
         );
+        break;
+      case "piece-moves":
+        if (msg.by !== myIdRef.current) remoteMoveVersionRef.current += 1;
+        onPieceMovedRef.current?.(msg.by);
+        updatePieces((cur) => {
+          const movesById = new Map(msg.moves.map((move) => [move.pieceId, move]));
+          return cur.map((piece) => {
+            const move = movesById.get(piece.id);
+            if (!move || piece.locked) return piece;
+            const { x, y } = constrainPosition(move.pieceId, move.x, move.y);
+            return { ...piece, x, y, z: move.z };
+          });
+        });
         break;
       case "piece-lock":
         if (msg.by !== myIdRef.current) remoteMoveVersionRef.current += 1;

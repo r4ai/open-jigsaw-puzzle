@@ -168,6 +168,13 @@ const SyncedPieceSchema = v.object({
   locked: v.boolean(),
 });
 
+const PieceMoveSchema = v.object({
+  pieceId: PieceIdSchema,
+  x: CoordinateSchema,
+  y: CoordinateSchema,
+  z: ZIndexSchema,
+});
+
 const SelectionPieceIdsSchema = v.pipe(
   v.array(PieceIdSchema),
   v.maxLength(MAX_SYNCED_PIECES),
@@ -175,6 +182,12 @@ const SelectionPieceIdsSchema = v.pipe(
 );
 
 const SyncedPiecesSchema = v.pipe(v.array(SyncedPieceSchema), v.maxLength(MAX_SYNCED_PIECES));
+const PieceMovesSchema = v.pipe(
+  v.array(PieceMoveSchema),
+  v.minLength(1),
+  v.maxLength(MAX_SYNCED_PIECES),
+  v.check((moves) => new Set(moves.map((move) => move.pieceId)).size === moves.length, "Piece ids must be unique."),
+);
 
 export const ChannelMessageSchema = v.variant("type", [
   v.object({
@@ -214,6 +227,11 @@ export const ChannelMessageSchema = v.variant("type", [
     x: CoordinateSchema,
     y: CoordinateSchema,
     z: ZIndexSchema,
+    by: ParticipantIdSchema,
+  }),
+  v.object({
+    type: v.literal("piece-moves"),
+    moves: PieceMovesSchema,
     by: ParticipantIdSchema,
   }),
   v.object({

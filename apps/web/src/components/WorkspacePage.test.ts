@@ -40,6 +40,17 @@ describe("isAuthorizedPeerMessage", () => {
     expect(isAuthorizedPeerMessage("peer-1", msg, "host-1")).toBe(true);
     expect(isAuthorizedPeerMessage("peer-2", msg, "host-1")).toBe(false);
   });
+
+  it("accepts batched piece moves only from the sender", () => {
+    const msg: ChannelMessage = {
+      type: "piece-moves",
+      by: "peer-1",
+      moves: [{ pieceId: 1, x: 12, y: 34, z: 5 }],
+    };
+
+    expect(isAuthorizedPeerMessage("peer-1", msg, "host-1")).toBe(true);
+    expect(isAuthorizedPeerMessage("peer-2", msg, "host-1")).toBe(false);
+  });
 });
 
 describe("isUndoRedoShortcut", () => {

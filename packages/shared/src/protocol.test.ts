@@ -13,10 +13,30 @@ describe("channel message validation", () => {
     });
   });
 
+  it("accepts batched piece move messages", () => {
+    expect(parseChannelMessage({
+      type: "piece-moves",
+      moves: [
+        { pieceId: 1, x: 10, y: 20, z: 3 },
+        { pieceId: 2, x: 30, y: 40, z: 4 },
+      ],
+      by: "peer-1",
+    })).toEqual({
+      type: "piece-moves",
+      moves: [
+        { pieceId: 1, x: 10, y: 20, z: 3 },
+        { pieceId: 2, x: 30, y: 40, z: 4 },
+      ],
+      by: "peer-1",
+    });
+  });
+
   it("rejects malformed image and sync payloads", () => {
     expect(parseChannelMessage({ type: "image-meta", imageId: "image-1", mimeType: "image/svg+xml", width: 640, height: 480, chunks: 1, byteLength: 10 })).toBeNull();
     expect(parseChannelMessage({ type: "image-chunk", imageId: "image-1", index: 0, data: "x".repeat(MAX_CHANNEL_MESSAGE_BYTES) })).toBeNull();
     expect(parseChannelMessage({ type: "state-sync", pieces: Array.from({ length: 2001 }, (_, id) => ({ id, x: 0, y: 0, z: 0, locked: false })), lockedCount: 0 })).toBeNull();
+    expect(parseChannelMessage({ type: "piece-moves", moves: [], by: "peer-1" })).toBeNull();
+    expect(parseChannelMessage({ type: "piece-moves", moves: [{ pieceId: 1, x: 0, y: 0, z: 0 }, { pieceId: 1, x: 1, y: 1, z: 1 }], by: "peer-1" })).toBeNull();
   });
 
   it("accepts state sync senders when present", () => {

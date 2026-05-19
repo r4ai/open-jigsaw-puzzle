@@ -44,6 +44,32 @@ describe("usePuzzle image lifecycle", () => {
   });
 });
 
+describe("usePuzzle peer messages", () => {
+  it("applies batched piece moves in one update", () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    let api: PuzzleApi | null = null;
+
+    renderPuzzle((nextApi) => {
+      api = nextApi;
+    });
+
+    act(() => {
+      api!.setNewPieces(layout);
+      api!.handleMessage("peer-1", {
+        type: "piece-moves",
+        by: "peer-1",
+        moves: [
+          { pieceId: 0, x: 11, y: 22, z: 33 },
+          { pieceId: 1, x: 44, y: 55, z: 66 },
+        ],
+      });
+    });
+
+    expect(api!.piecesRef.current[0]).toMatchObject({ x: 11, y: 22, z: 33 });
+    expect(api!.piecesRef.current[1]).toMatchObject({ x: 44, y: 55, z: 66 });
+  });
+});
+
 function renderPuzzle(onRender: (api: PuzzleApi) => void): void {
   const container = document.createElement("div");
   document.body.append(container);
