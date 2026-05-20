@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createInitialPieces, isComplete, snapPiece } from "@open-jigsaw-puzzle/shared/puzzle";
 import type { BoardPiece, PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import type { ChannelMessage, SyncedPiece } from "@open-jigsaw-puzzle/shared/protocol";
@@ -645,8 +645,8 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
     setRemoteSelections((cur) => cur.filter((selection) => selection.participantId !== participantId));
   }
 
-  const complete = isComplete(pieces);
-  const lockedCount = countLockedPieces(pieces);
+  const complete = useMemo(() => isComplete(pieces), [pieces]);
+  const lockedCount = useMemo(() => countLockedPieces(pieces), [pieces]);
 
   useEffect(() => {
     if (pieces.length === 0) return;

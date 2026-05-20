@@ -196,6 +196,8 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
   const isDark = theme === "dark";
   const nameChanged = Boolean(myParticipant && sanitizeName(draftName) !== myParticipant.name);
   const loadingSummary = describeLoadingProgress(imageTransfer.loadingProgress) ?? status;
+  const hasLoosePiece = useMemo(() => puzzle.pieces.some((p) => !p.locked), [puzzle.pieces]);
+  const canOrganize = Boolean(isHost && layout && hasLoosePiece);
 
   // ── Event handlers ────────────────────────────────────────────────────────────────
 
@@ -311,7 +313,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
         isDark={isDark}
         sidebarOpen={sidebarOpen}
         copied={copied}
-        canOrganize={Boolean(isHost && layout && puzzle.pieces.some((p) => !p.locked))}
+        canOrganize={canOrganize}
         onOrganize={handleOrganize}
         onCopyShareUrl={() => void copyShareUrl()}
         onToggleTheme={onToggleTheme}
