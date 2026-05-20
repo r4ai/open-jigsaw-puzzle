@@ -441,6 +441,7 @@ export function isAuthorizedPeerMessage(from: string, msg: ChannelMessage, hostI
     case "piece-move":
     case "piece-moves":
     case "piece-lock":
+    case "piece-locks":
       return msg.by === from;
     case "selection-presence":
       return msg.participantId === from;
