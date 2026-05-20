@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { BoardPiece, PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import { createInitialPieces, createPuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import type { ChannelMessage, RoomSummary, SyncedPiece } from "@open-jigsaw-puzzle/shared/protocol";
-import { chunkString, resizeImage } from "../image";
+import { chunkString, dataUrlToBlob, resizeImage } from "../image";
 import { createIncomingImage, rememberIncomingImage, storeIncomingImageChunk } from "../incoming-image";
 import type { IncomingImage } from "../incoming-image";
 import { countLockedPieces } from "../utils/puzzle-ops";
@@ -19,11 +19,12 @@ type Props = {
 };
 
 export function useImageTransfer({ send, broadcast, room, getPieces, getStartedAtMs, onImageComplete }: Props) {
-  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [imageObjectUrl, setImageObjectUrl] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
   const [loadingProgress, setLoadingProgress] = useState<LoadingProgress>({ phase: "idle" });
 
   const imageDataRef = useRef<string | null>(null);
+  const imageObjectUrlRef = useRef<string | null>(null);
   const imageSizeRef = useRef<{ width: number; height: number } | null>(null);
   const roomRef = useRef<RoomSummary | null>(null);
   const incomingRef = useRef<Map<string, IncomingImage>>(new Map());
@@ -41,20 +42,42 @@ export function useImageTransfer({ send, broadcast, room, getPieces, getStartedA
   useEffect(() => { onImageCompleteRef.current = onImageComplete; }, [onImageComplete]);
   useEffect(() => { roomRef.current = room; }, [room]);
 
+  function replaceObjectUrl(nextUrl: string | null) {
+    const prev = imageObjectUrlRef.current;
+    if (prev && prev !== nextUrl) URL.revokeObjectURL(prev);
+    imageObjectUrlRef.current = nextUrl;
+    setImageObjectUrl(nextUrl);
+  }
+
   function setImage(dataUrl: string, width: number, height: number) {
     imageDataRef.current = dataUrl;
     imageSizeRef.current = { width, height };
-    setImageDataUrl(dataUrl);
+    let nextUrl: string;
+    try {
+      nextUrl = URL.createObjectURL(dataUrlToBlob(dataUrl));
+    } catch {
+      // 環境が Blob/createObjectURL 非対応など、フォールバックとして data URL を直接利用
+      nextUrl = dataUrl;
+    }
+    replaceObjectUrl(nextUrl);
     setImageSize({ width, height });
   }
 
   function clearImage() {
     imageDataRef.current = null;
     imageSizeRef.current = null;
-    setImageDataUrl(null);
+    replaceObjectUrl(null);
     setImageSize(null);
     incomingRef.current.clear();
   }
+
+  useEffect(() => {
+    return () => {
+      const prev = imageObjectUrlRef.current;
+      if (prev) URL.revokeObjectURL(prev);
+      imageObjectUrlRef.current = null;
+    };
+  }, []);
 
   function sendImage(
     dataUrl = imageDataRef.current,
@@ -176,7 +199,7 @@ export function useImageTransfer({ send, broadcast, room, getPieces, getStartedA
   }
 
   return {
-    imageDataUrl,
+    imageDataUrl: imageObjectUrl,
     imageSize,
     loadingProgress,
     imageDataRef,
