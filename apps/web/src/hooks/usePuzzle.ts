@@ -71,6 +71,8 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
   const draggingRef = useRef<DragState | null>(null);
   const pendingDragMoveRef = useRef<PendingDragMove | null>(null);
   const dragFrameRef = useRef<number | null>(null);
+  const pendingSelectionPresenceRef = useRef<{ pieceIds: Set<number>; imageOverlaySelected: boolean } | null>(null);
+  const selectionPresenceFrameRef = useRef<number | null>(null);
   const selectedPieceIdsRef = useRef<Set<number>>(new Set());
   const imageOverlaySelectedRef = useRef(false);
   const lastSelectedPieceIdRef = useRef<number | null>(null);
@@ -95,6 +97,7 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
   useEffect(() => {
     return () => {
       if (dragFrameRef.current !== null) cancelAnimationFrame(dragFrameRef.current);
+      if (selectionPresenceFrameRef.current !== null) cancelAnimationFrame(selectionPresenceFrameRef.current);
     };
   }, []);
 
@@ -117,7 +120,7 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
     });
   }
 
-  function publishSelection(pieceIds = selectedPieceIdsRef.current, imageSelected = imageOverlaySelectedRef.current) {
+  function publishSelectionNow(pieceIds: Set<number>, imageSelected: boolean) {
     const participantId = myIdRef.current;
     if (!participantId) return;
     broadcastRef.current({
@@ -125,6 +128,18 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
       participantId,
       pieceIds: [...pieceIds].sort((a, b) => a - b),
       imageOverlaySelected: imageSelected,
+    });
+  }
+
+  function publishSelection(pieceIds = selectedPieceIdsRef.current, imageSelected = imageOverlaySelectedRef.current) {
+    pendingSelectionPresenceRef.current = { pieceIds, imageOverlaySelected: imageSelected };
+    if (selectionPresenceFrameRef.current !== null) return;
+    selectionPresenceFrameRef.current = requestAnimationFrame(() => {
+      selectionPresenceFrameRef.current = null;
+      const pending = pendingSelectionPresenceRef.current;
+      pendingSelectionPresenceRef.current = null;
+      if (!pending) return;
+      publishSelectionNow(pending.pieceIds, pending.imageOverlaySelected);
     });
   }
 
