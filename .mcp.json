@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "panda": {
+      "command": "pnpm",
+      "args": [
+        "--filter",
+        "@open-jigsaw-puzzle/web-solid",
+        "exec",
+        "panda",
+        "mcp"
+      ]
+    },
+    "ark-ui": {
+      "command": "npx",
+      "args": ["-y", "@ark-ui/mcp"]
+    }
+  }
+}

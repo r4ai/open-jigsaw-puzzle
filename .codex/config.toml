@@ -1,0 +1,7 @@
+[mcp_servers.panda]
+command = "pnpm"
+args = ["--filter", "@open-jigsaw-puzzle/web-solid", "exec", "panda", "mcp"]
+
+[mcp_servers.ark-ui]
+command = "npx"
+args = ["-y", "@ark-ui/mcp"]
