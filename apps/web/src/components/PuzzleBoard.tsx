@@ -1,11 +1,12 @@
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
-import { Lock, LockOpen, Maximize2, Minus, MousePointer2, Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { Lock, LockOpen, Maximize2, Minus, Plus } from "lucide-react";
 import type { BoardPiece, PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import type { RemoteSelection } from "../hooks/usePuzzle";
 import type { RemoteCursor } from "../hooks/useRemoteCursors";
 import type { PanOffset } from "../hooks/useViewport";
 import { ZOOM_STEP, MIN_ZOOM, MAX_ZOOM } from "../hooks/useViewport";
-import { JigsawPiece } from "./JigsawPiece";
+import { PiecesLayer } from "./PiecesLayer";
+import { RemoteCursorsLayer } from "./RemoteCursorsLayer";
 import { participantColor } from "../utils/participant";
 import styles from "./PuzzleBoard.module.css";
 
@@ -47,73 +48,6 @@ type Props = {
   onApplyPinch: (distFactor: number, prevMidX: number, prevMidY: number, newMidX: number, newMidY: number) => void;
   onSetPinching: (pinching: boolean) => void;
 };
-
-type PuzzlePieceViewProps = {
-  piece: BoardPiece;
-  geometry: PuzzleLayout["pieces"][number];
-  imageDataUrl: string;
-  layout: PuzzleLayout;
-  margin: number;
-  selected: boolean;
-  selectionColor: string | null;
-  remoteColor: string | null;
-  onPointerDown: (e: React.PointerEvent, piece: BoardPiece) => void;
-};
-
-const PuzzlePieceView = memo(function PuzzlePieceView({
-  piece,
-  geometry,
-  imageDataUrl,
-  layout,
-  margin,
-  selected,
-  selectionColor,
-  remoteColor,
-  onPointerDown,
-}: PuzzlePieceViewProps) {
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    onPointerDown(e, piece);
-  }, [onPointerDown, piece]);
-
-  return (
-    <button
-      className={`${styles.piece} ${piece.locked ? styles.locked : ""}`}
-      style={{
-        transform: `translate3d(${margin + piece.x}px, ${margin + piece.y}px, 0)`,
-        width: `${layout.pieceWidth}px`,
-        height: `${layout.pieceHeight}px`,
-        zIndex: piece.z,
-      } as React.CSSProperties}
-      aria-label={`piece ${piece.id + 1}`}
-      onPointerDown={handlePointerDown}
-    >
-      <JigsawPiece
-        geometry={geometry}
-        imageDataUrl={imageDataUrl}
-        layout={layout}
-        pieceId={piece.id}
-        locked={piece.locked}
-        selected={selected}
-        selectionColor={selectionColor}
-        remoteColor={remoteColor}
-      />
-    </button>
-  );
-}, arePuzzlePieceViewPropsEqual);
-
-function arePuzzlePieceViewPropsEqual(prev: PuzzlePieceViewProps, next: PuzzlePieceViewProps): boolean {
-  return (
-    prev.piece === next.piece &&
-    prev.geometry === next.geometry &&
-    prev.imageDataUrl === next.imageDataUrl &&
-    prev.layout === next.layout &&
-    prev.margin === next.margin &&
-    prev.selected === next.selected &&
-    prev.selectionColor === next.selectionColor &&
-    prev.remoteColor === next.remoteColor &&
-    prev.onPointerDown === next.onPointerDown
-  );
-}
 
 export function PuzzleBoard({
   layout,
@@ -295,24 +229,16 @@ export function PuzzleBoard({
                 />
               </div>
             )}
-            {pieces.map((piece) => {
-              const geometry = layout.pieces[piece.id];
-              const remoteColor = remotePieceColors.get(piece.id) ?? null;
-              return (
-                <PuzzlePieceView
-                  key={piece.id}
-                  piece={piece}
-                  geometry={geometry}
-                  imageDataUrl={imageDataUrl}
-                  layout={layout}
-                  margin={margin}
-                  selected={selectedPieceIds.has(piece.id)}
-                  selectionColor={myColor}
-                  remoteColor={remoteColor}
-                  onPointerDown={handlePiecePointerDown}
-                />
-              );
-            })}
+            <PiecesLayer
+              pieces={pieces}
+              layout={layout}
+              imageDataUrl={imageDataUrl}
+              margin={margin}
+              selectedPieceIds={selectedPieceIds}
+              myColor={myColor}
+              remotePieceColors={remotePieceColors}
+              onPiecePointerDown={handlePiecePointerDown}
+            />
             {selectionBox && (
               <div
                 className={styles.selectionBox}
@@ -324,21 +250,8 @@ export function PuzzleBoard({
                 }}
               />
             )}
-            {remoteCursors.map((cursor) => (
-              <div
-                key={cursor.participantId}
-                className={`${styles.remoteCursor}${activeRemoteCursorIds.has(cursor.participantId) ? ` ${styles.dragging}` : ""}`}
-                style={{
-                  "--cursor-x": `${cursor.x}px`,
-                  "--cursor-y": `${cursor.y}px`,
-                  "--cursor-color": participantColor(cursor.participantId),
-                } as React.CSSProperties & Record<"--cursor-x" | "--cursor-y" | "--cursor-color", string>}
-                title={cursor.name}
-              >
-                <MousePointer2 size={16} />
-                <span>{cursor.name}</span>
-              </div>
-            ))}
+            <RemoteCursorsLayer cursors={remoteCursors} activeIds={activeRemoteCursorIds} />
+
           </div>
         </div>
       </div>
