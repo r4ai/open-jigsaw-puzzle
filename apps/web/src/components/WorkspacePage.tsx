@@ -196,6 +196,8 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
   const isDark = theme === "dark";
   const nameChanged = Boolean(myParticipant && sanitizeName(draftName) !== myParticipant.name);
   const loadingSummary = describeLoadingProgress(imageTransfer.loadingProgress) ?? status;
+  const hasLoosePiece = useMemo(() => puzzle.pieces.some((p) => !p.locked), [puzzle.pieces]);
+  const canOrganize = Boolean(isHost && layout && hasLoosePiece);
 
   // ── Event handlers ────────────────────────────────────────────────────────────────
 
@@ -311,7 +313,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
         isDark={isDark}
         sidebarOpen={sidebarOpen}
         copied={copied}
-        canOrganize={Boolean(isHost && layout && puzzle.pieces.some((p) => !p.locked))}
+        canOrganize={canOrganize}
         onOrganize={handleOrganize}
         onCopyShareUrl={() => void copyShareUrl()}
         onToggleTheme={onToggleTheme}
@@ -380,6 +382,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
             onZoomOut={() => viewport.changeZoom(-ZOOM_STEP)}
             onResetZoom={viewport.resetZoom}
             onApplyPinch={(f, px, py, nx, ny) => viewport.applyPinch(f, px, py, nx, ny)}
+            registerPieceElement={puzzle.registerPieceElement}
             onSetPinching={(v) => {
               viewport.isPinchingRef.current = v;
               if (v) {
@@ -441,6 +444,7 @@ export function isAuthorizedPeerMessage(from: string, msg: ChannelMessage, hostI
     case "piece-move":
     case "piece-moves":
     case "piece-lock":
+    case "piece-locks":
       return msg.by === from;
     case "selection-presence":
       return msg.participantId === from;

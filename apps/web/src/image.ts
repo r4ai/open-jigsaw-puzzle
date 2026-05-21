@@ -31,6 +31,24 @@ export async function resizeImage(file: File): Promise<{ dataUrl: string; width:
   };
 }
 
+export function dataUrlToBlob(dataUrl: string): Blob {
+  const commaIdx = dataUrl.indexOf(",");
+  if (!dataUrl.startsWith("data:") || commaIdx === -1) {
+    throw new Error("Invalid data URL");
+  }
+  const header = dataUrl.slice(5, commaIdx);
+  const isBase64 = header.endsWith(";base64");
+  const mimeType = (isBase64 ? header.slice(0, -7) : header) || "application/octet-stream";
+  const payload = dataUrl.slice(commaIdx + 1);
+  if (isBase64) {
+    const binary = atob(payload);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mimeType });
+  }
+  return new Blob([decodeURIComponent(payload)], { type: mimeType });
+}
+
 export function chunkString(value: string, size = 16_000): string[] {
   const chunks: string[] = [];
   for (let index = 0; index < value.length; index += size) {
