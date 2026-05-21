@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "tsc -p tsconfig.json && vite build",
+    "panda:gen": "panda codegen",
+    "dev": "panda codegen && vite --host 0.0.0.0",
+    "build": "panda codegen && tsc -p tsconfig.json && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "vitest run --passWithNoTests",
-    "typecheck": "tsc -p tsconfig.json"
+    "test": "panda codegen && vitest run --passWithNoTests",
+    "typecheck": "panda codegen && tsc -p tsconfig.json"
   },
   "dependencies": {
     "@ark-ui/solid": "^5.36.2",
