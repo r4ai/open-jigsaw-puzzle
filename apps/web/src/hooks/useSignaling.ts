@@ -1,5 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import type { ChannelMessage, IceConfig, Participant, RoomSummary } from "@open-jigsaw-puzzle/shared/protocol";
+import { createSignal, onCleanup } from "solid-js";
+import type {
+  ChannelMessage,
+  IceConfig,
+  Participant,
+  RoomSummary,
+} from "@open-jigsaw-puzzle/shared/protocol";
 import { fetchIceConfig, openSignaling, PeerMesh } from "../realtime";
 
 const MAX_RECONNECT_ATTEMPTS = 3;
@@ -16,56 +21,49 @@ type Events = {
   onClose: (msg: string) => void;
 };
 
-export function useSignaling(name: string, events: Events) {
-  const [myId, setMyId] = useState<string | null>(null);
-  const [room, setRoom] = useState<RoomSummary | null>(null);
-  const [participants, setParticipants] = useState<Participant[]>([]);
-  const [connectedPeers, setConnectedPeers] = useState(0);
+export function useSignaling(getName: () => string, events: Events) {
+  const [myId, setMyId] = createSignal<string | null>(null);
+  const [room, setRoom] = createSignal<RoomSummary | null>(null);
+  const [participants, setParticipants] = createSignal<Participant[]>([]);
+  const [connectedPeers, setConnectedPeers] = createSignal(0);
 
-  const socketRef = useRef<WebSocket | null>(null);
-  const meshRef = useRef<PeerMesh | null>(null);
-  const connectionAttemptRef = useRef(0);
-  const reconnectTimerRef = useRef<number | null>(null);
-  const reconnectAttemptsRef = useRef(0);
-  const nameRef = useRef(name);
-  nameRef.current = name;
-  // Always call the latest event handlers even when callbacks are recreated
-  const eventsRef = useRef(events);
-  eventsRef.current = events;
+  let socket: WebSocket | null = null;
+  let mesh: PeerMesh | null = null;
+  let connectionAttempt = 0;
+  let reconnectTimer: number | null = null;
+  let reconnectAttempts = 0;
 
-  useEffect(() => {
-    return () => {
-      connectionAttemptRef.current += 1;
-      clearReconnect();
-      socketRef.current?.close();
-      meshRef.current?.close();
-    };
-  }, []);
+  onCleanup(() => {
+    connectionAttempt += 1;
+    clearReconnect();
+    socket?.close();
+    mesh?.close();
+  });
 
   function clearReconnect() {
-    if (reconnectTimerRef.current !== null) window.clearTimeout(reconnectTimerRef.current);
-    reconnectTimerRef.current = null;
+    if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
+    reconnectTimer = null;
   }
 
   function closeConnection() {
-    socketRef.current?.close();
-    socketRef.current = null;
-    meshRef.current?.close();
-    meshRef.current = null;
+    socket?.close();
+    socket = null;
+    mesh?.close();
+    mesh = null;
   }
 
-  function isCurrentAttempt(attempt: number, socket: WebSocket): boolean {
-    return connectionAttemptRef.current === attempt && socketRef.current === socket;
+  function isCurrentAttempt(attempt: number, s: WebSocket): boolean {
+    return connectionAttempt === attempt && socket === s;
   }
 
-  function sendSignal(socket: WebSocket, to: string, payload: unknown) {
-    if (socket.readyState !== WebSocket.OPEN) return;
-    socket.send(JSON.stringify({ type: "signal", to, payload }));
+  function sendSignal(s: WebSocket, to: string, payload: unknown) {
+    if (s.readyState !== WebSocket.OPEN) return;
+    s.send(JSON.stringify({ type: "signal", to, payload }));
   }
 
   async function enterRoom(roomId: string, options: { preserveState?: boolean } = {}) {
-    const attempt = connectionAttemptRef.current + 1;
-    connectionAttemptRef.current = attempt;
+    const attempt = connectionAttempt + 1;
+    connectionAttempt = attempt;
     clearReconnect();
     closeConnection();
 
@@ -74,7 +72,7 @@ export function useSignaling(name: string, events: Events) {
       setMyId(null);
       setConnectedPeers(0);
     } else {
-      reconnectAttemptsRef.current = 0;
+      reconnectAttempts = 0;
       setRoom(null);
       setParticipants([]);
       setMyId(null);
@@ -85,93 +83,93 @@ export function useSignaling(name: string, events: Events) {
     try {
       iceConfig = await fetchIceConfig();
     } catch (err) {
-      if (connectionAttemptRef.current !== attempt) return;
-      eventsRef.current.onError(err instanceof Error ? err.message : "ICE config load failed.");
+      if (connectionAttempt !== attempt) return;
+      events.onError(err instanceof Error ? err.message : "ICE config load failed.");
       return;
     }
-    if (connectionAttemptRef.current !== attempt) return;
+    if (connectionAttempt !== attempt) return;
 
-    const socket = openSignaling(roomId, nameRef.current, {
+    const ws = openSignaling(roomId, getName(), {
       onHello: (participantId, nextParticipants, nextRoom) => {
-        if (!isCurrentAttempt(attempt, socket)) return;
-        reconnectAttemptsRef.current = 0;
-        const mesh = new PeerMesh(
+        if (!isCurrentAttempt(attempt, ws)) return;
+        reconnectAttempts = 0;
+        const peerMesh = new PeerMesh(
           participantId,
           iceConfig,
-          (to, payload) => sendSignal(socket, to, payload),
+          (to, payload) => sendSignal(ws, to, payload),
           {
-            onMessage: (from, msg) => eventsRef.current.onMessage(from, msg),
+            onMessage: (from, msg) => events.onMessage(from, msg),
             onConnectionChange: (connected) => {
-              if (!isCurrentAttempt(attempt, socket)) return;
+              if (!isCurrentAttempt(attempt, ws)) return;
               setConnectedPeers(connected);
-              eventsRef.current.onConnectionChange(connected);
+              events.onConnectionChange(connected);
             },
           },
         );
-        meshRef.current = mesh;
+        mesh = peerMesh;
         setMyId(participantId);
         setRoom(nextRoom);
         setParticipants(nextParticipants);
-        eventsRef.current.onHello(participantId, nextParticipants, nextRoom);
-        mesh.connectToParticipants(nextParticipants);
+        events.onHello(participantId, nextParticipants, nextRoom);
+        peerMesh.connectToParticipants(nextParticipants);
       },
       onPeerJoined: (participant, nextParticipants) => {
-        if (!isCurrentAttempt(attempt, socket)) return;
+        if (!isCurrentAttempt(attempt, ws)) return;
         setParticipants(nextParticipants);
-        meshRef.current?.connectToParticipants(nextParticipants);
-        eventsRef.current.onPeerJoined(participant, nextParticipants);
+        mesh?.connectToParticipants(nextParticipants);
+        events.onPeerJoined(participant, nextParticipants);
       },
       onPeerLeft: (participantId, nextParticipants) => {
-        if (!isCurrentAttempt(attempt, socket)) return;
+        if (!isCurrentAttempt(attempt, ws)) return;
         setParticipants(nextParticipants);
-        eventsRef.current.onPeerLeft(participantId, nextParticipants);
-        meshRef.current?.disconnect(participantId);
+        events.onPeerLeft(participantId, nextParticipants);
+        mesh?.disconnect(participantId);
       },
       onParticipantUpdated: (participant, nextParticipants) => {
-        if (!isCurrentAttempt(attempt, socket)) return;
+        if (!isCurrentAttempt(attempt, ws)) return;
         setParticipants(nextParticipants);
-        eventsRef.current.onParticipantUpdated(participant, nextParticipants);
+        events.onParticipantUpdated(participant, nextParticipants);
       },
       onSignal: (from, payload) => {
-        if (!isCurrentAttempt(attempt, socket)) return;
-        void meshRef.current?.acceptSignal(from, payload).catch((err) => {
-          if (isCurrentAttempt(attempt, socket))
-            eventsRef.current.onError(err instanceof Error ? err.message : "Signal error.");
+        if (!isCurrentAttempt(attempt, ws)) return;
+        void mesh?.acceptSignal(from, payload).catch((err) => {
+          if (isCurrentAttempt(attempt, ws))
+            events.onError(err instanceof Error ? err.message : "Signal error.");
         });
       },
       onError: (message) => {
-        if (isCurrentAttempt(attempt, socket)) eventsRef.current.onError(message);
+        if (isCurrentAttempt(attempt, ws)) events.onError(message);
       },
       onClose: (message) => {
-        if (!isCurrentAttempt(attempt, socket)) return;
-        meshRef.current?.close();
-        meshRef.current = null;
+        if (!isCurrentAttempt(attempt, ws)) return;
+        mesh?.close();
+        mesh = null;
         setConnectedPeers(0);
-        eventsRef.current.onClose(message);
-        if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) return;
-        reconnectAttemptsRef.current += 1;
-        reconnectTimerRef.current = window.setTimeout(() => {
-          reconnectTimerRef.current = null;
-          if (connectionAttemptRef.current === attempt) void enterRoom(roomId, { preserveState: true });
+        events.onClose(message);
+        if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) return;
+        reconnectAttempts += 1;
+        reconnectTimer = window.setTimeout(() => {
+          reconnectTimer = null;
+          if (connectionAttempt === attempt) void enterRoom(roomId, { preserveState: true });
         }, RECONNECT_DELAY_MS);
       },
     });
 
-    socketRef.current = socket;
+    socket = ws;
   }
 
   function broadcast(msg: ChannelMessage) {
-    meshRef.current?.broadcast(msg);
+    mesh?.broadcast(msg);
   }
 
   function send(to: string, msg: ChannelMessage) {
-    meshRef.current?.send(to, msg);
+    mesh?.send(to, msg);
   }
 
   function updateName(nextName: string) {
-    const socket = socketRef.current;
-    if (!socket || socket.readyState !== WebSocket.OPEN) return;
-    socket.send(JSON.stringify({ type: "update-name", name: nextName }));
+    const s = socket;
+    if (!s || s.readyState !== WebSocket.OPEN) return;
+    s.send(JSON.stringify({ type: "update-name", name: nextName }));
   }
 
   return { myId, room, participants, connectedPeers, enterRoom, broadcast, send, updateName };

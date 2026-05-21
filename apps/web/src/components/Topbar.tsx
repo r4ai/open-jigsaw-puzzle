@@ -1,6 +1,32 @@
-import { Check, ChevronLeft, ChevronRight, Copy, Moon, MousePointer2, Rows3, Settings, Sun, Users } from "lucide-react";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Moon,
+  MousePointer2,
+  Rows3,
+  Settings,
+  Sun,
+  Users,
+} from "lucide-solid";
 import { MAX_PARTICIPANTS } from "@open-jigsaw-puzzle/shared/protocol";
-import styles from "./Topbar.module.css";
+import {
+  brandMark,
+  roomId as roomIdCls,
+  roomIdLabel,
+  roomInfo,
+  shareText,
+  sidebarToggle,
+  statChip,
+  themeToggle,
+  topActions,
+  topbar,
+  topbarLeft,
+  topbarSep,
+  topbarSpacer,
+  topbarStats,
+} from "./Topbar.styles";
 
 type Props = {
   roomId: string | undefined;
@@ -20,85 +46,79 @@ type Props = {
   onOpenSettings: () => void;
 };
 
-export function Topbar({
-  roomId,
-  participantCount,
-  connectedPeers,
-  lockedCount,
-  totalPieces,
-  difficulty,
-  isDark,
-  sidebarOpen,
-  copied,
-  canOrganize,
-  onOrganize,
-  onCopyShareUrl,
-  onToggleTheme,
-  onToggleSidebar,
-  onOpenSettings,
-}: Props) {
+export function Topbar(props: Props) {
   return (
-    <header className={styles.topbar}>
-      <div className={styles.topbarLeft}>
-        <span className={styles.brandMark}>OP</span>
-        <div className={styles.roomInfo}>
-          <span className={styles.roomIdLabel}>Room</span>
-          <strong className={styles.roomId}>{roomId ?? "–"}</strong>
+    <header class={topbar}>
+      <div class={topbarLeft}>
+        <span class={brandMark}>OP</span>
+        <div class={roomInfo}>
+          <span class={roomIdLabel}>Room</span>
+          <strong class={roomIdCls}>{props.roomId ?? "–"}</strong>
         </div>
       </div>
 
-      <span className={styles.topbarSep} />
+      <span class={topbarSep} />
 
-      <div className={styles.topbarStats}>
-        <span className={styles.statChip}>
+      <div class={topbarStats}>
+        <span class={statChip}>
           <Users size={11} />
-          {participantCount}/{MAX_PARTICIPANTS}
+          {props.participantCount}/{MAX_PARTICIPANTS}
         </span>
-        <span className={styles.statChip}>
+        <span class={statChip}>
           <MousePointer2 size={11} />
-          {connectedPeers} P2P
+          {props.connectedPeers} P2P
         </span>
-        <span className={styles.statChip}>
-          {lockedCount}/{totalPieces || difficulty} locked
+        <span class={statChip}>
+          {props.lockedCount}/{props.totalPieces || props.difficulty} locked
         </span>
       </div>
 
-      <span className={styles.topbarSpacer} />
+      <span class={topbarSpacer} />
 
-      <div className={styles.topActions}>
+      <div class={topActions}>
         <button
-          onClick={onOrganize}
-          disabled={!canOrganize}
+          onClick={props.onOrganize}
+          disabled={!props.canOrganize}
           title="未固定ピースを盤面の下に並べる"
         >
           <Rows3 size={15} />
           整理
         </button>
-        <button onClick={onCopyShareUrl} title="共有リンクをコピー">
-          {copied ? <Check size={15} /> : <Copy size={15} />}
-          <span className={styles.shareText}>{copied ? "コピー済み" : "共有"}</span>
+        <button onClick={props.onCopyShareUrl} title="共有リンクをコピー">
+          {props.copied ? <Check size={15} /> : <Copy size={15} />}
+          <span class={shareText}>{props.copied ? "コピー済み" : "共有"}</span>
         </button>
         <button
-          className={styles.themeToggle}
-          onClick={onOpenSettings}
+          class={themeToggle}
+          onClick={props.onOpenSettings}
           title="表示設定を開く"
           aria-label="表示設定を開く"
         >
           <Settings size={18} />
         </button>
         <button
-          className={styles.themeToggle}
-          onClick={onToggleTheme}
-          title={isDark ? "ライトモードに切り替え" : "ダークモードに切り替え"}
+          class={themeToggle}
+          onClick={props.onToggleTheme}
+          title={
+            props.isDark ? "ライトモードに切り替え" : "ダークモードに切り替え"
+          }
         >
-          {isDark ? <Sun size={18} /> : <Moon size={18} />}
+          {props.isDark ? <Sun size={18} /> : <Moon size={18} />}
         </button>
         <button
-          className={`${styles.themeToggle} ${styles.sidebarToggle}`}
-          onClick={onToggleSidebar}
-          title={sidebarOpen ? "参加者パネルを閉じる" : "参加者パネルを開く"}
+          class={`${themeToggle} ${sidebarToggle}`}
+          onClick={props.onToggleSidebar}
+          title={
+            props.sidebarOpen
+              ? "参加者パネルを閉じる"
+              : "参加者パネルを開く"
+          }
         >
-          {sidebarOpen ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          {props.sidebarOpen ? (
+            <ChevronRight size={18} />
+          ) : (
+            <ChevronLeft size={18} />
+          )}
         </button>
       </div>
     </header>

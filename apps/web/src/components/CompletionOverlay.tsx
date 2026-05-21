@@ -1,5 +1,18 @@
+import { Show } from "solid-js";
 import { formatDuration } from "../utils/format";
-import styles from "./CompletionOverlay.module.css";
+import {
+  completionActions,
+  completionBtn,
+  completionCard,
+  completionDesc,
+  completionEyebrow,
+  completionOverlay,
+  completionTime,
+  completionTimeLabel,
+  completionTimeValue,
+  completionTitle,
+  primary,
+} from "./CompletionOverlay.styles";
 
 type Props = {
   pieceCount: number;
@@ -8,26 +21,38 @@ type Props = {
   onClose: () => void;
 };
 
-export function CompletionOverlay({ pieceCount, elapsedMs, onBackToMenu, onClose }: Props) {
+export function CompletionOverlay(props: Props) {
   return (
-    <div className={styles.completionOverlay} role="dialog" aria-modal="true" aria-label="パズル完成">
-      <div className={styles.completionCard}>
-        <p className={styles.completionEyebrow}>Puzzle Complete</p>
-        <h2 className={styles.completionTitle}>おめでとう<em>！</em></h2>
-        <p className={styles.completionDesc}>
-          {pieceCount} ピースのパズルを完成させました。
+    <div
+      class={completionOverlay}
+      role="dialog"
+      aria-modal="true"
+      aria-label="パズル完成"
+    >
+      <div class={completionCard}>
+        <p class={completionEyebrow}>Puzzle Complete</p>
+        <h2 class={completionTitle}>
+          おめでとう<em>！</em>
+        </h2>
+        <p class={completionDesc}>
+          {props.pieceCount} ピースのパズルを完成させました。
         </p>
-        {elapsedMs !== null && (
-          <div className={styles.completionTime}>
-            <span className={styles.completionTimeLabel}>クリアタイム</span>
-            <span className={styles.completionTimeValue}>{formatDuration(elapsedMs)}</span>
+        <Show when={props.elapsedMs !== null}>
+          <div class={completionTime}>
+            <span class={completionTimeLabel}>クリアタイム</span>
+            <span class={completionTimeValue}>
+              {formatDuration(props.elapsedMs!)}
+            </span>
           </div>
-        )}
-        <div className={styles.completionActions}>
-          <button className={`${styles.primary} ${styles.completionBtn}`} onClick={onBackToMenu}>
+        </Show>
+        <div class={completionActions}>
+          <button
+            class={`${primary} ${completionBtn}`}
+            onClick={props.onBackToMenu}
+          >
             メニューに戻る
           </button>
-          <button className={styles.completionBtn} onClick={onClose}>
+          <button class={completionBtn} onClick={props.onClose}>
             パズルを見る
           </button>
         </div>

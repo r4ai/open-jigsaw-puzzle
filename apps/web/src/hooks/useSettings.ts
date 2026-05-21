@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { createEffect, createSignal } from "solid-js";
 
 export type PieceEdgeSettings = {
   edgeOpacityLocked: number;
@@ -37,21 +37,23 @@ function loadSettings(): PieceEdgeSettings {
 }
 
 export function useSettings() {
-  const [settings, setSettings] = useState<PieceEdgeSettings>(loadSettings);
+  const [settings, setSettings] = createSignal<PieceEdgeSettings>(loadSettings());
 
-  useEffect(() => {
+  createEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings()));
     } catch {
-      // ignore quota errors
+      /* ignore quota errors */
     }
-  }, [settings]);
+  });
 
-  const update = useCallback(<K extends keyof PieceEdgeSettings>(key: K, value: number) => {
+  function update<K extends keyof PieceEdgeSettings>(key: K, value: number) {
     setSettings((prev) => ({ ...prev, [key]: clamp01(value) }));
-  }, []);
+  }
 
-  const reset = useCallback(() => setSettings(DEFAULT_SETTINGS), []);
+  function reset() {
+    setSettings(DEFAULT_SETTINGS);
+  }
 
   return { settings, update, reset };
 }

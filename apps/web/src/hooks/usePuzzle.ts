@@ -1,7 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createInitialPieces, isComplete, snapPiece } from "@open-jigsaw-puzzle/shared/puzzle";
-import type { BoardPiece, PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
-import type { ChannelMessage, SyncedPiece } from "@open-jigsaw-puzzle/shared/protocol";
+import { createMemo, createSignal, onCleanup } from "solid-js";
+import {
+  createInitialPieces,
+  isComplete,
+  snapPiece,
+} from "@open-jigsaw-puzzle/shared/puzzle";
+import type {
+  BoardPiece,
+  PuzzleLayout,
+} from "@open-jigsaw-puzzle/shared/puzzle";
+import type {
+  ChannelMessage,
+  SyncedPiece,
+} from "@open-jigsaw-puzzle/shared/protocol";
 import {
   arrangeLoosePieces,
   bringSelectedPiecesToFront,
@@ -43,80 +53,69 @@ type PendingDragMove = {
   deltaY: number;
   onImageOverlayDelta?: (deltaX: number, deltaY: number) => void;
 };
-type SelectionBoxState = { pointerId: number; start: { x: number; y: number }; end: { x: number; y: number } };
-export type RemoteSelection = { participantId: string; pieceIds: number[]; imageOverlaySelected: boolean };
+type SelectionBoxState = {
+  pointerId: number;
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+};
+export type RemoteSelection = {
+  participantId: string;
+  pieceIds: number[];
+  imageOverlaySelected: boolean;
+};
 type BatchedPieceMove = Extract<ChannelMessage, { type: "piece-moves" }>["moves"][number];
 type BatchedPieceLock = Extract<ChannelMessage, { type: "piece-locks" }>["locks"][number];
 
 type Props = {
   broadcast: (msg: ChannelMessage) => void;
-  myId: string | null;
-  isHost: boolean;
-  layout: PuzzleLayout | null;
+  myId: () => string | null;
+  isHost: () => boolean;
+  layout: () => PuzzleLayout | null;
   onPieceMoved?: (participantId: string) => void;
   onPieceLocked?: (participantId: string) => void;
 };
 
-export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPieceLocked }: Props) {
-  const [pieces, setPieces] = useState<BoardPiece[]>([]);
-  const [selectedPieceIds, setSelectedPieceIds] = useState<Set<number>>(new Set());
-  const [imageOverlaySelected, setImageOverlaySelected] = useState(false);
-  const [selectionBox, setSelectionBox] = useState<Rect | null>(null);
-  const [remoteSelections, setRemoteSelections] = useState<RemoteSelection[]>([]);
-  const [clearedElapsedMs, setClearedElapsedMs] = useState<number | null>(null);
-  const startedAtMsRef = useRef<number | null>(null);
-  const clearedElapsedMsRef = useRef<number | null>(null);
-  const piecesRef = useRef<BoardPiece[]>([]);
-  const pendingSyncRef = useRef<SyncedPiece[] | null>(null);
-  const draggingRef = useRef<DragState | null>(null);
-  const pendingDragMoveRef = useRef<PendingDragMove | null>(null);
-  const dragFrameRef = useRef<number | null>(null);
-  const pendingSelectionPresenceRef = useRef<{ pieceIds: Set<number>; imageOverlaySelected: boolean } | null>(null);
-  const selectionPresenceFrameRef = useRef<number | null>(null);
-  // ドラッグ中の DOM 直接更新用レジストリ。React state の更新を介さずに
-  // 移動中ピースの transform を書き換え、毎フレームの再レンダリングを避ける。
-  const pieceElementsRef = useRef<Map<number, HTMLElement>>(new Map());
-  const livePieceTransformsRef = useRef<Map<number, { x: number; y: number }>>(new Map());
-  const dragMarginRef = useRef(0);
-  const selectedPieceIdsRef = useRef<Set<number>>(new Set());
-  const imageOverlaySelectedRef = useRef(false);
-  const lastSelectedPieceIdRef = useRef<number | null>(null);
-  const selectionBoxRef = useRef<SelectionBoxState | null>(null);
-  const historyRef = useRef(createPieceHistory());
-  const remoteMoveVersionRef = useRef(0);
+export function usePuzzle(props: Props) {
+  const [pieces, setPieces] = createSignal<BoardPiece[]>([]);
+  const [selectedPieceIds, setSelectedPieceIds] = createSignal<Set<number>>(new Set());
+  const [imageOverlaySelected, setImageOverlaySelected] = createSignal(false);
+  const [selectionBox, setSelectionBox] = createSignal<Rect | null>(null);
+  const [remoteSelections, setRemoteSelections] = createSignal<RemoteSelection[]>([]);
+  const [clearedElapsedMs, setClearedElapsedMs] = createSignal<number | null>(null);
 
-  // Keep refs in sync (ref pattern for WS callbacks)
-  const broadcastRef = useRef(broadcast);
-  broadcastRef.current = broadcast;
-  const myIdRef = useRef(myId);
-  myIdRef.current = myId;
-  const layoutRef = useRef(layout);
-  layoutRef.current = layout;
-  const onPieceMovedRef = useRef(onPieceMoved);
-  onPieceMovedRef.current = onPieceMoved;
-  const onPieceLockedRef = useRef(onPieceLocked);
-  onPieceLockedRef.current = onPieceLocked;
-  const isHostRef = useRef(isHost);
-  isHostRef.current = isHost;
+  let startedAtMs: number | null = null;
+  let clearedElapsedMsNow: number | null = null;
+  let piecesNow: BoardPiece[] = [];
+  let pendingSync: SyncedPiece[] | null = null;
+  let dragging: DragState | null = null;
+  let pendingDragMove: PendingDragMove | null = null;
+  let dragFrame: number | null = null;
+  let pendingSelectionPresence: { pieceIds: Set<number>; imageOverlaySelected: boolean } | null = null;
+  let selectionPresenceFrame: number | null = null;
+  const pieceElements = new Map<number, HTMLElement>();
+  const livePieceTransforms = new Map<number, { x: number; y: number }>();
+  let dragMargin = 0;
+  let selectedPieceIdsNow = new Set<number>();
+  let imageOverlaySelectedNow = false;
+  let lastSelectedPieceId: number | null = null;
+  let selectionBoxNow: SelectionBoxState | null = null;
+  const history = createPieceHistory();
+  let remoteMoveVersion = 0;
 
-  useEffect(() => {
-    return () => {
-      if (dragFrameRef.current !== null) cancelAnimationFrame(dragFrameRef.current);
-      if (selectionPresenceFrameRef.current !== null) cancelAnimationFrame(selectionPresenceFrameRef.current);
-    };
-  }, []);
+  onCleanup(() => {
+    if (dragFrame !== null) cancelAnimationFrame(dragFrame);
+    if (selectionPresenceFrame !== null) cancelAnimationFrame(selectionPresenceFrame);
+  });
 
-  const registerPieceElement = useCallback((id: number, el: HTMLElement | null) => {
-    const map = pieceElementsRef.current;
-    if (el) map.set(id, el);
-    else map.delete(id);
-  }, []);
+  function registerPieceElement(id: number, el: HTMLElement | null) {
+    if (el) pieceElements.set(id, el);
+    else pieceElements.delete(id);
+  }
 
   function setPieceDomTransform(id: number, x: number, y: number) {
-    const el = pieceElementsRef.current.get(id);
+    const el = pieceElements.get(id);
     if (!el) return;
-    const margin = dragMarginRef.current;
-    el.style.transform = `translate3d(${margin + x}px, ${margin + y}px, 0)`;
+    el.style.transform = `translate3d(${dragMargin + x}px, ${dragMargin + y}px, 0)`;
   }
 
   function constrainPosition(pieceId: number, x: number, y: number): { x: number; y: number } {
@@ -124,7 +123,7 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
       !Number.isFinite(x) || !Number.isFinite(y) ||
       Math.abs(x) > MAX_CANVAS_COORDINATE || Math.abs(y) > MAX_CANVAS_COORDINATE
     ) {
-      const fallback = piecesRef.current[pieceId];
+      const fallback = piecesNow[pieceId];
       return { x: fallback?.x ?? 0, y: fallback?.y ?? 0 };
     }
     return { x, y };
@@ -133,15 +132,15 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
   function updatePieces(updater: (cur: BoardPiece[]) => BoardPiece[]) {
     setPieces((cur) => {
       const next = updater(cur);
-      piecesRef.current = next;
+      piecesNow = next;
       return next;
     });
   }
 
   function publishSelectionNow(pieceIds: Set<number>, imageSelected: boolean) {
-    const participantId = myIdRef.current;
+    const participantId = props.myId();
     if (!participantId) return;
-    broadcastRef.current({
+    props.broadcast({
       type: "selection-presence",
       participantId,
       pieceIds: [...pieceIds].sort((a, b) => a - b),
@@ -149,77 +148,83 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
     });
   }
 
-  function publishSelection(pieceIds = selectedPieceIdsRef.current, imageSelected = imageOverlaySelectedRef.current) {
-    pendingSelectionPresenceRef.current = { pieceIds, imageOverlaySelected: imageSelected };
-    if (selectionPresenceFrameRef.current !== null) return;
-    selectionPresenceFrameRef.current = requestAnimationFrame(() => {
-      selectionPresenceFrameRef.current = null;
-      const pending = pendingSelectionPresenceRef.current;
-      pendingSelectionPresenceRef.current = null;
+  function publishSelection(pieceIds = selectedPieceIdsNow, imageSelected = imageOverlaySelectedNow) {
+    pendingSelectionPresence = { pieceIds, imageOverlaySelected: imageSelected };
+    if (selectionPresenceFrame !== null) return;
+    selectionPresenceFrame = requestAnimationFrame(() => {
+      selectionPresenceFrame = null;
+      const pending = pendingSelectionPresence;
+      pendingSelectionPresence = null;
       if (!pending) return;
       publishSelectionNow(pending.pieceIds, pending.imageOverlaySelected);
     });
   }
 
   function publishPieceMoves(moves: BatchedPieceMove[]) {
-    const by = myIdRef.current ?? "local";
+    const by = props.myId() ?? "local";
     if (moves.length === 0) return;
     if (moves.length === 1) {
       const move = moves[0]!;
-      broadcastRef.current({ type: "piece-move", ...move, by });
+      props.broadcast({ type: "piece-move", ...move, by });
       return;
     }
-    broadcastRef.current({ type: "piece-moves", moves, by });
+    props.broadcast({ type: "piece-moves", moves, by });
   }
 
   function publishPieceLocks(locks: BatchedPieceLock[]) {
-    const by = myIdRef.current ?? "local";
+    const by = props.myId() ?? "local";
     if (locks.length === 0) return;
     if (locks.length === 1) {
       const lock = locks[0]!;
-      broadcastRef.current({ type: "piece-lock", ...lock, by });
+      props.broadcast({ type: "piece-lock", ...lock, by });
       return;
     }
-    broadcastRef.current({ type: "piece-locks", locks, by });
+    props.broadcast({ type: "piece-locks", locks, by });
   }
 
   function setSelection(next: SelectionState) {
-    selectedPieceIdsRef.current = next.pieceIds;
-    imageOverlaySelectedRef.current = next.imageOverlaySelected;
-    lastSelectedPieceIdRef.current = next.lastSelectedPieceId;
+    selectedPieceIdsNow = next.pieceIds;
+    imageOverlaySelectedNow = next.imageOverlaySelected;
+    lastSelectedPieceId = next.lastSelectedPieceId;
     setSelectedPieceIds(next.pieceIds);
     setImageOverlaySelected(next.imageOverlaySelected);
     publishSelection(next.pieceIds, next.imageOverlaySelected);
   }
 
   function rememberMove(startPieces: Map<number, BoardPiece>, nextPieces: BoardPiece[]) {
-    historyRef.current.remember(createMoveHistoryEntry(startPieces.values(), nextPieces, remoteMoveVersionRef.current));
+    history.remember(createMoveHistoryEntry(startPieces.values(), nextPieces, remoteMoveVersion));
   }
 
   function applyHistorySnapshots(snapshots: PieceHistorySnapshot[]) {
     updatePieces((cur) => {
       const next = applyPieceSnapshots(cur, snapshots);
       const synced = next.map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
-      broadcastRef.current({ type: "state-sync", pieces: synced, lockedCount: countLockedPieces(synced), by: myIdRef.current ?? "local", startedAtMs: startedAtMsRef.current });
+      props.broadcast({
+        type: "state-sync",
+        pieces: synced,
+        lockedCount: countLockedPieces(synced),
+        by: props.myId() ?? "local",
+        startedAtMs,
+      });
       return next;
     });
   }
 
   function undoLastMove(): HistoryResult {
-    const { result, snapshots } = historyRef.current.undo(remoteMoveVersionRef.current);
+    const { result, snapshots } = history.undo(remoteMoveVersion);
     if (result === "applied") applyHistorySnapshots(snapshots);
     return result;
   }
 
   function redoLastMove(): HistoryResult {
-    const { result, snapshots } = historyRef.current.redo(remoteMoveVersionRef.current);
+    const { result, snapshots } = history.redo(remoteMoveVersion);
     if (result === "applied") applyHistorySnapshots(snapshots);
     return result;
   }
 
   function clearMoveHistory(resetRemoteVersion = false) {
-    historyRef.current.clear();
-    if (resetRemoteVersion) remoteMoveVersionRef.current = 0;
+    history.clear();
+    if (resetRemoteVersion) remoteMoveVersion = 0;
   }
 
   function clearSelection() {
@@ -228,57 +233,57 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
 
   function currentSelection(): SelectionState {
     return {
-      pieceIds: selectedPieceIdsRef.current,
-      imageOverlaySelected: imageOverlaySelectedRef.current,
-      lastSelectedPieceId: lastSelectedPieceIdRef.current,
+      pieceIds: selectedPieceIdsNow,
+      imageOverlaySelected: imageOverlaySelectedNow,
+      lastSelectedPieceId,
     };
   }
 
   function bringToFront(pieceId: number): number {
-    const nextZ = Math.max(0, ...piecesRef.current.map((p) => p.z)) + 1;
+    const nextZ = Math.max(0, ...piecesNow.map((p) => p.z)) + 1;
     updatePieces((cur) => updatePieceById(cur, pieceId, (p) => ({ ...p, z: nextZ })));
     return nextZ;
   }
 
   function bringSelectionToFront(pieceIds: Set<number>) {
-    const before = piecesRef.current;
+    const before = piecesNow;
     const next = bringSelectedPiecesToFront(before, pieceIds);
     if (next === before) return;
-    piecesRef.current = next;
+    piecesNow = next;
     setPieces(next);
     const beforeById = new Map(before.map((piece) => [piece.id, piece]));
     for (const piece of next) {
       const previous = beforeById.get(piece.id);
       if (previous && previous.z !== piece.z) {
-        broadcastRef.current({ type: "piece-front", pieceId: piece.id, z: piece.z, by: myIdRef.current ?? "local" });
+        props.broadcast({ type: "piece-front", pieceId: piece.id, z: piece.z, by: props.myId() ?? "local" });
       }
     }
   }
 
   function resetTimer() {
-    startedAtMsRef.current = null;
-    clearedElapsedMsRef.current = null;
+    startedAtMs = null;
+    clearedElapsedMsNow = null;
     setClearedElapsedMs(null);
   }
 
   function setNewPieces(newLayout: PuzzleLayout) {
     const nextPieces = createInitialPieces(newLayout);
-    piecesRef.current = nextPieces;
-    pendingSyncRef.current = null;
+    piecesNow = nextPieces;
+    pendingSync = null;
     clearMoveHistory(true);
     resetTimer();
     setPieces(nextPieces);
   }
 
   function receiveImage(nextLayout: PuzzleLayout) {
-    setPieces((cur) => {
+    setPieces(() => {
       const base = createInitialPieces(nextLayout);
-      const pending = pendingSyncRef.current;
-      pendingSyncRef.current = null;
+      const pending = pendingSync;
+      pendingSync = null;
       clearMoveHistory(true);
       resetTimer();
       if (!pending) {
-        piecesRef.current = base;
+        piecesNow = base;
         return base;
       }
       const constrained = pending.map((p) => {
@@ -286,7 +291,7 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
         return { ...p, x, y };
       });
       const next = mergeSyncedPieces(base, constrained);
-      piecesRef.current = next;
+      piecesNow = next;
       return next;
     });
   }
@@ -298,12 +303,12 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
     });
     setPieces((cur) => {
       if (!cur.length) {
-        pendingSyncRef.current = constrained;
+        pendingSync = constrained;
         return cur;
       }
-      pendingSyncRef.current = null;
+      pendingSync = null;
       const next = mergeSyncedPieces(cur, constrained);
-      piecesRef.current = next;
+      piecesNow = next;
       return next;
     });
   }
@@ -312,26 +317,32 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
     setPieces((cur) => {
       clearMoveHistory();
       const next = arrangeLoosePieces(cur, currentLayout);
-      piecesRef.current = next;
+      piecesNow = next;
       const synced = next.map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
-      broadcastRef.current({ type: "state-sync", pieces: synced, lockedCount: countLockedPieces(synced), by: myIdRef.current ?? "local", startedAtMs: startedAtMsRef.current });
+      props.broadcast({
+        type: "state-sync",
+        pieces: synced,
+        lockedCount: countLockedPieces(synced),
+        by: props.myId() ?? "local",
+        startedAtMs,
+      });
       return next;
     });
   }
 
   function handlePointerDown(
-    event: React.PointerEvent,
+    event: PointerEvent,
     piece: BoardPiece,
-    getPoint: (e: React.PointerEvent) => { x: number; y: number } | null,
+    getPoint: (e: PointerEvent) => { x: number; y: number } | null,
     margin: number,
   ) {
     if (event.button !== 0) return;
-    if (draggingRef.current) {
+    if (dragging) {
       event.preventDefault();
       event.stopPropagation();
       return;
     }
-    dragMarginRef.current = margin;
+    dragMargin = margin;
     const selectionBefore = currentSelection();
     let nextSelection: SelectionState;
     if (event.shiftKey) {
@@ -352,13 +363,14 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
     }
 
     const basePieceIds = nextSelection.pieceIds.size ? nextSelection.pieceIds : new Set([piece.id]);
-    const activePieceIds = layoutRef.current && !piece.locked
-      ? getConnectedLoosePieceIds(piecesRef.current, basePieceIds, layoutRef.current)
+    const currentLayout = props.layout();
+    const activePieceIds = currentLayout && !piece.locked
+      ? getConnectedLoosePieceIds(piecesNow, basePieceIds, currentLayout)
       : basePieceIds;
     if (activePieceIds.size > 1) bringSelectionToFront(activePieceIds);
     else {
       const nextZ = bringToFront(piece.id);
-      broadcastRef.current({ type: "piece-front", pieceId: piece.id, z: nextZ, by: myIdRef.current ?? "local" });
+      props.broadcast({ type: "piece-front", pieceId: piece.id, z: nextZ, by: props.myId() ?? "local" });
     }
 
     if (piece.locked) {
@@ -369,12 +381,12 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
     const pointer = getPoint(event);
     if (!pointer) return;
     const startPieces = new Map<number, BoardPiece>();
-    const pieceById = new Map(piecesRef.current.map((currentPiece) => [currentPiece.id, currentPiece]));
+    const pieceById = new Map(piecesNow.map((currentPiece) => [currentPiece.id, currentPiece]));
     for (const id of activePieceIds) {
       const selectedPiece = pieceById.get(id);
       if (selectedPiece) startPieces.set(id, selectedPiece);
     }
-    draggingRef.current = {
+    dragging = {
       pointerId: event.pointerId,
       pieceIds: [...activePieceIds],
       startPointer: pointer,
@@ -383,17 +395,17 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
       lastDeltaY: 0,
       moveImageOverlay: nextSelection.imageOverlaySelected,
     };
-    event.currentTarget.setPointerCapture(event.pointerId);
+    (event.currentTarget as Element | null)?.setPointerCapture?.(event.pointerId);
     event.preventDefault();
     event.stopPropagation();
   }
 
   function handleImageOverlayPointerDown(
-    event: React.PointerEvent,
-    getPoint: (e: React.PointerEvent) => { x: number; y: number } | null,
+    event: PointerEvent,
+    getPoint: (e: PointerEvent) => { x: number; y: number } | null,
   ) {
     if (event.button !== 0) return;
-    if (draggingRef.current) {
+    if (dragging) {
       event.preventDefault();
       event.stopPropagation();
       return;
@@ -412,14 +424,14 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
     const pointer = getPoint(event);
     if (!pointer) return;
     const startPieces = new Map<number, BoardPiece>();
-    const pieceById = new Map(piecesRef.current.map((currentPiece) => [currentPiece.id, currentPiece]));
+    const pieceById = new Map(piecesNow.map((currentPiece) => [currentPiece.id, currentPiece]));
     for (const id of nextSelection.pieceIds) {
       const selectedPiece = pieceById.get(id);
       if (selectedPiece) startPieces.set(id, selectedPiece);
     }
     if (startPieces.size) {
       bringSelectionToFront(nextSelection.pieceIds);
-      draggingRef.current = {
+      dragging = {
         pointerId: event.pointerId,
         pieceIds: [...nextSelection.pieceIds],
         startPointer: pointer,
@@ -432,17 +444,16 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
   }
 
   function handleDragMove(
-    event: React.PointerEvent,
-    getPoint: (e: React.PointerEvent) => { x: number; y: number } | null,
+    event: PointerEvent,
+    getPoint: (e: PointerEvent) => { x: number; y: number } | null,
     margin: number,
     onImageOverlayDelta?: (deltaX: number, deltaY: number) => void,
   ) {
-    const dragging = draggingRef.current;
     if (!dragging) return;
     if (event.pointerId !== dragging.pointerId) return;
     const pointer = getPoint(event);
     if (!pointer) return;
-    dragMarginRef.current = margin;
+    dragMargin = margin;
     const deltaX = pointer.x - dragging.startPointer.x;
     const deltaY = pointer.y - dragging.startPointer.y;
     scheduleDragMove({ deltaX, deltaY, onImageOverlayDelta });
@@ -450,17 +461,17 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
   }
 
   function scheduleDragMove(move: PendingDragMove) {
-    pendingDragMoveRef.current = move;
-    if (dragFrameRef.current !== null) return;
-    dragFrameRef.current = requestAnimationFrame(() => {
-      dragFrameRef.current = null;
+    pendingDragMove = move;
+    if (dragFrame !== null) return;
+    dragFrame = requestAnimationFrame(() => {
+      dragFrame = null;
       flushPendingDragMove();
     });
   }
 
   function flushPendingDragMove() {
-    const move = pendingDragMoveRef.current;
-    pendingDragMoveRef.current = null;
+    const move = pendingDragMove;
+    pendingDragMove = null;
     if (!move) return;
     applyDragMove(move.deltaX, move.deltaY, move.onImageOverlayDelta);
   }
@@ -470,17 +481,13 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
     deltaY: number,
     onImageOverlayDelta?: (deltaX: number, deltaY: number) => void,
   ) {
-    const dragging = draggingRef.current;
     if (!dragging) return;
-    // ドラッグ中は React state を更新せず、対象ピースの transform を DOM 直書きする。
-    // これにより 60 FPS の毎フレームで全 N ピースの差分検出/memo 比較が走るのを避ける。
-    // 確定状態への反映は handleDragEnd でまとめて行う (livePieceTransformsRef を介して伝搬)。
     const moves: BatchedPieceMove[] = [];
     for (const id of dragging.pieceIds) {
       const startPiece = dragging.startPieces.get(id);
       if (!startPiece || startPiece.locked) continue;
       const constrained = constrainPosition(id, startPiece.x + deltaX, startPiece.y + deltaY);
-      livePieceTransformsRef.current.set(id, constrained);
+      livePieceTransforms.set(id, constrained);
       setPieceDomTransform(id, constrained.x, constrained.y);
       moves.push({ pieceId: id, x: constrained.x, y: constrained.y, z: startPiece.z });
     }
@@ -493,19 +500,17 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
   }
 
   function handleDragEnd(threshold: number, pointerId?: number) {
-    const dragging = draggingRef.current;
     if (!dragging) return;
     if (pointerId !== undefined && pointerId !== dragging.pointerId) return;
-    if (dragFrameRef.current !== null) {
-      cancelAnimationFrame(dragFrameRef.current);
-      dragFrameRef.current = null;
+    const ended = dragging;
+    if (dragFrame !== null) {
+      cancelAnimationFrame(dragFrame);
+      dragFrame = null;
     }
     flushPendingDragMove();
-    draggingRef.current = null;
-    // applyDragMove は React state を更新していないため、cur にはドラッグ前の座標が残っている。
-    // updater が二度評価されても同じ結果になるよう、ライブ座標は updater 外でスナップする。
-    const live = livePieceTransformsRef.current;
-    livePieceTransformsRef.current = new Map();
+    dragging = null;
+    const live = new Map(livePieceTransforms);
+    livePieceTransforms.clear();
     updatePieces((cur) => {
       const withLive = live.size === 0
         ? cur
@@ -514,15 +519,16 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
             return lp && !p.locked ? { ...p, x: lp.x, y: lp.y } : p;
           });
 
-      const movedPieceIds = new Set(dragging.pieceIds);
-      const neighborSnapped = layoutRef.current
-        ? snapLoosePiecesToNeighbors(withLive, movedPieceIds, layoutRef.current, threshold)
+      const movedPieceIds = new Set(ended.pieceIds);
+      const currentLayout = props.layout();
+      const neighborSnapped = currentLayout
+        ? snapLoosePiecesToNeighbors(withLive, movedPieceIds, currentLayout, threshold)
         : withLive;
 
       const moves: BatchedPieceMove[] = [];
       const locks: BatchedPieceLock[] = [];
       const next = neighborSnapped.map((piece) => {
-        if (!dragging.startPieces.has(piece.id) || piece.locked) return piece;
+        if (!ended.startPieces.has(piece.id) || piece.locked) return piece;
         const snapped = snapPiece(piece, threshold);
         if (snapped.locked) {
           locks.push({ pieceId: snapped.id, x: snapped.x, y: snapped.y, z: snapped.z });
@@ -536,38 +542,37 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
       });
       publishPieceLocks(locks);
       publishPieceMoves(moves);
-      rememberMove(dragging.startPieces, next);
+      rememberMove(ended.startPieces, next);
       return next;
     });
   }
 
   function handleSelectionBoxPointerDown(
-    event: React.PointerEvent,
-    getPoint: (e: React.PointerEvent) => { x: number; y: number } | null,
+    event: PointerEvent,
+    getPoint: (e: PointerEvent) => { x: number; y: number } | null,
   ): boolean {
     if (event.button !== 0 || !event.shiftKey) return false;
-    if (selectionBoxRef.current) return false;
+    if (selectionBoxNow) return false;
     const pointer = getPoint(event);
     if (!pointer) return false;
-    selectionBoxRef.current = { pointerId: event.pointerId, start: pointer, end: pointer };
+    selectionBoxNow = { pointerId: event.pointerId, start: pointer, end: pointer };
     setSelectionBox(normalizeRect(pointer, pointer));
-    event.currentTarget.setPointerCapture(event.pointerId);
+    (event.currentTarget as Element | null)?.setPointerCapture?.(event.pointerId);
     event.preventDefault();
     event.stopPropagation();
     return true;
   }
 
   function handleSelectionBoxMove(
-    event: React.PointerEvent,
-    getPoint: (e: React.PointerEvent) => { x: number; y: number } | null,
+    event: PointerEvent,
+    getPoint: (e: PointerEvent) => { x: number; y: number } | null,
   ): boolean {
-    const box = selectionBoxRef.current;
-    if (!box) return false;
-    if (event.pointerId !== box.pointerId) return false;
+    if (!selectionBoxNow) return false;
+    if (event.pointerId !== selectionBoxNow.pointerId) return false;
     const pointer = getPoint(event);
     if (!pointer) return true;
-    box.end = pointer;
-    setSelectionBox(normalizeRect(box.start, box.end));
+    selectionBoxNow.end = pointer;
+    setSelectionBox(normalizeRect(selectionBoxNow.start, selectionBoxNow.end));
     event.preventDefault();
     return true;
   }
@@ -578,22 +583,21 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
     margin: number,
     pointerId?: number,
   ): boolean {
-    const box = selectionBoxRef.current;
-    if (!box) return false;
-    if (pointerId !== undefined && pointerId !== box.pointerId) return false;
-    selectionBoxRef.current = null;
-    const worldRect = normalizeRect(box.start, box.end);
+    if (!selectionBoxNow) return false;
+    if (pointerId !== undefined && pointerId !== selectionBoxNow.pointerId) return false;
+    const worldRect = normalizeRect(selectionBoxNow.start, selectionBoxNow.end);
+    selectionBoxNow = null;
     const rect = { ...worldRect, x: worldRect.x - margin, y: worldRect.y - margin };
     setSelectionBox(null);
-    setSelection(selectByRect(piecesRef.current, currentLayout, rect, imageOverlayRect));
+    setSelection(selectByRect(piecesNow, currentLayout, rect, imageOverlayRect));
     return true;
   }
 
   function handleMessage(_from: string, msg: ChannelMessage) {
     switch (msg.type) {
       case "piece-move":
-        if (msg.by !== myIdRef.current) remoteMoveVersionRef.current += 1;
-        onPieceMovedRef.current?.(msg.by);
+        if (msg.by !== props.myId()) remoteMoveVersion += 1;
+        props.onPieceMoved?.(msg.by);
         updatePieces((cur) =>
           updatePieceById(cur, msg.pieceId, (piece) => {
             if (piece.locked) return piece;
@@ -603,8 +607,8 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
         );
         break;
       case "piece-moves":
-        if (msg.by !== myIdRef.current) remoteMoveVersionRef.current += 1;
-        onPieceMovedRef.current?.(msg.by);
+        if (msg.by !== props.myId()) remoteMoveVersion += 1;
+        props.onPieceMoved?.(msg.by);
         updatePieces((cur) => {
           const movesById = new Map(msg.moves.map((move) => [move.pieceId, move]));
           return cur.map((piece) => {
@@ -616,8 +620,8 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
         });
         break;
       case "piece-lock":
-        if (msg.by !== myIdRef.current) remoteMoveVersionRef.current += 1;
-        onPieceLockedRef.current?.(msg.by);
+        if (msg.by !== props.myId()) remoteMoveVersion += 1;
+        props.onPieceLocked?.(msg.by);
         updatePieces((cur) =>
           updatePieceById(cur, msg.pieceId, (piece) => {
             const { x, y } = constrainPosition(msg.pieceId, msg.x, msg.y);
@@ -626,8 +630,8 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
         );
         break;
       case "piece-locks":
-        if (msg.by !== myIdRef.current) remoteMoveVersionRef.current += 1;
-        onPieceLockedRef.current?.(msg.by);
+        if (msg.by !== props.myId()) remoteMoveVersion += 1;
+        props.onPieceLocked?.(msg.by);
         updatePieces((cur) => {
           const locksById = new Map(msg.locks.map((lock) => [lock.pieceId, lock]));
           return cur.map((piece) => {
@@ -650,22 +654,22 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
             pieceIds: msg.pieceIds,
             imageOverlaySelected: msg.imageOverlaySelected,
           };
-          const exists = cur.some((selection) => selection.participantId === msg.participantId);
+          const exists = cur.some((s) => s.participantId === msg.participantId);
           return exists
-            ? cur.map((selection) => (selection.participantId === msg.participantId ? next : selection))
+            ? cur.map((s) => (s.participantId === msg.participantId ? next : s))
             : [...cur, next];
         });
         break;
       case "state-sync":
-        if (!msg.by || msg.by !== myIdRef.current) remoteMoveVersionRef.current += 1;
-        if (msg.startedAtMs != null && startedAtMsRef.current === null) {
-          startedAtMsRef.current = msg.startedAtMs;
+        if (!msg.by || msg.by !== props.myId()) remoteMoveVersion += 1;
+        if (msg.startedAtMs != null && startedAtMs === null) {
+          startedAtMs = msg.startedAtMs;
         }
         applySyncedPieces(msg.pieces);
         break;
       case "puzzle-completed":
-        if (clearedElapsedMsRef.current === null) {
-          clearedElapsedMsRef.current = msg.elapsedMs;
+        if (clearedElapsedMsNow === null) {
+          clearedElapsedMsNow = msg.elapsedMs;
           setClearedElapsedMs(msg.elapsedMs);
         }
         break;
@@ -673,43 +677,42 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
   }
 
   function removeRemoteSelection(participantId: string) {
-    setRemoteSelections((cur) => cur.filter((selection) => selection.participantId !== participantId));
+    setRemoteSelections((cur) => cur.filter((s) => s.participantId !== participantId));
   }
 
-  const complete = useMemo(() => isComplete(pieces), [pieces]);
-  const lockedCount = useMemo(() => countLockedPieces(pieces), [pieces]);
+  const complete = createMemo(() => isComplete(pieces()));
+  const lockedCount = createMemo(() => countLockedPieces(pieces()));
 
-  useEffect(() => {
-    if (pieces.length === 0) return;
-    if (complete) {
-      if (!isHostRef.current) return;
-      if (clearedElapsedMsRef.current !== null) return;
-      if (startedAtMsRef.current === null) return;
-      const elapsedMs = Math.max(0, Date.now() - startedAtMsRef.current);
-      clearedElapsedMsRef.current = elapsedMs;
+  // 完成判定／開始計時 — ホストのみが時刻を確定する
+  createMemo(() => {
+    const list = pieces();
+    const done = complete();
+    if (list.length === 0) return;
+    if (done) {
+      if (!props.isHost()) return;
+      if (clearedElapsedMsNow !== null) return;
+      if (startedAtMs === null) return;
+      const elapsedMs = Math.max(0, Date.now() - startedAtMs);
+      clearedElapsedMsNow = elapsedMs;
       setClearedElapsedMs(elapsedMs);
-      broadcastRef.current({ type: "puzzle-completed", elapsedMs, by: myIdRef.current ?? "local" });
+      props.broadcast({ type: "puzzle-completed", elapsedMs, by: props.myId() ?? "local" });
       return;
     }
-    if (!isHostRef.current) return;
-    if (startedAtMsRef.current !== null) return;
-    startedAtMsRef.current = Date.now();
-    const synced = piecesRef.current.map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
-    broadcastRef.current({
+    if (!props.isHost()) return;
+    if (startedAtMs !== null) return;
+    startedAtMs = Date.now();
+    const synced = piecesNow.map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
+    props.broadcast({
       type: "state-sync",
       pieces: synced,
       lockedCount: countLockedPieces(synced),
-      by: myIdRef.current ?? "local",
-      startedAtMs: startedAtMsRef.current,
+      by: props.myId() ?? "local",
+      startedAtMs,
     });
-  }, [pieces, complete]);
+  });
 
   return {
     pieces,
-    piecesRef,
-    pendingSyncRef,
-    startedAtMsRef,
-    draggingRef,
     selectedPieceIds,
     imageOverlaySelected,
     selectionBox,
@@ -717,6 +720,9 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
     complete,
     clearedElapsedMs,
     lockedCount,
+    getPieces: () => piecesNow,
+    getStartedAtMs: () => startedAtMs,
+    isDragging: () => dragging !== null,
     constrainPosition,
     bringToFront,
     setNewPieces,

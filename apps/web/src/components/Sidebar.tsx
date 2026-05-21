@@ -1,7 +1,19 @@
-import { Check } from "lucide-react";
+import { For, Show } from "solid-js";
+import { Check } from "lucide-solid";
 import type { Participant } from "@open-jigsaw-puzzle/shared/protocol";
 import { participantColor } from "../utils/participant";
-import styles from "./Sidebar.module.css";
+import {
+  hidden,
+  hostBadge,
+  memberList,
+  nameEditor,
+  nameEditorLabel,
+  nameEditorWrap,
+  people,
+  peopleSubheader,
+  person,
+  personAvatar,
+} from "./Sidebar.styles";
 
 type Props = {
   myParticipant: Participant | undefined;
@@ -14,50 +26,54 @@ type Props = {
   nameChanged: boolean;
 };
 
-export function Sidebar({
-  myParticipant,
-  participants,
-  draftName,
-  sidebarOpen,
-  onDraftNameChange,
-  onDraftNameBlur,
-  onSaveName,
-  nameChanged,
-}: Props) {
+export function Sidebar(props: Props) {
   return (
-    <aside className={`${styles.people} ${!sidebarOpen ? styles.hidden : ""}`}>
-      {myParticipant ? (
-        <div className={styles.nameEditorWrap}>
-          <span className={styles.nameEditorLabel}>あなたの表示名</span>
-          <div className={styles.nameEditor}>
+    <aside class={`${people} ${!props.sidebarOpen ? hidden : ""}`}>
+      <Show when={props.myParticipant}>
+        <div class={nameEditorWrap}>
+          <span class={nameEditorLabel}>あなたの表示名</span>
+          <div class={nameEditor}>
             <input
               aria-label="表示名"
-              value={draftName}
+              value={props.draftName}
               maxLength={24}
-              onChange={(e) => onDraftNameChange(e.target.value)}
-              onBlur={onDraftNameBlur}
-              onKeyDown={(e) => { if (e.key === "Enter") onSaveName(); }}
+              onInput={(e) => props.onDraftNameChange(e.currentTarget.value)}
+              onBlur={props.onDraftNameBlur}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") props.onSaveName();
+              }}
             />
-            <button type="button" disabled={!nameChanged} title="表示名を保存" onClick={onSaveName}>
+            <button
+              type="button"
+              disabled={!props.nameChanged}
+              title="表示名を保存"
+              onClick={props.onSaveName}
+            >
               <Check size={14} />
             </button>
           </div>
         </div>
-      ) : null}
-      <div className={styles.memberList}>
-        {participants.length > 0 && <p className={styles.peopleSubheader}>メンバー</p>}
-        {participants.map((participant) => (
-          <div key={participant.id} className={styles.person}>
-            <div
-              className={styles.personAvatar}
-              style={{ "--participant-color": participantColor(participant.id) } as React.CSSProperties & Record<"--participant-color", string>}
-            >
-              {participant.name.charAt(0)}
+      </Show>
+      <div class={memberList}>
+        <Show when={props.participants.length > 0}>
+          <p class={peopleSubheader}>メンバー</p>
+        </Show>
+        <For each={props.participants}>
+          {(participant) => (
+            <div class={person}>
+              <div
+                class={personAvatar}
+                style={{ "--participant-color": participantColor(participant.id) }}
+              >
+                {participant.name.charAt(0)}
+              </div>
+              <span>{participant.name}</span>
+              <Show when={participant.isHost}>
+                <strong class={hostBadge}>Host</strong>
+              </Show>
             </div>
-            <span>{participant.name}</span>
-            {participant.isHost ? <strong className={styles.hostBadge}>Host</strong> : null}
-          </div>
-        ))}
+          )}
+        </For>
       </div>
     </aside>
   );
