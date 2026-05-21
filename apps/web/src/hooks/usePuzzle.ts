@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createInitialPieces, isComplete, snapPiece } from "@open-jigsaw-puzzle/shared/puzzle";
 import type { BoardPiece, PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import type { ChannelMessage, SyncedPiece } from "@open-jigsaw-puzzle/shared/protocol";
@@ -73,6 +73,11 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
   const dragFrameRef = useRef<number | null>(null);
   const pendingSelectionPresenceRef = useRef<{ pieceIds: Set<number>; imageOverlaySelected: boolean } | null>(null);
   const selectionPresenceFrameRef = useRef<number | null>(null);
+  // ドラッグ中の DOM 直接更新用レジストリ。React state の更新を介さずに
+  // 移動中ピースの transform を書き換え、毎フレームの再レンダリングを避ける。
+  const pieceElementsRef = useRef<Map<number, HTMLElement>>(new Map());
+  const livePieceTransformsRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const dragMarginRef = useRef(0);
   const selectedPieceIdsRef = useRef<Set<number>>(new Set());
   const imageOverlaySelectedRef = useRef(false);
   const lastSelectedPieceIdRef = useRef<number | null>(null);
@@ -100,6 +105,19 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
       if (selectionPresenceFrameRef.current !== null) cancelAnimationFrame(selectionPresenceFrameRef.current);
     };
   }, []);
+
+  const registerPieceElement = useCallback((id: number, el: HTMLElement | null) => {
+    const map = pieceElementsRef.current;
+    if (el) map.set(id, el);
+    else map.delete(id);
+  }, []);
+
+  function setPieceDomTransform(id: number, x: number, y: number) {
+    const el = pieceElementsRef.current.get(id);
+    if (!el) return;
+    const margin = dragMarginRef.current;
+    el.style.transform = `translate3d(${margin + x}px, ${margin + y}px, 0)`;
+  }
 
   function constrainPosition(pieceId: number, x: number, y: number): { x: number; y: number } {
     if (
@@ -313,6 +331,7 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
       event.stopPropagation();
       return;
     }
+    dragMarginRef.current = margin;
     const selectionBefore = currentSelection();
     let nextSelection: SelectionState;
     if (event.shiftKey) {
@@ -423,6 +442,7 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
     if (event.pointerId !== dragging.pointerId) return;
     const pointer = getPoint(event);
     if (!pointer) return;
+    dragMarginRef.current = margin;
     const deltaX = pointer.x - dragging.startPointer.x;
     const deltaY = pointer.y - dragging.startPointer.y;
     scheduleDragMove({ deltaX, deltaY, onImageOverlayDelta });
@@ -452,19 +472,19 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
   ) {
     const dragging = draggingRef.current;
     if (!dragging) return;
-    updatePieces((cur) => {
-      const moves: BatchedPieceMove[] = [];
-      const nextPieces = cur.map((piece) => {
-        if (!dragging.startPieces.has(piece.id) || piece.locked) return piece;
-        const startPiece = dragging.startPieces.get(piece.id)!;
-        const constrained = constrainPosition(piece.id, startPiece.x + deltaX, startPiece.y + deltaY);
-        const next = { ...piece, x: constrained.x, y: constrained.y };
-        moves.push({ pieceId: piece.id, x: next.x, y: next.y, z: next.z });
-        return next;
-      });
-      publishPieceMoves(moves);
-      return nextPieces;
-    });
+    // ドラッグ中は React state を更新せず、対象ピースの transform を DOM 直書きする。
+    // これにより 60 FPS の毎フレームで全 N ピースの差分検出/memo 比較が走るのを避ける。
+    // 確定状態への反映は handleDragEnd でまとめて行う (livePieceTransformsRef を介して伝搬)。
+    const moves: BatchedPieceMove[] = [];
+    for (const id of dragging.pieceIds) {
+      const startPiece = dragging.startPieces.get(id);
+      if (!startPiece || startPiece.locked) continue;
+      const constrained = constrainPosition(id, startPiece.x + deltaX, startPiece.y + deltaY);
+      livePieceTransformsRef.current.set(id, constrained);
+      setPieceDomTransform(id, constrained.x, constrained.y);
+      moves.push({ pieceId: id, x: constrained.x, y: constrained.y, z: startPiece.z });
+    }
+    publishPieceMoves(moves);
     if (dragging.moveImageOverlay && onImageOverlayDelta) {
       onImageOverlayDelta(deltaX - dragging.lastDeltaX, deltaY - dragging.lastDeltaY);
     }
@@ -482,11 +502,22 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
     }
     flushPendingDragMove();
     draggingRef.current = null;
+    // applyDragMove は React state を更新していないため、cur にはドラッグ前の座標が残っている。
+    // updater が二度評価されても同じ結果になるよう、ライブ座標は updater 外でスナップする。
+    const live = livePieceTransformsRef.current;
+    livePieceTransformsRef.current = new Map();
     updatePieces((cur) => {
+      const withLive = live.size === 0
+        ? cur
+        : cur.map((p) => {
+            const lp = live.get(p.id);
+            return lp && !p.locked ? { ...p, x: lp.x, y: lp.y } : p;
+          });
+
       const movedPieceIds = new Set(dragging.pieceIds);
       const neighborSnapped = layoutRef.current
-        ? snapLoosePiecesToNeighbors(cur, movedPieceIds, layoutRef.current, threshold)
-        : cur;
+        ? snapLoosePiecesToNeighbors(withLive, movedPieceIds, layoutRef.current, threshold)
+        : withLive;
 
       const moves: BatchedPieceMove[] = [];
       const locks: BatchedPieceLock[] = [];
@@ -496,7 +527,7 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
         if (snapped.locked) {
           locks.push({ pieceId: snapped.id, x: snapped.x, y: snapped.y, z: snapped.z });
         } else {
-          const previous = cur.find((candidate) => candidate.id === snapped.id);
+          const previous = withLive.find((candidate) => candidate.id === snapped.id);
           if (previous && (previous.x !== snapped.x || previous.y !== snapped.y)) {
             moves.push({ pieceId: snapped.id, x: snapped.x, y: snapped.y, z: snapped.z });
           }
@@ -705,5 +736,6 @@ export function usePuzzle({ broadcast, myId, isHost, layout, onPieceMoved, onPie
     handleSelectionBoxEnd,
     handleMessage,
     removeRemoteSelection,
+    registerPieceElement,
   };
 }

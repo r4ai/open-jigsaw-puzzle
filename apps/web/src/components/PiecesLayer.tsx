@@ -13,6 +13,7 @@ type PuzzlePieceViewProps = {
   selectionColor: string | null;
   remoteColor: string | null;
   onPointerDown: (e: React.PointerEvent, piece: BoardPiece) => void;
+  registerElement: (id: number, el: HTMLElement | null) => void;
 };
 
 const PuzzlePieceView = memo(function PuzzlePieceView({
@@ -25,13 +26,20 @@ const PuzzlePieceView = memo(function PuzzlePieceView({
   selectionColor,
   remoteColor,
   onPointerDown,
+  registerElement,
 }: PuzzlePieceViewProps) {
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     onPointerDown(e, piece);
   }, [onPointerDown, piece]);
 
+  const pieceId = piece.id;
+  const handleRef = useCallback((el: HTMLButtonElement | null) => {
+    registerElement(pieceId, el);
+  }, [pieceId, registerElement]);
+
   return (
     <button
+      ref={handleRef}
       className={`${styles.piece} ${piece.locked ? styles.locked : ""}`}
       style={{
         transform: `translate3d(${margin + piece.x}px, ${margin + piece.y}px, 0)`,
@@ -66,7 +74,8 @@ function arePuzzlePieceViewPropsEqual(prev: PuzzlePieceViewProps, next: PuzzlePi
     prev.selected === next.selected &&
     prev.selectionColor === next.selectionColor &&
     prev.remoteColor === next.remoteColor &&
-    prev.onPointerDown === next.onPointerDown
+    prev.onPointerDown === next.onPointerDown &&
+    prev.registerElement === next.registerElement
   );
 }
 
@@ -79,6 +88,7 @@ type Props = {
   myColor: string | null;
   remotePieceColors: Map<number, string>;
   onPiecePointerDown: (e: React.PointerEvent, piece: BoardPiece) => void;
+  registerPieceElement: (id: number, el: HTMLElement | null) => void;
 };
 
 export const PiecesLayer = memo(function PiecesLayer({
@@ -90,6 +100,7 @@ export const PiecesLayer = memo(function PiecesLayer({
   myColor,
   remotePieceColors,
   onPiecePointerDown,
+  registerPieceElement,
 }: Props) {
   return (
     <>
@@ -108,6 +119,7 @@ export const PiecesLayer = memo(function PiecesLayer({
             selectionColor={myColor}
             remoteColor={remoteColor}
             onPointerDown={onPiecePointerDown}
+            registerElement={registerPieceElement}
           />
         );
       })}

@@ -47,6 +47,7 @@ type Props = {
   onResetZoom: () => void;
   onApplyPinch: (distFactor: number, prevMidX: number, prevMidY: number, newMidX: number, newMidY: number) => void;
   onSetPinching: (pinching: boolean) => void;
+  registerPieceElement: (id: number, el: HTMLElement | null) => void;
 };
 
 export function PuzzleBoard({
@@ -86,6 +87,7 @@ export function PuzzleBoard({
   onResetZoom,
   onApplyPinch,
   onSetPinching,
+  registerPieceElement,
 }: Props) {
   const toolbarRef = useRef<HTMLDivElement>(null);
   const onApplyPinchRef = useRef(onApplyPinch);
@@ -238,6 +240,7 @@ export function PuzzleBoard({
               myColor={myColor}
               remotePieceColors={remotePieceColors}
               onPiecePointerDown={handlePiecePointerDown}
+              registerPieceElement={registerPieceElement}
             />
             {selectionBox && (
               <div

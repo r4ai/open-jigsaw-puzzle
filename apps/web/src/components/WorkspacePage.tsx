@@ -382,6 +382,7 @@ export function WorkspacePage({ roomId, name, theme, onNameConfirmed, onToggleTh
             onZoomOut={() => viewport.changeZoom(-ZOOM_STEP)}
             onResetZoom={viewport.resetZoom}
             onApplyPinch={(f, px, py, nx, ny) => viewport.applyPinch(f, px, py, nx, ny)}
+            registerPieceElement={puzzle.registerPieceElement}
             onSetPinching={(v) => {
               viewport.isPinchingRef.current = v;
               if (v) {
