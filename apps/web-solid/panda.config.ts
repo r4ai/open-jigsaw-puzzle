@@ -12,7 +12,55 @@ export default defineConfig({
     dark: '[data-theme="dark"] &',
   },
 
+  // 既存 CSS の media query を意味的なブレークポイントへ集約。
+  // "narrow" は (max-width: 760px) または (max-width: 1024px) and (orientation: portrait) の和集合。
   theme: {
+    breakpoints: {
+      sm: "481px",
+      md: "761px",
+      lg: "961px",
+      xl: "1025px",
+    },
+
+    keyframes: {
+      spin: {
+        to: { transform: "rotate(360deg)" },
+      },
+      fadeIn: {
+        from: { opacity: "0" },
+        to: { opacity: "1" },
+      },
+      popIn: {
+        from: { opacity: "0", transform: "translate(-50%, -48%) scale(0.96)" },
+        to: { opacity: "1", transform: "translate(-50%, -50%) scale(1)" },
+      },
+      fadeUp: {
+        from: { opacity: "0", transform: "translateY(20px)" },
+        to: { opacity: "1", transform: "translateY(0)" },
+      },
+      completionFadeIn: {
+        from: { opacity: "0" },
+        to: { opacity: "1" },
+      },
+      completionCardIn: {
+        from: { opacity: "0", transform: "translateY(20px) scale(0.96)" },
+        to: { opacity: "1", transform: "translateY(0) scale(1)" },
+      },
+      pieceFall: {
+        "0%": { opacity: "0", transform: "translate(-20px, -40px) rotate(-6deg)" },
+        "100%": { opacity: "0.22", transform: "translate(0, 0) rotate(0)" },
+      },
+      pieceSlideLeft: {
+        "0%": { opacity: "0", transform: "translate(60px, 0) rotate(4deg)" },
+        "100%": { opacity: "0.22", transform: "translate(0, 0) rotate(0)" },
+      },
+      pieceSlideUp: {
+        "0%": { opacity: "0", transform: "translate(-30px, 60px) rotate(-3deg)" },
+        "85%": { opacity: "0.22", transform: "translate(2px, -4px) rotate(0.5deg)" },
+        "100%": { opacity: "0.22", transform: "translate(0, 0) rotate(0)" },
+      },
+    },
+
     tokens: {
       fonts: {
         display: {
@@ -68,29 +116,26 @@ export default defineConfig({
           border: { value: "rgba(13, 107, 98, 0.50)" },
           dot: { value: "rgba(13, 107, 98, 0.07)" },
         },
+        decoTeal: { value: "#5de0d8" },
       },
     },
 
     semanticTokens: {
       colors: {
-        // Ink — text
         ink: {
           DEFAULT: { value: { base: "#1a1208", _dark: "#f0e6d2" } },
           60: { value: { base: "#6b5f50", _dark: "#9e8f7e" } },
           40: { value: { base: "#7a6b5d", _dark: "#908070" } },
         },
-        // Paper — surfaces
         paper: {
           DEFAULT: { value: { base: "#f7f2e8", _dark: "#181510" } },
           raised: { value: { base: "#fdfaf5", _dark: "#201d17" } },
           sunken: { value: { base: "#f0ead7", _dark: "#131009" } },
         },
-        // Borders
         border: {
           DEFAULT: { value: { base: "#e0d8cc", _dark: "#2c2820" } },
           strong: { value: { base: "#c8bfb2", _dark: "#3a352c" } },
         },
-        // Accent — warm red
         accent: {
           DEFAULT: { value: { base: "#c1440e", _dark: "#c1440e" } },
           dark: { value: { base: "#a33609", _dark: "#a33609" } },
@@ -102,7 +147,6 @@ export default defineConfig({
             },
           },
         },
-        // Teal — primary action
         teal: {
           DEFAULT: { value: { base: "#0d6b62", _dark: "#0d6b62" } },
           dark: { value: { base: "#0a5550", _dark: "#0a5550" } },
@@ -115,7 +159,6 @@ export default defineConfig({
             },
           },
         },
-        // Semantic
         ok: {
           DEFAULT: { value: { base: "#16864b", _dark: "#16864b" } },
           surf: { value: { base: "#edfdf5", _dark: "#071a10" } },
@@ -136,7 +179,6 @@ export default defineConfig({
             },
           },
         },
-        // Adaptive misc
         dot: {
           value: {
             base: "rgba(26, 18, 8, 0.07)",
@@ -178,5 +220,51 @@ export default defineConfig({
     ':root[data-theme="light"]': { colorScheme: "light" },
     ':root[data-theme="dark"]': { colorScheme: "dark" },
     "*, *::before, *::after": { boxSizing: "border-box" },
+    // 共通プリミティブ（既存 styles.css の button/input/label 既定値を移植）
+    button: {
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "6px",
+      border: "1px solid {colors.border.strong}",
+      borderRadius: "8px",
+      background: "paper.raised",
+      color: "ink",
+      cursor: "pointer",
+      font: "500 0.875rem/1 {fonts.ui}",
+      minHeight: "38px",
+      padding: "0 14px",
+      transition:
+        "background 100ms, border-color 100ms, color 100ms, opacity 100ms, transform 80ms",
+      userSelect: "none",
+      whiteSpace: "nowrap",
+    },
+    "button:hover:not(:disabled)": { background: "paper.sunken" },
+    "button:active:not(:disabled)": { transform: "scale(0.97)" },
+    "button:disabled": { cursor: "not-allowed", opacity: "0.45" },
+    input: {
+      width: "100%",
+      border: "1px solid {colors.border}",
+      borderRadius: "8px",
+      minHeight: "42px",
+      padding: "0 14px",
+      background: "paper.raised",
+      color: "ink",
+      font: "400 0.9375rem {fonts.ui}",
+      transition: "border-color 120ms, box-shadow 120ms",
+      outline: "none",
+    },
+    "input:focus": {
+      borderColor: "teal",
+      boxShadow: "0 0 0 3px {colors.teal.focus}",
+    },
+    "input::placeholder": { color: "ink.40" },
+    label: {
+      display: "grid",
+      gap: "8px",
+      font: "600 0.8125rem {fonts.ui}",
+      color: "ink.60",
+      letterSpacing: "0.01em",
+    },
   },
 });

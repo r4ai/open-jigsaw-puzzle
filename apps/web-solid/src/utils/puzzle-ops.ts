@@ -61,7 +61,7 @@ export function roundZoom(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-export function isLoosePieceEventTarget(target: EventTarget): boolean {
+export function isLoosePieceEventTarget(target: EventTarget | null): boolean {
   return target instanceof Element && Boolean(target.closest(".piece:not(.locked)"));
 }
 
@@ -69,7 +69,7 @@ export function isViewportPanButton(button: number): boolean {
   return button === 0 || button === 1;
 }
 
-export function shouldStartViewportPan(button: number, target: EventTarget): boolean {
+export function shouldStartViewportPan(button: number, target: EventTarget | null): boolean {
   if (!isViewportPanButton(button)) return false;
   return button === 1 || !isLoosePieceEventTarget(target);
 }

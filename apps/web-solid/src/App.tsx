@@ -1,10 +1,14 @@
-import type { Component } from "solid-js";
+import { Router, Route } from "@solidjs/router";
+import { lazy } from "solid-js";
 
-export const App: Component = () => {
+const HomeRoute = lazy(() => import("./routes/HomeRoute"));
+const RoomRoute = lazy(() => import("./routes/RoomRoute"));
+
+export const App = () => {
   return (
-    <main>
-      <h1>Open Jigsaw Puzzle (Solid)</h1>
-      <p>Scaffold placeholder — migration in progress.</p>
-    </main>
+    <Router>
+      <Route path="/" component={HomeRoute} />
+      <Route path="/rooms/:roomId" component={RoomRoute} />
+    </Router>
   );
 };
