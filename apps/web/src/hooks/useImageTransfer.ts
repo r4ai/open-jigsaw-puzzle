@@ -3,6 +3,13 @@ import type { BoardPiece, PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle
 import { createInitialPieces, createPuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import type { ChannelMessage, RoomSummary, SyncedPiece } from "@open-jigsaw-puzzle/shared/protocol";
 import { chunkString, dataUrlToBlob, resizeImage } from "../image";
+
+// data URL フォールバック時など blob: 以外の URL を渡されても安全に revoke できるようにする
+function revokeIfBlobUrl(url: string): void {
+  if (!url.startsWith("blob:")) return;
+  if (typeof URL === "undefined" || typeof URL.revokeObjectURL !== "function") return;
+  URL.revokeObjectURL(url);
+}
 import { createIncomingImage, rememberIncomingImage, storeIncomingImageChunk } from "../incoming-image";
 import type { IncomingImage } from "../incoming-image";
 import { countLockedPieces } from "../utils/puzzle-ops";
@@ -44,7 +51,7 @@ export function useImageTransfer({ send, broadcast, room, getPieces, getStartedA
 
   function replaceObjectUrl(nextUrl: string | null) {
     const prev = imageObjectUrlRef.current;
-    if (prev && prev !== nextUrl) URL.revokeObjectURL(prev);
+    if (prev && prev !== nextUrl) revokeIfBlobUrl(prev);
     imageObjectUrlRef.current = nextUrl;
     setImageObjectUrl(nextUrl);
   }
@@ -74,7 +81,7 @@ export function useImageTransfer({ send, broadcast, room, getPieces, getStartedA
   useEffect(() => {
     return () => {
       const prev = imageObjectUrlRef.current;
-      if (prev) URL.revokeObjectURL(prev);
+      if (prev) revokeIfBlobUrl(prev);
       imageObjectUrlRef.current = null;
     };
   }, []);
