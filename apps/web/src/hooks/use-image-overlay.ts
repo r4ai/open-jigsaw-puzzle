@@ -9,6 +9,11 @@ type Props = {
   broadcast: (msg: ChannelMessage) => void;
 };
 
+/**
+ * Tracks the shared reference-image overlay: position, lock state, and
+ * opacity, plus pointer-drag handling. State changes are broadcast so every
+ * participant sees the same overlay.
+ */
 export function useImageOverlay({ broadcast }: Props) {
   const [position, setPosition] = createSignal<Position | null>(null);
   const [locked, setLocked] = createSignal(false);

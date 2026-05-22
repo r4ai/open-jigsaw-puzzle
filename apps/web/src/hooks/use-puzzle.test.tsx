@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderHook } from "@solidjs/testing-library";
 import { createPuzzleLayout, type PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import type { ChannelMessage } from "@open-jigsaw-puzzle/shared/protocol";
-import { usePuzzle } from "./usePuzzle";
+import { usePuzzle } from "./use-puzzle";
 
 type PuzzleApi = ReturnType<typeof usePuzzle>;
 

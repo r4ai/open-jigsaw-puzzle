@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderHook } from "@solidjs/testing-library";
-import { useViewport } from "./useViewport";
+import { useViewport } from "./use-viewport";
 
 type ViewportApi = ReturnType<typeof useViewport>;
 

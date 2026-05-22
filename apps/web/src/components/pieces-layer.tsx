@@ -1,7 +1,7 @@
 import { For } from "solid-js";
 import type { BoardPiece, PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
-import { JigsawPiece } from "./JigsawPiece";
-import { piece as pieceCls, pieceLocked } from "./PuzzleBoard.styles";
+import { JigsawPiece } from "./jigsaw-piece";
+import { piece as pieceCls, pieceLocked } from "./puzzle-board.styles";
 
 type Props = {
   pieces: BoardPiece[];

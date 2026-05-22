@@ -33,7 +33,7 @@ import {
   selected as selectedCls,
   tagline,
   themeToggle,
-} from "./HomePage.styles";
+} from "./home-page.styles";
 
 type Props = {
   theme: "light" | "dark";

@@ -1,6 +1,6 @@
 import { useParams } from "@solidjs/router";
 import { createSignal } from "solid-js";
-import { WorkspacePage } from "../components/WorkspacePage";
+import { WorkspacePage } from "../components/workspace-page";
 import { getInitialTheme, setTheme as applyTheme } from "../theme";
 import { sessionName, setSessionName } from "../session";
 

@@ -13,7 +13,7 @@ import {
   peopleSubheader,
   person,
   personAvatar,
-} from "./Sidebar.styles";
+} from "./sidebar.styles";
 
 type Props = {
   myParticipant: Participant | undefined;

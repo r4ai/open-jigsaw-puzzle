@@ -1,7 +1,7 @@
 import { cleanup, renderHook } from "@solidjs/testing-library";
 import type { ChannelMessage } from "@open-jigsaw-puzzle/shared/protocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useRemoteCursors } from "./useRemoteCursors";
+import { useRemoteCursors } from "./use-remote-cursors";
 
 beforeEach(() => {
   vi.useFakeTimers();
