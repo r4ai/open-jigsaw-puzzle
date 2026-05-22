@@ -1,7 +1,7 @@
 import { appendFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const workerNamePattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const d1DatabaseNamePattern = /^[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?$/;
 const domainLabelPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
@@ -66,6 +66,7 @@ export function findUuid(value: unknown): string | null {
   return null;
 }
 
+// Matches wrangler@4.x error messages. Update this pattern when upgrading WRANGLER_VERSION.
 export function isMissingCloudflareResource(output: string): boolean {
   return /not found|could not find|does not exist|Couldn't find/i.test(output);
 }

@@ -59,6 +59,7 @@ jobs:
     needs: resolve-preview
     if: >-
       ${{
+        needs.resolve-preview.result == 'success' &&
         needs.resolve-preview.outputs.pr_number != ''
       }}
     runs-on: ubuntu-latest
