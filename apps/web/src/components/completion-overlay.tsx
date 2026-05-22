@@ -12,7 +12,7 @@ import {
   completionTimeValue,
   completionTitle,
   primary,
-} from "./CompletionOverlay.styles";
+} from "./completion-overlay.styles";
 
 type Props = {
   pieceCount: number;

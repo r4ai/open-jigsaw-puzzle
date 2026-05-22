@@ -75,6 +75,11 @@ type Props = {
   onPieceLocked?: (participantId: string) => void;
 };
 
+/**
+ * The core puzzle hook: owns the piece array, selection state, drag handling,
+ * undo/redo history, and the realtime message dispatcher that keeps every
+ * participant's board consistent.
+ */
 export function usePuzzle(props: Props) {
   const [pieces, setPieces] = createSignal<BoardPiece[]>([]);
   const [selectedPieceIds, setSelectedPieceIds] = createSignal<Set<number>>(new Set());

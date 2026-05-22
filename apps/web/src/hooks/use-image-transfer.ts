@@ -24,6 +24,10 @@ type Props = {
   onImageComplete: (dataUrl: string, width: number, height: number, layout: PuzzleLayout) => void;
 };
 
+/**
+ * Sends and receives the puzzle image across the peer mesh as chunked data
+ * URLs, exposing the resulting object URL and loading progress.
+ */
 export function useImageTransfer(props: Props) {
   const [imageObjectUrl, setImageObjectUrl] = createSignal<string | null>(null);
   const [imageSize, setImageSize] = createSignal<{ width: number; height: number } | null>(null);

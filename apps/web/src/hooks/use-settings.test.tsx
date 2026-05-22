@@ -1,6 +1,6 @@
 import { cleanup, renderHook } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_SETTINGS, useSettings } from "./useSettings";
+import { DEFAULT_SETTINGS, useSettings } from "./use-settings";
 
 beforeEach(() => {
   localStorage.clear();

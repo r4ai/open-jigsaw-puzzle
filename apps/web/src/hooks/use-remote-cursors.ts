@@ -18,6 +18,11 @@ type Props = {
   broadcast: (msg: ChannelMessage) => void;
 };
 
+/**
+ * Tracks remote participants' cursor positions and short-lived "active"
+ * markers used while a peer is interacting with a piece. Locally, publishes
+ * the current cursor with throttling.
+ */
 export function useRemoteCursors({ myId, name, broadcast }: Props) {
   const [remoteCursors, setRemoteCursors] = createSignal<RemoteCursor[]>([]);
   const [activeRemoteCursorIds, setActiveRemoteCursorIds] = createSignal<Set<string>>(new Set());

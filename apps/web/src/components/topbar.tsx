@@ -26,7 +26,7 @@ import {
   topbarSep,
   topbarSpacer,
   topbarStats,
-} from "./Topbar.styles";
+} from "./topbar.styles";
 
 type Props = {
   roomId: string | undefined;

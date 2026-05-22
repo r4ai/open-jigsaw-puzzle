@@ -18,26 +18,30 @@ import type {
   RoomSummary,
 } from "@open-jigsaw-puzzle/shared/protocol";
 import { sanitizeName } from "@open-jigsaw-puzzle/shared/rooms";
-import { useSignaling } from "../hooks/useSignaling";
-import { useImageTransfer } from "../hooks/useImageTransfer";
-import { usePuzzle } from "../hooks/usePuzzle";
-import { useViewport, ZOOM_STEP } from "../hooks/useViewport";
-import { useRemoteCursors } from "../hooks/useRemoteCursors";
-import { useImageOverlay } from "../hooks/useImageOverlay";
-import { useSettings } from "../hooks/useSettings";
+import { useSignaling } from "../hooks/use-signaling";
+import { useImageTransfer } from "../hooks/use-image-transfer";
+import { usePuzzle } from "../hooks/use-puzzle";
+import { useViewport, ZOOM_STEP } from "../hooks/use-viewport";
+import { useRemoteCursors } from "../hooks/use-remote-cursors";
+import { useImageOverlay } from "../hooks/use-image-overlay";
+import { useSettings } from "../hooks/use-settings";
 import { describeLoadingProgress } from "../utils/format";
-import { SettingsModal } from "./SettingsModal";
-import { Topbar } from "./Topbar";
-import { PuzzleBoard } from "./PuzzleBoard";
-import { EmptyBoard } from "./EmptyBoard";
-import { Sidebar } from "./Sidebar";
-import { CompletionOverlay } from "./CompletionOverlay";
+import {
+  isAuthorizedPeerMessage,
+  isUndoRedoShortcut,
+} from "../utils/peer-permissions";
+import { SettingsModal } from "./settings-modal";
+import { Topbar } from "./topbar";
+import { PuzzleBoard } from "./puzzle-board";
+import { EmptyBoard } from "./empty-board";
+import { Sidebar } from "./sidebar";
+import { CompletionOverlay } from "./completion-overlay";
 import {
   boardWrap,
   sidebarCollapsed,
   toast,
   workspace,
-} from "./WorkspacePage.styles";
+} from "./workspace-page.styles";
 
 type Props = {
   roomId: string;
@@ -480,42 +484,3 @@ export function WorkspacePage(props: Props) {
   );
 }
 
-export function isAuthorizedPeerMessage(
-  from: string,
-  msg: ChannelMessage,
-  hostId: string | null,
-): boolean {
-  switch (msg.type) {
-    case "presence":
-      return msg.participantId === from;
-    case "request-image":
-      return msg.participantId === from;
-    case "piece-front":
-    case "piece-move":
-    case "piece-moves":
-    case "piece-lock":
-    case "piece-locks":
-      return msg.by === from;
-    case "selection-presence":
-      return msg.participantId === from;
-    case "state-sync":
-    case "image-overlay":
-      return hostId === from;
-    case "puzzle-completed":
-      return msg.by === from && hostId === from;
-    case "image-meta":
-    case "image-chunk":
-      return hostId === from;
-  }
-}
-
-export function isUndoRedoShortcut(event: KeyboardEvent): boolean {
-  if (event.key.toLowerCase() !== "z") return false;
-  if (!event.ctrlKey && !event.metaKey) return false;
-  if (event.altKey) return false;
-  const target = event.target;
-  return !(
-    target instanceof HTMLElement &&
-    target.closest("input, textarea, select, [contenteditable='true']")
-  );
-}

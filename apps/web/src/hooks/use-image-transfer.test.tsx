@@ -2,7 +2,7 @@ import { cleanup, renderHook } from "@solidjs/testing-library";
 import { createPuzzleLayout, type BoardPiece } from "@open-jigsaw-puzzle/shared/puzzle";
 import type { ChannelMessage, RoomSummary } from "@open-jigsaw-puzzle/shared/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { useImageTransfer } from "./useImageTransfer";
+import { useImageTransfer } from "./use-image-transfer";
 
 afterEach(() => {
   cleanup();

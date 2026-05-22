@@ -33,7 +33,7 @@ import {
   selected as selectedCls,
   tagline,
   themeToggle,
-} from "./HomePage.styles";
+} from "./home-page.styles";
 
 type Props = {
   theme: "light" | "dark";
@@ -128,6 +128,7 @@ export function HomePage(props: Props) {
                     <button
                       type="button"
                       class={diff() === value ? selectedCls : ""}
+                      aria-pressed={diff() === value}
                       onClick={() => setDiff(value)}
                     >
                       {value}
@@ -147,6 +148,7 @@ export function HomePage(props: Props) {
                     <button
                       type="button"
                       class={diff() === value ? selectedCls : ""}
+                      aria-pressed={diff() === value}
                       onClick={() => setDiff(value)}
                     >
                       {value}

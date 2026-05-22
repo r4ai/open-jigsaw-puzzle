@@ -2,7 +2,7 @@ import { For } from "solid-js";
 import { Dialog, Slider } from "@ark-ui/solid";
 import { Portal } from "solid-js/web";
 import { X } from "lucide-solid";
-import type { PieceEdgeSettings } from "../hooks/useSettings";
+import type { PieceEdgeSettings } from "../hooks/use-settings";
 import {
   backdrop,
   body,
@@ -23,7 +23,7 @@ import {
   sliderTrack,
   title,
   valueCls,
-} from "./SettingsModal.styles";
+} from "./settings-modal.styles";
 
 type Props = {
   open: boolean;

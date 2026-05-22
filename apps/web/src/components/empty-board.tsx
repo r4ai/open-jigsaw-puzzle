@@ -8,7 +8,7 @@ import {
   emptyUploadButton,
   loadingCopy,
   loadingIcon,
-} from "./EmptyBoard.styles";
+} from "./empty-board.styles";
 
 type Props = {
   isHost: boolean;

@@ -21,6 +21,10 @@ type Events = {
   onClose: (msg: string) => void;
 };
 
+/**
+ * Owns the WebSocket signaling connection and the WebRTC peer mesh for a room.
+ * Re-establishes the connection with bounded retries when the socket closes.
+ */
 export function useSignaling(getName: () => string, events: Events) {
   const [myId, setMyId] = createSignal<string | null>(null);
   const [room, setRoom] = createSignal<RoomSummary | null>(null);
