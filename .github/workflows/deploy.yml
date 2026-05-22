@@ -1,10 +1,17 @@
 name: Deploy
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
   workflow_dispatch:
+    inputs:
+      ci_run_id:
+        description: GitHub Actions run id containing the production-bundle artifact
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -13,47 +20,121 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+env:
+  WRANGLER_VERSION: 4.91.0
+
 jobs:
   deploy:
     name: Deploy to Cloudflare
+    if: >-
+      ${{
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_branch == 'main'
+        ) ||
+        github.event_name == 'workflow_dispatch'
+      }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
+    permissions:
+      actions: read
+      contents: read
 
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID: ${{ secrets.OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID }}
+      PRODUCTION_BUNDLE_RUN_ID: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || inputs.ci_run_id }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - name: Download verified production bundle
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          run_install: false
+          name: production-bundle
+          run-id: ${{ env.PRODUCTION_BUNDLE_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: .
 
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
-          cache: pnpm
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install Wrangler
+        run: npm install --global "wrangler@$WRANGLER_VERSION"
 
-      - name: Typecheck
-        run: pnpm typecheck
+      - name: Validate Cloudflare configuration
+        run: |
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID"
 
-      - name: Test
-        run: pnpm test
+      - name: Prepare production Wrangler config
+        run: |
+          node <<'NODE'
+          const { writeFileSync } = require("node:fs");
 
-      - name: Build
-        run: pnpm build
+          const databaseId = process.env.OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID;
+          const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+          if (!uuidPattern.test(databaseId)) {
+            throw new Error("Invalid production D1 database id.");
+          }
+
+          const config = {
+            name: "open-jigsaw-puzzle",
+            main: "dist/worker/index.js",
+            compatibility_date: "2026-05-16",
+            assets: {
+              directory: "../web/dist",
+              binding: "ASSETS",
+            },
+            durable_objects: {
+              bindings: [
+                {
+                  name: "ROOMS",
+                  class_name: "PuzzleRoom",
+                },
+              ],
+            },
+            migrations: [
+              {
+                tag: "v1",
+                new_sqlite_classes: ["PuzzleRoom"],
+              },
+            ],
+            triggers: {
+              crons: ["17 * * * *"],
+            },
+            d1_databases: [
+              {
+                binding: "DB",
+                database_name: "open-jigsaw-puzzle",
+                database_id: databaseId,
+                migrations_dir: "migrations",
+              },
+            ],
+            vars: {
+              ROOM_TTL_SECONDS: "7200",
+              MAX_PARTICIPANTS: "6",
+              EXPIRED_ROOM_RETENTION_SECONDS: "86400",
+              CLEANUP_BATCH_SIZE: "500",
+              TURN_URLS: "",
+              TURN_USERNAME: "",
+              TURN_CREDENTIAL: "",
+            },
+          };
+
+          writeFileSync("apps/api/wrangler.production.jsonc", `${JSON.stringify(config, null, 2)}\n`, "utf8");
+          NODE
 
       - name: Apply D1 migrations
-        run: pnpm db:migrate:remote
+        working-directory: apps/api
+        run: wrangler d1 migrations apply open-jigsaw-puzzle --remote --config wrangler.production.jsonc
 
       - name: Deploy Worker
-        run: pnpm --filter @open-jigsaw-puzzle/api run deploy
+        working-directory: apps/api
+        run: wrangler deploy --config wrangler.production.jsonc
