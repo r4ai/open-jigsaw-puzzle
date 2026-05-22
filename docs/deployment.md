@@ -48,6 +48,8 @@ The workflow uses the `production` GitHub Environment, so configure environment 
 
 The preview workflow deploys one temporary Cloudflare Worker and one temporary D1 database per pull request from a branch in this repository. Forked pull requests are skipped because the workflow needs Cloudflare secrets.
 
+Security boundary: pull request code is built and tested only by the unprivileged CI workflow. The privileged preview workflow is triggered after CI succeeds, downloads the verified build artifact, and then runs Cloudflare commands without running pull request package scripts, tests, or build commands. Cleanup runs from `pull_request_target` and does not checkout or install pull request code.
+
 Preview resource names use the pull request number:
 
 - Worker: `open-jigsaw-puzzle-pr-<PR number>`
@@ -63,7 +65,7 @@ Configure these under repository Settings > Secrets and variables > Actions:
 
 The Cloudflare API token must allow Worker deploy/delete, Worker custom domain management, and D1 create/read/migrate/delete operations for the target account.
 
-When a pull request is opened, reopened, updated, or marked ready for review, `.github/workflows/preview.yml` runs the normal verification steps, creates the preview D1 database if needed, applies migrations, deploys the preview Worker, and posts or updates a PR comment with the preview URL:
+When a pull request is opened, reopened, updated, or marked ready for review, `.github/workflows/ci.yml` runs the normal verification steps and uploads a short-lived preview bundle. After CI succeeds, `.github/workflows/preview.yml` creates the preview D1 database if needed, applies migrations from the verified bundle, deploys the preview Worker, and posts or updates a PR comment with the preview URL:
 
 ```text
 https://pr-<PR number>.<CLOUDFLARE_PREVIEW_DOMAIN_SUFFIX>
