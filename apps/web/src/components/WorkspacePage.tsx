@@ -172,7 +172,7 @@ export function WorkspacePage(props: Props) {
   };
 
   // ── Effects ───────────────────────────────────────────────────────────────────
-  onMount(() => {
+  createEffect(() => {
     void signaling.enterRoom(props.roomId);
   });
 
