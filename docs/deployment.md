@@ -34,7 +34,9 @@ pnpm run deploy
 
 ## GitHub Actions Deploy
 
-The deploy workflow runs on pushes to `main` and manual dispatch. Configure these under repository Settings > Secrets and variables > Actions:
+The CI workflow runs verification on pushes to `main` and uploads a short-lived `production-bundle` artifact. After CI succeeds, the deploy workflow downloads that verified artifact, applies D1 migrations, and deploys the Worker without checking out the repository or running package scripts with Cloudflare secrets.
+
+Configure these under repository Settings > Secrets and variables > Actions:
 
 - Secret: `CLOUDFLARE_API_TOKEN`
 - Secret: `OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID`
@@ -43,6 +45,8 @@ The deploy workflow runs on pushes to `main` and manual dispatch. Configure thes
 `CLOUDFLARE_ACCOUNT_ID` can also be stored as a secret. The Cloudflare API token should be scoped to the target account and must allow Workers deployment and D1 migration access.
 
 The workflow uses the `production` GitHub Environment, so configure environment protection rules there if deploys should require approval.
+
+For manual redeploys, run the Deploy workflow with the CI run id that produced the `production-bundle` artifact to redeploy.
 
 ## Pull Request Preview Environments
 
