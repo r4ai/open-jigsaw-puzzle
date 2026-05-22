@@ -4,25 +4,25 @@ export const home = css({
   display: "grid",
   gridTemplateColumns: "1fr 420px",
   minHeight: "100dvh",
-  "@media (max-width: 960px)": {
+  lg: {
     display: "flex",
     flexDirection: "column",
-    minHeight: "100dvh",
   },
 });
 
 export const hero = css({
-  background: "canvas.base",
+  background: "hero.bg",
   display: "flex",
   flexDirection: "column",
   justifyContent: "center",
   padding: "6rem",
   position: "relative",
-  "@media (max-width: 960px)": {
+  overflow: "hidden",
+  lg: {
     justifyContent: "flex-start",
-    padding: "2rem",
+    padding: "2.25rem",
     flex: 1,
-    minHeight: "400px",
+    minHeight: "380px",
   },
 });
 
@@ -30,91 +30,83 @@ export const deco = css({
   position: "absolute",
   top: "50%",
   right: "min(6rem, 10%)",
-  height: "80%",
-  maxWidth: "80%",
+  height: "78%",
+  maxWidth: "60%",
   transform: "translateY(-50%)",
-  color: "decoTeal",
+  color: "hero.deco",
   pointerEvents: "none",
   "& path": {
     stroke: "currentColor",
-    strokeWidth: 2,
+    strokeWidth: 2.5,
     strokeLinejoin: "round",
     fill: "none",
-  },
-  "@media (max-width: 960px)": {
-    top: "50%",
-    right: "2rem",
-    transform: "translateY(-50%)",
-    height: "80%",
-    maxWidth: "60%",
   },
 });
 
 const decoPieceBase = {
-  transformBox: "fill-box",
+  transformBox: "fill-box" as const,
   transformOrigin: "center",
   opacity: 0,
 };
 
 export const pieceA = css({
   ...decoPieceBase,
-  animation: "pieceFall 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards",
+  animation: "pieceFall 1.1s {easings.standard} 0.3s both",
 });
 
 export const pieceB = css({
   ...decoPieceBase,
-  animation: "pieceSlideLeft 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.9s forwards",
+  animation: "pieceSlideLeft 1.1s {easings.standard} 0.85s both",
 });
 
 export const pieceC = css({
   ...decoPieceBase,
-  animation: "pieceSlideUp 1.3s cubic-bezier(0.16, 1, 0.3, 1) 1.5s forwards",
+  animation: "pieceSlideUp 1.3s {easings.standard} 1.4s both",
 });
 
 export const heroContent = css({
-  position: "absolute",
-  top: "50%",
-  transform: "translateY(-50%)",
+  position: "relative",
+  zIndex: 1,
   display: "grid",
-  gap: "3rem",
+  gap: "2.5rem",
+  animation: "fadeUp 0.7s {easings.standard} both",
+  lg: { paddingTop: "1.25rem" },
 });
 
 export const heading = css({
   margin: 0,
   font: "400 7.5rem/0.93 {fonts.display}",
   letterSpacing: "-0.035em",
-  color: "onCanvas",
+  color: "hero.text",
+  textWrap: "balance",
   "& em": {
     fontStyle: "italic",
-    color: "decoTeal",
+    color: "hero.deco",
   },
-  "@media (max-width: 960px)": { fontSize: "clamp(2.75rem, 13vw, 5rem)" },
+  lg: { fontSize: "clamp(2.75rem, 13vw, 5rem)" },
 });
 
 export const tagline = css({
   margin: 0,
-  color: "onCanvas.mid",
-  fontSize: "1.4rem",
+  color: "hero.textDim",
+  fontSize: "1.35rem",
   lineHeight: 1.75,
-  "@media (max-width: 960px)": {
-    fontSize: "clamp(1rem, 4vw, 1.25rem)",
-    lineHeight: 1.6,
-  },
+  lg: { fontSize: "clamp(0.95rem, 3.5vw, 1.2rem)" },
 });
 
 export const panelWrap = css({
-  background: "paper",
+  background: "surface.1",
   borderLeft: "1px solid {colors.border}",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   padding: "64px 44px",
   position: "relative",
-  "@media (max-width: 960px)": {
+  lg: {
     borderLeft: "none",
     borderTop: "1px solid {colors.border}",
     alignItems: "flex-start",
-    padding: "40px 28px 52px",
+    padding: "36px 24px 48px",
   },
 });
 
@@ -124,20 +116,10 @@ export const themeToggle = css({
   right: "20px",
   width: "36px",
   height: "36px",
-  minHeight: "unset !important",
+  minHeight: "unset!",
   padding: 0,
-  borderRadius: "8px",
-  borderColor: "border",
-  background: "paper.raised",
-  color: "ink.60",
-  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.06)",
-  _hover: {
-    _enabled: {
-      color: "ink",
-      borderColor: "border.strong",
-      background: "paper.sunken",
-    },
-  },
+  borderRadius: "DEFAULT",
+  color: "text.3",
 });
 
 export const panelInner = css({
@@ -145,8 +127,8 @@ export const panelInner = css({
   maxWidth: "360px",
   display: "grid",
   gap: "18px",
-  animation: "fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both",
-  "@media (max-width: 960px)": { maxWidth: "100%" },
+  animation: "fadeUp 0.7s {easings.standard} 0.1s both",
+  lg: { maxWidth: "100%" },
 });
 
 export const panelHeader = css({
@@ -154,7 +136,7 @@ export const panelHeader = css({
   font: "500 0.6875rem/1 {fonts.mono}",
   letterSpacing: "0.12em",
   textTransform: "uppercase",
-  color: "ink.40",
+  color: "text.3",
   paddingBottom: "14px",
   borderBottom: "1px solid {colors.border}",
 });
@@ -167,7 +149,7 @@ export const fieldGroup = css({
 export const fieldLabel = css({
   margin: 0,
   font: "600 0.8125rem {fonts.ui}",
-  color: "ink.60",
+  color: "text.2",
   letterSpacing: "0.01em",
 });
 
@@ -181,61 +163,63 @@ export const groupLabel = css({
   font: "500 0.6875rem/1 {fonts.mono}",
   letterSpacing: "0.12em",
   textTransform: "uppercase",
-  color: "ink.40",
+  color: "text.3",
 });
 
 export const difficulty = css({
   display: "grid",
   gridTemplateColumns: "repeat(3, 1fr)",
-  gap: "8px",
+  gap: "7px",
   "& button": {
     font: "500 0.875rem/1 {fonts.mono}",
     padding: "0 6px",
-    borderRadius: "8px",
+    borderRadius: "DEFAULT",
     minHeight: "44px",
     minWidth: 0,
+    borderColor: "border",
+    background: "transparent",
+    color: "text.2",
+    transition: "background 120ms, border-color 120ms, color 120ms",
   },
   "& button:not([aria-pressed='true']):hover:not(:disabled)": {
-    borderColor: "teal.border",
-    background: "teal.surf",
-    color: "teal",
+    borderColor: "accent.border",
+    background: "accent.surface",
+    color: "accent",
   },
 });
 
 export const difficultyAdvanced = css({
-  gridTemplateColumns: "repeat(auto-fit, minmax(64px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(62px, 1fr))",
 });
 
 export const selected = css({
-  borderColor: "teal !important",
-  background: "teal !important",
-  color: "#fff !important",
+  borderColor: "accent!",
+  background: "accent!",
+  color: "#fff!",
 });
 
 export const advancedNote = css({
   margin: "2px 0 0",
-  font: "400 0.75rem/1.4 {fonts.ui}",
-  color: "ink.40",
+  font: "400 0.73rem/1.4 {fonts.ui}",
+  color: "text.3",
 });
 
 export const primary = css({
-  borderColor: "teal",
-  background: "teal",
+  borderColor: "accent",
+  background: "accent",
   color: "#fff",
   fontWeight: 600,
   minHeight: "46px",
-  borderRadius: "10px",
+  borderRadius: "md",
   fontSize: "0.9375rem",
-  _hover: {
-    _enabled: { background: "teal.dark", borderColor: "teal.dark" },
-  },
+  _hover: { _enabled: { background: "accent.dim", borderColor: "accent.dim" } },
 });
 
 export const divider = css({
   display: "flex",
   alignItems: "center",
   gap: "12px",
-  color: "ink.40",
+  color: "text.3",
   fontSize: "0.8125rem",
   _before: { content: '""', flex: 1, height: "1px", background: "border" },
   _after: { content: '""', flex: 1, height: "1px", background: "border" },

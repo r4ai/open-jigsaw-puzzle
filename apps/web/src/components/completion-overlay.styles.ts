@@ -1,126 +1,136 @@
 import { css } from "../../styled-system/css";
 
-export const completionOverlay = css({
+export const overlay = css({
   position: "fixed",
   inset: 0,
   zIndex: 10000,
-  display: "grid",
-  placeItems: "center",
-  padding: "24px",
-  background: "rgba(15, 12, 8, 0.72)",
-  backdropFilter: "blur(8px)",
-  animation: "completionFadeIn 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
-});
-
-export const completionCard = css({
-  display: "grid",
-  gap: "20px",
-  padding: "40px 44px",
-  border: "1px solid {colors.border}",
-  borderRadius: "20px",
-  background: "paper.raised",
-  boxShadow:
-    "0 1px 0 {colors.panelInset} inset, {shadows.panel}, 0 0 0 1px rgba(255,255,255,0.04)",
-  maxWidth: "420px",
-  width: "100%",
-  textAlign: "center",
-  animation: "completionCardIn 500ms cubic-bezier(0.16, 1, 0.3, 1) both",
-});
-
-export const completionEyebrow = css({
-  margin: 0,
-  font: "500 0.6875rem/1 {fonts.mono}",
-  letterSpacing: "0.16em",
-  textTransform: "uppercase",
-  color: "ok",
+  background: "oklch(8% 0.005 80 / 0.55)",
+  backdropFilter: "blur(14px) saturate(140%)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  gap: "10px",
-  _before: {
-    content: '""',
-    display: "block",
-    width: "22px",
-    height: "2px",
-    background: "ok",
-    borderRadius: "1px",
-  },
-  _after: {
-    content: '""',
-    display: "block",
-    width: "22px",
-    height: "2px",
-    background: "ok",
-    borderRadius: "1px",
-  },
+  animation: "fadeIn 500ms ease-out",
+  padding: "16px",
 });
 
-export const completionTitle = css({
+export const card = css({
+  background: "glass",
+  backdropFilter: "blur(24px) saturate(170%)",
+  border: "1px solid {colors.glass.border}",
+  color: "glass.text",
+  boxShadow: "glass",
+  padding: "36px 36px 28px",
+  textAlign: "center",
+  display: "grid",
+  gap: "24px",
+  justifyItems: "center",
+  maxWidth: "420px",
+  width: "100%",
+  borderRadius: "xl",
+  animation: "slideUp 500ms {easings.standard} 200ms both",
+});
+
+export const iconCircle = css({
+  width: "64px",
+  height: "64px",
+  borderRadius: "50%",
+  background: "color-mix(in oklch, {colors.accent} 15%, transparent)",
+  color: "accent",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  animation: "popIn 600ms {easings.standard} 400ms both",
+});
+
+export const headingGroup = css({
+  display: "grid",
+  gap: "6px",
+});
+
+export const heading = css({
   margin: 0,
-  font: "400 clamp(2.2rem, 6vw, 3.2rem)/1.1 {fonts.display}",
+  font: "400 2.5rem/1 {fonts.display}",
+  color: "glass.text",
   letterSpacing: "-0.02em",
-  color: "ink",
-  "& em": {
-    fontStyle: "italic",
-    color: "teal",
-  },
 });
 
-export const completionDesc = css({
+export const subheading = css({
   margin: 0,
-  color: "ink.60",
-  fontSize: "0.9375rem",
-  lineHeight: 1.6,
+  color: "glass.textDim",
+  font: "400 0.875rem/1.5 {fonts.ui}",
 });
 
-export const completionTime = css({
+export const statsRow = css({
+  display: "flex",
+  gap: "10px",
+  width: "100%",
+});
+
+export const statBox = css({
+  flex: 1,
+  minWidth: 0,
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
   gap: "4px",
-  padding: "14px 16px",
-  border: "1px solid {colors.border}",
-  borderRadius: "12px",
-  background: "panelInset",
+  padding: "16px 12px",
+  borderRadius: "md",
+  background: "color-mix(in oklch, {colors.glass.text} 5%, transparent)",
+  border:
+    "1px solid color-mix(in oklch, {colors.glass.text} 10%, transparent)",
 });
 
-export const completionTimeLabel = css({
-  font: "500 0.6875rem/1 {fonts.mono}",
-  letterSpacing: "0.14em",
+export const statIcon = css({
+  color: "glass.textDim",
+  display: "inline-flex",
+});
+
+export const statValue = css({
+  font: "500 1.5rem/1.1 {fonts.display}",
+  color: "glass.text",
+  letterSpacing: "-0.01em",
+});
+
+export const statLabel = css({
+  font: "500 0.625rem/1 {fonts.mono}",
+  letterSpacing: "0.12em",
   textTransform: "uppercase",
-  color: "ink.60",
+  color: "glass.textDim",
 });
 
-export const completionTimeValue = css({
-  font: "500 1.75rem/1 {fonts.mono}",
-  letterSpacing: "0.04em",
-  color: "ink",
-  fontVariantNumeric: "tabular-nums",
-});
-
-export const completionActions = css({
+export const actions = css({
   display: "grid",
+  gridTemplateColumns: "1fr 1fr",
   gap: "10px",
+  width: "100%",
   marginTop: "4px",
 });
 
-export const completionBtn = css({
-  minHeight: "46px",
-  borderRadius: "10px",
-  fontSize: "0.9375rem",
-  fontWeight: 600,
-  width: "100%",
-  justifyContent: "center",
-});
-
-export const primary = css({
-  borderColor: "teal",
-  background: "teal",
-  color: "#fff",
+export const secondaryBtn = css({
+  height: "42px",
+  minHeight: "42px",
+  background: "color-mix(in oklch, {colors.glass.text} 6%, transparent)",
+  border:
+    "1px solid color-mix(in oklch, {colors.glass.text} 14%, transparent)",
+  color: "glass.text",
+  borderRadius: "DEFAULT",
+  fontWeight: 500,
   _hover: {
     _enabled: {
-      background: "teal.dark",
-      borderColor: "teal.dark",
+      background:
+        "color-mix(in oklch, {colors.glass.text} 12%, transparent)",
     },
   },
+});
+
+export const primaryBtn = css({
+  height: "42px",
+  minHeight: "42px",
+  fontWeight: 600,
+  background: "accent",
+  borderColor: "accent",
+  color: "#fff",
+  borderRadius: "DEFAULT",
+  boxShadow: "0 4px 16px color-mix(in oklch, {colors.accent} 40%, transparent)",
+  _hover: { _enabled: { background: "accent.dim", borderColor: "accent.dim" } },
 });

@@ -8,14 +8,11 @@ import { usePinchZoom } from "../hooks/use-pinch-zoom";
 import { PiecesLayer } from "./pieces-layer";
 import { RemoteCursorsLayer } from "./remote-cursors-layer";
 import { ImageOverlayToolbar } from "./image-overlay-toolbar";
-import { ZoomControls } from "./zoom-controls";
 import { participantColor } from "../utils/participant";
 import {
   boardStage,
   boardViewport,
   boardWorld,
-  canvasStatus,
-  canvasStatusComplete,
   frameComplete,
   imageOverlay,
   imageOverlayImg,
@@ -36,7 +33,6 @@ type Props = {
   panning: boolean;
   margin: number;
   complete: boolean;
-  loadingSummary: string;
   remoteCursors: RemoteCursor[];
   activeRemoteCursorIds: Set<string>;
   selectedPieceIds: Set<number>;
@@ -60,9 +56,6 @@ type Props = {
   onPointerLeave: () => void;
   onViewportPointerDown: (e: PointerEvent) => void;
   onWheel: (e: WheelEvent) => void;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-  onResetZoom: () => void;
   onApplyPinch: (
     distFactor: number,
     prevMidX: number,
@@ -100,98 +93,96 @@ export function PuzzleBoard(props: Props) {
   });
 
   return (
-    <>
-      <div
-        ref={(el) => {
-          viewportRef = el;
-          props.setViewportEl(el);
-        }}
-        class={`${boardViewport} ${props.panning ? panningCls : ""}`}
-        style={{
-          "background-position": `${props.pan.x}px ${props.pan.y}px`,
-          "background-size": `${28 * props.zoom}px ${28 * props.zoom}px`,
-        }}
-        onPointerDown={(e) => props.onViewportPointerDown(e)}
-        onPointerMove={(e) => props.onPointerMove(e)}
-        onPointerUp={(e) => props.onPointerUp(e)}
-        onPointerCancel={(e) => props.onPointerCancel(e)}
-        onPointerLeave={() => props.onPointerLeave()}
-        onWheel={(e) => props.onWheel(e)}
-        onAuxClick={(e) => {
-          if (e.button === 1) e.preventDefault();
-        }}
-      >
-        <div class={boardStage}>
+    <div
+      ref={(el) => {
+        viewportRef = el;
+        props.setViewportEl(el);
+      }}
+      class={`${boardViewport} ${props.panning ? panningCls : ""}`}
+      style={{
+        "background-position": `${props.pan.x}px ${props.pan.y}px`,
+        "background-size": `${24 * props.zoom}px ${24 * props.zoom}px`,
+      }}
+      onPointerDown={(e) => props.onViewportPointerDown(e)}
+      onPointerMove={(e) => props.onPointerMove(e)}
+      onPointerUp={(e) => props.onPointerUp(e)}
+      onPointerCancel={(e) => props.onPointerCancel(e)}
+      onPointerLeave={() => props.onPointerLeave()}
+      onWheel={(e) => props.onWheel(e)}
+      onAuxClick={(e) => {
+        if (e.button === 1) e.preventDefault();
+      }}
+    >
+      <div class={boardStage}>
+        <div
+          ref={(el) => props.setWorldEl(el)}
+          class={boardWorld}
+          style={{
+            transform: `translate(${props.pan.x}px, ${props.pan.y}px) scale(${props.zoom})`,
+          }}
+        >
           <div
-            ref={(el) => props.setWorldEl(el)}
-            class={boardWorld}
+            class={`${puzzleFrame} ${props.complete ? frameComplete : ""}`}
             style={{
-              transform: `translate(${props.pan.x}px, ${props.pan.y}px) scale(${props.zoom})`,
+              left: `${props.margin}px`,
+              top: `${props.margin}px`,
+              width: `${props.layout.boardWidth}px`,
+              height: `${props.layout.boardHeight}px`,
             }}
-          >
-            <div
-              class={`${puzzleFrame} ${props.complete ? frameComplete : ""}`}
-              style={{
-                left: `${props.margin}px`,
-                top: `${props.margin}px`,
-                width: `${props.layout.boardWidth}px`,
-                height: `${props.layout.boardHeight}px`,
-              }}
-            />
-            <Show when={props.imageOverlayPosition}>
-              {(pos) => (
-                <div
-                  class={`${imageOverlay} ${props.imageOverlaySelected ? overlaySelected : ""} ${colorMaps().remoteImageOverlayColor ? overlayRemoteSelected : ""} ${props.imageOverlayLocked ? overlayLocked : ""}`}
-                  style={{
-                    left: `${props.margin + pos().x}px`,
-                    top: `${props.margin + pos().y}px`,
-                    width: `${props.layout.boardWidth}px`,
-                    height: `${props.layout.boardHeight}px`,
-                    "--my-selection-color": myColor() ?? "transparent",
-                    "--remote-selection-color":
-                      colorMaps().remoteImageOverlayColor ?? "transparent",
-                  }}
-                  onPointerDown={(e) => props.onImageOverlayPointerDown(e)}
-                >
-                  <img
-                    src={props.imageDataUrl}
-                    alt="元の画像"
-                    class={imageOverlayImg}
-                    style={{ opacity: props.imageOverlayOpacity }}
-                    draggable={false}
-                  />
-                </div>
-              )}
-            </Show>
-            <PiecesLayer
-              pieces={props.pieces}
-              layout={props.layout}
-              imageDataUrl={props.imageDataUrl}
-              margin={props.margin}
-              selectedPieceIds={props.selectedPieceIds}
-              myColor={myColor()}
-              remotePieceColors={colorMaps().remotePieceColors}
-              onPiecePointerDown={props.onPiecePointerDown}
-              registerPieceElement={props.registerPieceElement}
-            />
-            <Show when={props.selectionBox}>
-              {(box) => (
-                <div
-                  class={selectionBoxCls}
-                  style={{
-                    left: `${box().x}px`,
-                    top: `${box().y}px`,
-                    width: `${box().width}px`,
-                    height: `${box().height}px`,
-                  }}
+          />
+          <Show when={props.imageOverlayPosition}>
+            {(pos) => (
+              <div
+                class={`${imageOverlay} ${props.imageOverlaySelected ? overlaySelected : ""} ${colorMaps().remoteImageOverlayColor ? overlayRemoteSelected : ""} ${props.imageOverlayLocked ? overlayLocked : ""}`}
+                style={{
+                  left: `${props.margin + pos().x}px`,
+                  top: `${props.margin + pos().y}px`,
+                  width: `${props.layout.boardWidth}px`,
+                  height: `${props.layout.boardHeight}px`,
+                  "--my-selection-color": myColor() ?? "transparent",
+                  "--remote-selection-color":
+                    colorMaps().remoteImageOverlayColor ?? "transparent",
+                }}
+                onPointerDown={(e) => props.onImageOverlayPointerDown(e)}
+              >
+                <img
+                  src={props.imageDataUrl}
+                  alt="元の画像"
+                  class={imageOverlayImg}
+                  style={{ opacity: props.imageOverlayOpacity }}
+                  draggable={false}
                 />
-              )}
-            </Show>
-            <RemoteCursorsLayer
-              cursors={props.remoteCursors}
-              activeIds={props.activeRemoteCursorIds}
-            />
-          </div>
+              </div>
+            )}
+          </Show>
+          <PiecesLayer
+            pieces={props.pieces}
+            layout={props.layout}
+            imageDataUrl={props.imageDataUrl}
+            margin={props.margin}
+            selectedPieceIds={props.selectedPieceIds}
+            myColor={myColor()}
+            remotePieceColors={colorMaps().remotePieceColors}
+            onPiecePointerDown={props.onPiecePointerDown}
+            registerPieceElement={props.registerPieceElement}
+          />
+          <Show when={props.selectionBox}>
+            {(box) => (
+              <div
+                class={selectionBoxCls}
+                style={{
+                  left: `${box().x}px`,
+                  top: `${box().y}px`,
+                  width: `${box().width}px`,
+                  height: `${box().height}px`,
+                }}
+              />
+            )}
+          </Show>
+          <RemoteCursorsLayer
+            cursors={props.remoteCursors}
+            activeIds={props.activeRemoteCursorIds}
+          />
         </div>
       </div>
 
@@ -209,18 +200,7 @@ export function PuzzleBoard(props: Props) {
           onChangeOpacity={props.onChangeImageOpacity}
         />
       </Show>
-
-      <ZoomControls
-        zoom={props.zoom}
-        onZoomIn={props.onZoomIn}
-        onZoomOut={props.onZoomOut}
-        onResetZoom={props.onResetZoom}
-      />
-
-      <div class={`${canvasStatus} ${props.complete ? canvasStatusComplete : ""}`}>
-        {props.complete ? "完成 ✓" : props.loadingSummary}
-      </div>
-    </>
+    </div>
   );
 }
 

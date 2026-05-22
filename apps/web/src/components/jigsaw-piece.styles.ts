@@ -17,7 +17,7 @@ export const pieceShapeLocked = css({
 
 export const pieceEdge = css({
   fill: "none",
-  stroke: "#ffffff",
+  stroke: "{colors.piece.tintHi}",
   strokeOpacity: "var(--piece-edge-opacity-unlocked, 0.65)",
   strokeLinejoin: "round",
   strokeWidth: 1.5,
@@ -30,7 +30,7 @@ export const pieceEdgeLocked = css({
 
 export const selectionGlow = css({
   fill: "none",
-  stroke: "var(--selection-color, {colors.teal})",
+  stroke: "var(--selection-color, {colors.accent})",
   strokeOpacity: "calc(var(--piece-edge-opacity-selected, 0.7) * 0.26)",
   strokeWidth: 9,
   strokeLinejoin: "round",
@@ -39,7 +39,7 @@ export const selectionGlow = css({
 
 export const selectionStroke = css({
   fill: "none",
-  stroke: "var(--selection-color, {colors.teal})",
+  stroke: "var(--selection-color, {colors.accent})",
   strokeOpacity: "var(--piece-edge-opacity-selected, 0.7)",
   strokeWidth: 3,
   strokeLinejoin: "round",

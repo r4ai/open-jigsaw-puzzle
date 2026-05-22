@@ -24,7 +24,6 @@ describe("PuzzleBoard image overlay toolbar", () => {
         panning={false}
         margin={0}
         complete={false}
-        loadingSummary="loading"
         remoteCursors={[]}
         activeRemoteCursorIds={new Set()}
         selectedPieceIds={new Set()}
@@ -48,9 +47,6 @@ describe("PuzzleBoard image overlay toolbar", () => {
         onPointerLeave={() => {}}
         onViewportPointerDown={() => {}}
         onWheel={() => {}}
-        onZoomIn={() => {}}
-        onZoomOut={() => {}}
-        onResetZoom={() => {}}
         onApplyPinch={() => {}}
         onSetPinching={() => {}}
         registerPieceElement={() => {}}

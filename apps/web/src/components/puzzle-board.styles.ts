@@ -1,27 +1,20 @@
 import { css } from "../../styled-system/css";
 
-const narrowMq = "@media (max-width: 760px), (max-width: 1024px) and (orientation: portrait)";
-
 export const boardViewport = css({
-  flex: 1,
-  position: "relative",
-  width: "100%",
-  minHeight: 0,
-  border: "1px solid {colors.canvas.rim}",
-  borderRadius: "10px",
-  overflow: "hidden",
-  backgroundColor: "canvas.base",
+  position: "absolute",
+  inset: 0,
+  backgroundColor: "canvas",
   backgroundImage:
     "radial-gradient(circle, {colors.canvas.dot} 1px, transparent 1px)",
-  backgroundSize: "28px 28px",
+  backgroundSize: "24px 24px",
   cursor: "grab",
   overscrollBehavior: "contain",
   touchAction: "none",
   userSelect: "none",
-  [narrowMq]: { minHeight: 0 },
+  overflow: "hidden",
 });
 
-export const panning = css({ cursor: "grabbing !important" });
+export const panning = css({ cursor: "grabbing!" });
 
 export const boardStage = css({
   position: "relative",
@@ -40,15 +33,17 @@ export const boardWorld = css({
 
 export const puzzleFrame = css({
   position: "absolute",
-  border: "1px solid {colors.piece.frame}",
+  border:
+    "1.5px dashed color-mix(in oklch, {colors.accent} 65%, transparent)",
   borderRadius: "4px",
-  background: "piece.fill",
+  background: "color-mix(in oklch, {colors.accent} 5%, transparent)",
 });
 
 export const frameComplete = css({
-  borderColor: "okCanvas.border",
+  borderColor: "color-mix(in oklch, {colors.ok} 65%, transparent)",
+  background: "color-mix(in oklch, {colors.ok} 6%, transparent)",
   boxShadow:
-    "0 0 0 3px {colors.okCanvas.ring} inset, 0 0 60px {colors.okCanvas.glow}",
+    "0 0 0 3px color-mix(in oklch, {colors.ok} 35%, transparent) inset, 0 0 60px color-mix(in oklch, {colors.ok} 12%, transparent)",
 });
 
 export const imageOverlay = css({
@@ -57,7 +52,7 @@ export const imageOverlay = css({
   touchAction: "none",
   userSelect: "none",
   borderRadius: "6px",
-  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.35)",
+  boxShadow: "0 4px 20px oklch(0% 0 0 / 0.35)",
   overflow: "hidden",
   zIndex: 1,
   _active: { cursor: "grabbing" },
@@ -65,17 +60,17 @@ export const imageOverlay = css({
 
 export const overlaySelected = css({
   boxShadow:
-    "0 0 0 3px color-mix(in srgb, var(--my-selection-color, {colors.teal}) 70%, transparent), 0 0 0 8px color-mix(in srgb, var(--my-selection-color, {colors.teal}) 18%, transparent)",
+    "0 0 0 3px color-mix(in oklch, var(--my-selection-color, {colors.accent}) 70%, transparent), 0 0 0 8px color-mix(in oklch, var(--my-selection-color, {colors.accent}) 18%, transparent)",
 });
 
 export const overlayRemoteSelected = css({
   boxShadow:
-    "0 0 0 2.5px color-mix(in srgb, var(--remote-selection-color) 65%, transparent), 0 0 0 7px color-mix(in srgb, var(--remote-selection-color) 14%, transparent)",
+    "0 0 0 2.5px color-mix(in oklch, var(--remote-selection-color) 65%, transparent), 0 0 0 7px color-mix(in oklch, var(--remote-selection-color) 14%, transparent)",
 });
 
 export const overlayLocked = css({
-  cursor: "default !important",
-  _active: { cursor: "default !important" },
+  cursor: "default!",
+  _active: { cursor: "default!" },
 });
 
 export const imageOverlayImg = css({
@@ -111,14 +106,14 @@ export const piece = css({
 });
 
 export const pieceLocked = css({
-  cursor: "default !important",
+  cursor: "default!",
 });
 
 export const selectionBox = css({
   position: "absolute",
   zIndex: 999999,
-  border: "1px solid {colors.teal}",
-  background: "color-mix(in srgb, {colors.teal} 18%, transparent)",
+  border: "1px solid {colors.accent}",
+  background: "color-mix(in oklch, {colors.accent} 18%, transparent)",
   pointerEvents: "none",
 });
 
@@ -139,7 +134,7 @@ export const remoteCursor = css({
   willChange: "transform",
   "& svg": {
     fill: "var(--cursor-color, {colors.accent})",
-    filter: "drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5))",
+    filter: "drop-shadow(0 1px 3px oklch(0% 0 0 / 0.5))",
   },
   "& span": {
     maxWidth: "110px",
@@ -147,10 +142,10 @@ export const remoteCursor = css({
     borderRadius: "6px",
     padding: "2px 7px",
     background:
-      "color-mix(in srgb, var(--cursor-color, {colors.accent}) 18%, {colors.canvas.glass.base})",
+      "color-mix(in oklch, var(--cursor-color, {colors.accent}) 18%, {colors.glass})",
     border:
-      "1px solid color-mix(in srgb, var(--cursor-color, {colors.accent}) 50%, transparent)",
-    color: "onCanvas",
+      "1px solid color-mix(in oklch, var(--cursor-color, {colors.accent}) 50%, transparent)",
+    color: "canvas.text",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
     backdropFilter: "blur(4px)",
@@ -158,7 +153,7 @@ export const remoteCursor = css({
 });
 
 export const cursorDragging = css({
-  transition: "none !important",
+  transition: "none!",
 });
 
 export const imageOverlayToolbar = css({
@@ -167,15 +162,16 @@ export const imageOverlayToolbar = css({
   display: "flex",
   alignItems: "center",
   gap: "1px",
-  background: "canvas.glass.base",
-  backdropFilter: "blur(12px)",
-  border: "1px solid {colors.canvas.glass.border}",
+  background: "glass.strong",
+  backdropFilter: "blur(18px) saturate(160%)",
+  border: "1px solid {colors.glass.border}",
   borderRadius: "10px",
   padding: "3px 6px",
   transform: "translateX(-50%)",
   pointerEvents: "all",
   whiteSpace: "nowrap",
-  boxShadow: "0 2px 12px rgba(0, 0, 0, 0.14), 0 1px 3px rgba(0, 0, 0, 0.1)",
+  boxShadow: "glass",
+  color: "glass.text",
 });
 
 export const toolbarBtn = css({
@@ -186,7 +182,7 @@ export const toolbarBtn = css({
   borderRadius: "7px",
   background: "transparent",
   borderColor: "transparent",
-  color: "onCanvas.mid",
+  color: "glass.textDim",
   transition: "background 100ms, color 100ms",
   display: "flex",
   alignItems: "center",
@@ -194,32 +190,26 @@ export const toolbarBtn = css({
   flexShrink: 0,
   _hover: {
     _enabled: {
-      background: "canvas.glass.hover",
+      background:
+        "color-mix(in oklch, {colors.glass.text} 10%, transparent)",
       borderColor: "transparent",
-      color: "onCanvas",
+      color: "glass.text",
     },
   },
   _active: { _enabled: { transform: "none" } },
 });
 
 export const toolbarBtnActive = css({
-  background: "color-mix(in srgb, {colors.teal} 15%, transparent)",
-  color: "teal",
+  background: "color-mix(in oklch, {colors.accent} 22%, transparent)",
+  color: "accent",
   borderColor: "transparent",
-  _hover: {
-    _enabled: {
-      background: "color-mix(in srgb, {colors.teal} 24%, transparent)",
-      borderColor: "transparent",
-      color: "teal",
-    },
-  },
 });
 
 export const toolbarDivider = css({
   width: "1px",
   height: "14px",
   margin: "0 3px",
-  background: "canvas.glass.border",
+  background: "glass.border",
   flexShrink: 0,
 });
 
@@ -232,7 +222,7 @@ export const toolbarOpacityGroup = css({
 
 export const toolbarLabel = css({
   font: "400 0.68rem/1 {fonts.ui}",
-  color: "onCanvas.dim",
+  color: "glass.textDim",
   letterSpacing: "0.01em",
   flexShrink: 0,
 });
@@ -251,16 +241,16 @@ export const toolbarSlider = css({
     height: "3px",
     borderRadius: "2px",
     background:
-      "linear-gradient(to right, {colors.teal} var(--slider-pct, 100%), {colors.canvas.glass.border} var(--slider-pct, 100%))",
+      "linear-gradient(to right, {colors.accent} var(--slider-pct, 100%), {colors.glass.border} var(--slider-pct, 100%))",
   },
   "&::-webkit-slider-thumb": {
     WebkitAppearance: "none",
     width: "14px",
     height: "14px",
     borderRadius: "50%",
-    background: "teal",
-    border: "2.5px solid {colors.canvas.base}",
-    boxShadow: "0 1px 4px rgba(0, 0, 0, 0.25)",
+    background: "accent",
+    border: "2.5px solid {colors.canvas}",
+    boxShadow: "0 1px 4px oklch(0% 0 0 / 0.25)",
     cursor: "pointer",
     transition: "transform 100ms",
     marginTop: "-5.5px",
@@ -269,20 +259,20 @@ export const toolbarSlider = css({
   "&::-moz-range-track": {
     height: "3px",
     borderRadius: "2px",
-    background: "canvas.glass.border",
+    background: "glass.border",
   },
   "&::-moz-range-progress": {
     height: "3px",
     borderRadius: "2px",
-    background: "teal",
+    background: "accent",
   },
   "&::-moz-range-thumb": {
     width: "14px",
     height: "14px",
     borderRadius: "50%",
-    background: "teal",
-    border: "2.5px solid {colors.canvas.base}",
-    boxShadow: "0 1px 4px rgba(0, 0, 0, 0.25)",
+    background: "accent",
+    border: "2.5px solid {colors.canvas}",
+    boxShadow: "0 1px 4px oklch(0% 0 0 / 0.25)",
     cursor: "pointer",
   },
 });
@@ -291,78 +281,6 @@ export const toolbarVal = css({
   minWidth: "28px",
   textAlign: "right",
   font: "400 0.72rem/1 {fonts.mono}",
-  color: "onCanvas.mid",
+  color: "glass.text",
   flexShrink: 0,
-});
-
-export const zoomControls = css({
-  position: "absolute",
-  bottom: "12px",
-  right: "12px",
-  display: "flex",
-  alignItems: "center",
-  gap: "2px",
-  background: "canvas.glass.base",
-  backdropFilter: "blur(10px)",
-  border: "1px solid {colors.canvas.glass.border}",
-  borderRadius: "9px",
-  padding: "3px",
-  zIndex: 50,
-  "& button": {
-    width: "28px",
-    height: "28px",
-    minHeight: "unset",
-    padding: 0,
-    borderRadius: "6px",
-    background: "transparent",
-    borderColor: "transparent",
-    color: "onCanvas.mid",
-    fontSize: "0.8125rem",
-    transition: "background 100ms, color 100ms",
-  },
-  "& button:hover:not(:disabled)": {
-    background: "canvas.glass.hover",
-    borderColor: "transparent",
-    color: "onCanvas",
-  },
-  "& button:disabled": { opacity: 0.25 },
-  "& button:active:not(:disabled)": { transform: "none" },
-  [narrowMq]: { bottom: "8px", right: "8px" },
-});
-
-export const zoomPct = css({
-  minWidth: "42px",
-  textAlign: "center",
-  font: "400 0.75rem/1 {fonts.mono}",
-  color: "onCanvas.dim",
-});
-
-export const canvasStatus = css({
-  position: "absolute",
-  bottom: "12px",
-  left: "12px",
-  maxWidth: "calc(100% - 160px)",
-  padding: "5px 10px",
-  background: "canvas.glass.base",
-  backdropFilter: "blur(10px)",
-  border: "1px solid {colors.canvas.glass.border}",
-  borderRadius: "7px",
-  color: "onCanvas.dim",
-  font: "400 0.72rem/1.45 {fonts.mono}",
-  zIndex: 50,
-  pointerEvents: "none",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-  [narrowMq]: {
-    bottom: "52px",
-    left: "8px",
-    maxWidth: "calc(100% - 16px)",
-  },
-});
-
-export const canvasStatusComplete = css({
-  borderColor: "okCanvas.ring",
-  background: "okCanvas.glass",
-  color: "okCanvas.text",
 });

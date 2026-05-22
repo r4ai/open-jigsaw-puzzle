@@ -1,53 +1,28 @@
 import { css } from "../../styled-system/css";
 
-const narrowMq = "@media (max-width: 760px), (max-width: 1024px) and (orientation: portrait)";
-
 export const workspace = css({
-  height: "100dvh",
-  width: "100%",
-  maxWidth: "100vw",
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) 192px",
-  gridTemplateRows: "auto minmax(0, 1fr)",
-  gap: "10px 12px",
-  padding: "12px",
+  position: "fixed",
+  inset: 0,
   overflow: "hidden",
-  [narrowMq]: {
-    gridTemplateColumns: "minmax(0, 1fr)",
-    gridTemplateRows: "auto auto minmax(0, 1fr)",
-    padding: "10px",
-    gap: "8px",
-  },
-});
-
-export const sidebarCollapsed = css({
-  gridTemplateColumns: "minmax(0, 1fr) !important",
-});
-
-export const boardWrap = css({
-  gridColumn: 1,
-  gridRow: 2,
-  position: "relative",
-  display: "flex",
-  flexDirection: "column",
-  minWidth: 0,
-  minHeight: 0,
-  [narrowMq]: { gridColumn: 1, gridRow: 3 },
+  background: "canvas",
 });
 
 export const toast = css({
-  position: "fixed",
+  position: "absolute",
   left: "50%",
-  bottom: "20px",
+  bottom: "76px",
   transform: "translateX(-50%)",
-  zIndex: 9999,
+  zIndex: 60,
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
   border: "1px solid {colors.err.border}",
-  borderRadius: "10px",
-  padding: "11px 18px",
-  background: "err.surf",
+  borderRadius: "DEFAULT",
+  padding: "10px 16px",
+  background: "err.surface",
   color: "err",
-  font: "500 0.875rem {fonts.ui}",
-  boxShadow: "0 8px 24px {colors.err.shadow}",
-  maxWidth: "min(480px, calc(100vw - 32px))",
-  whiteSpace: "pre-wrap",
+  font: "500 0.8125rem {fonts.ui}",
+  boxShadow: "0 8px 24px color-mix(in oklch, {colors.err} 12%, transparent)",
+  maxWidth: "min(440px, calc(100vw - 32px))",
+  animation: "slideUp 220ms {easings.standard}",
 });
