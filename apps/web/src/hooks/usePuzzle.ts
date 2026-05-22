@@ -1,4 +1,4 @@
-import { createMemo, createSignal, onCleanup } from "solid-js";
+import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import {
   createInitialPieces,
   isComplete,
@@ -684,7 +684,7 @@ export function usePuzzle(props: Props) {
   const lockedCount = createMemo(() => countLockedPieces(pieces()));
 
   // 完成判定／開始計時 — ホストのみが時刻を確定する
-  createMemo(() => {
+  createEffect(() => {
     const list = pieces();
     const done = complete();
     if (list.length === 0) return;

@@ -54,7 +54,7 @@ export function WorkspacePage(props: Props) {
   const [sidebarOpen, setSidebarOpen] = createSignal(true);
   const [settingsOpen, setSettingsOpen] = createSignal(false);
   const { settings, update: updateSetting, reset: resetSettings } = useSettings();
-  const [showCompletion, setShowCompletion] = createSignal(false);
+  const [completionDismissed, setCompletionDismissed] = createSignal(false);
   const [copied, setCopied] = createSignal(false);
   const [status, setStatus] = createSignal("画像を選ぶとパズルを開始できます");
   let fileInput: HTMLInputElement | undefined;
@@ -88,6 +88,7 @@ export function WorkspacePage(props: Props) {
     getPieces: () => puzzle.getPieces(),
     getStartedAtMs: () => puzzle.getStartedAtMs(),
     onImageComplete: (_dataUrl, _w, _h, nextLayout) => {
+      setCompletionDismissed(false);
       puzzle.receiveImage(nextLayout);
     },
   });
@@ -176,10 +177,6 @@ export function WorkspacePage(props: Props) {
   });
 
   createEffect(() => {
-    setShowCompletion(puzzle.complete());
-  });
-
-  createEffect(() => {
     const l = layout();
     if (l) imageOverlay.initPosition(l);
   });
@@ -213,6 +210,9 @@ export function WorkspacePage(props: Props) {
   });
   const loadingSummary = createMemo(
     () => describeLoadingProgress(imageTransfer.loadingProgress()) ?? status(),
+  );
+  const showCompletion = createMemo(
+    () => puzzle.complete() && !completionDismissed(),
   );
   const hasLoosePiece = createMemo(() =>
     puzzle.pieces().some((p) => !p.locked),
@@ -470,10 +470,10 @@ export function WorkspacePage(props: Props) {
           pieceCount={puzzle.pieces().length}
           elapsedMs={puzzle.clearedElapsedMs()}
           onBackToMenu={() => {
-            setShowCompletion(false);
+            setCompletionDismissed(true);
             navigate("/");
           }}
-          onClose={() => setShowCompletion(false)}
+          onClose={() => setCompletionDismissed(true)}
         />
       </Show>
     </main>
