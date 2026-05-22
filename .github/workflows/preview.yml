@@ -59,11 +59,10 @@ jobs:
           PREVIEW_URL: https://${{ env.PREVIEW_HOST }}
         with:
           script: |
-            const { pathToFileURL } = require('node:url');
             const {
               buildPreviewPendingComment,
               planManagedPreviewComment,
-            } = await import(pathToFileURL(`${process.env.GITHUB_WORKSPACE}/.github/scripts/preview-comment.ts`).href);
+            } = await import('${{ github.workspace }}/.github/scripts/preview-comment.ts');
             const body = buildPreviewPendingComment({
               commitSha: process.env.PREVIEW_COMMIT_SHA,
               host: process.env.PREVIEW_HOST,
@@ -211,11 +210,10 @@ jobs:
           PREVIEW_URL: https://${{ env.PREVIEW_HOST }}
         with:
           script: |
-            const { pathToFileURL } = require('node:url');
             const {
               buildPreviewDeployedComment,
               planManagedPreviewComment,
-            } = await import(pathToFileURL(`${process.env.GITHUB_WORKSPACE}/.github/scripts/preview-comment.ts`).href);
+            } = await import('${{ github.workspace }}/.github/scripts/preview-comment.ts');
             const body = buildPreviewDeployedComment({
               commitSha: process.env.PREVIEW_COMMIT_SHA,
               host: process.env.PREVIEW_HOST,
@@ -300,11 +298,10 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            const { pathToFileURL } = require('node:url');
             const {
               buildPreviewCleanedComment,
               planManagedPreviewComment,
-            } = await import(pathToFileURL(`${process.env.GITHUB_WORKSPACE}/.github/scripts/preview-comment.ts`).href);
+            } = await import('${{ github.workspace }}/.github/scripts/preview-comment.ts');
             const body = buildPreviewCleanedComment({
               previewName: process.env.PREVIEW_NAME,
             });
