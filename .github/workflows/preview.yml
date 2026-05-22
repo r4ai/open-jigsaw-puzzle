@@ -8,6 +8,10 @@ on:
       - completed
   pull_request_target:
     types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
       - closed
 
 permissions:
@@ -21,6 +25,81 @@ env:
   WRANGLER_VERSION: 4.91.0
 
 jobs:
+  mark-pending:
+    name: Mark PR preview pending
+    if: >-
+      ${{
+        github.event_name == 'pull_request_target' &&
+        github.event.action != 'closed' &&
+        github.event.pull_request.head.repo.full_name == github.repository
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+
+    env:
+      PREVIEW_NAME: open-jigsaw-puzzle-pr-${{ github.event.pull_request.number }}
+      PREVIEW_HOST: pr-${{ github.event.pull_request.number }}.${{ vars.CLOUDFLARE_PREVIEW_DOMAIN_SUFFIX }}
+      PREVIEW_COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+
+    steps:
+      - name: Checkout deployment scripts
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - name: Comment pending preview update
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        env:
+          PREVIEW_URL: https://${{ env.PREVIEW_HOST }}
+        with:
+          script: |
+            const { pathToFileURL } = require('node:url');
+            const {
+              buildPreviewPendingComment,
+              planManagedPreviewComment,
+            } = await import(pathToFileURL(`${process.env.GITHUB_WORKSPACE}/.github/scripts/preview-comment.mjs`).href);
+            const body = buildPreviewPendingComment({
+              commitSha: process.env.PREVIEW_COMMIT_SHA,
+              host: process.env.PREVIEW_HOST,
+              previewName: process.env.PREVIEW_NAME,
+              previewUrl: process.env.PREVIEW_URL,
+            });
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+            const plan = planManagedPreviewComment(comments, body);
+            for (const comment_id of plan.deleteCommentIds) {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id,
+              });
+            }
+            if (plan.updateCommentId) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: plan.updateCommentId,
+                body: plan.body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: plan.body,
+              });
+            }
+
   resolve-preview:
     name: Resolve PR preview
     if: >-
@@ -132,38 +211,44 @@ jobs:
           PREVIEW_URL: https://${{ env.PREVIEW_HOST }}
         with:
           script: |
-            const marker = '<!-- open-puzzle-preview -->';
-            const body = [
-              marker,
-              '## Preview environment',
-              '',
-              `Deployed: ${process.env.PREVIEW_URL}`,
-              '',
-              `Host: \`${process.env.PREVIEW_HOST}\``,
-              `Worker: \`${process.env.PREVIEW_NAME}\``,
-              `D1: \`${process.env.PREVIEW_NAME}\``,
-              `Commit: \`${process.env.PREVIEW_COMMIT_SHA}\``,
-            ].join('\n');
+            const { pathToFileURL } = require('node:url');
+            const {
+              buildPreviewDeployedComment,
+              planManagedPreviewComment,
+            } = await import(pathToFileURL(`${process.env.GITHUB_WORKSPACE}/.github/scripts/preview-comment.mjs`).href);
+            const body = buildPreviewDeployedComment({
+              commitSha: process.env.PREVIEW_COMMIT_SHA,
+              host: process.env.PREVIEW_HOST,
+              previewName: process.env.PREVIEW_NAME,
+              previewUrl: process.env.PREVIEW_URL,
+            });
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: Number(process.env.PREVIEW_PR_NUMBER),
               per_page: 100,
             });
-            const existing = comments.find((comment) => comment.body?.includes(marker));
-            if (existing) {
+            const plan = planManagedPreviewComment(comments, body);
+            for (const comment_id of plan.deleteCommentIds) {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id,
+              });
+            }
+            if (plan.updateCommentId) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
+                comment_id: plan.updateCommentId,
+                body: plan.body,
               });
             } else {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: Number(process.env.PREVIEW_PR_NUMBER),
-                body,
+                body: plan.body,
               });
             }
 
@@ -178,6 +263,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
+      contents: read
       issues: write
 
     env:
@@ -214,32 +300,40 @@ jobs:
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         with:
           script: |
-            const marker = '<!-- open-puzzle-preview -->';
-            const body = [
-              marker,
-              '## Preview environment',
-              '',
-              `Cleaned up preview resources for \`${process.env.PREVIEW_NAME}\`.`,
-            ].join('\n');
+            const { pathToFileURL } = require('node:url');
+            const {
+              buildPreviewCleanedComment,
+              planManagedPreviewComment,
+            } = await import(pathToFileURL(`${process.env.GITHUB_WORKSPACE}/.github/scripts/preview-comment.mjs`).href);
+            const body = buildPreviewCleanedComment({
+              previewName: process.env.PREVIEW_NAME,
+            });
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
               per_page: 100,
             });
-            const existing = comments.find((comment) => comment.body?.includes(marker));
-            if (existing) {
+            const plan = planManagedPreviewComment(comments, body);
+            for (const comment_id of plan.deleteCommentIds) {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id,
+              });
+            }
+            if (plan.updateCommentId) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
+                comment_id: plan.updateCommentId,
+                body: plan.body,
               });
             } else {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.payload.pull_request.number,
-                body,
+                body: plan.body,
               });
             }

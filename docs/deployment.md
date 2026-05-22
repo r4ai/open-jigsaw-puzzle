@@ -52,7 +52,7 @@ For manual redeploys, run the Deploy workflow with the CI run id that produced t
 
 The preview workflow deploys one temporary Cloudflare Worker and one temporary D1 database per pull request from a branch in this repository. Forked pull requests are skipped because the workflow needs Cloudflare secrets.
 
-Security boundary: pull request code is built and tested only by the unprivileged CI workflow. The privileged preview workflow is triggered after CI succeeds, checks out only the default branch deployment scripts from `.github/scripts`, downloads the verified build artifact, and then runs Cloudflare commands without running pull request package scripts, tests, or build commands. Cleanup runs from `pull_request_target` and does not checkout or install pull request code.
+Security boundary: pull request code is built and tested only by the unprivileged CI workflow. The privileged preview workflow marks the preview comment as pending from `pull_request_target`, then deploys only after CI succeeds. Privileged jobs check out only the default branch deployment scripts from `.github/scripts`, download the verified build artifact, and then run Cloudflare commands without running pull request package scripts, tests, or build commands. Cleanup also runs from `pull_request_target` and does not checkout or install pull request code.
 
 The preview workflow validates that a completed CI run maps to exactly one pull request before deploying. If GitHub reports zero or multiple associated pull requests, the workflow fails instead of guessing which preview environment to update.
 
@@ -71,7 +71,7 @@ Configure these under repository Settings > Secrets and variables > Actions:
 
 The Cloudflare API token must allow Worker deploy/delete, Worker custom domain management, and D1 create/read/migrate/delete operations for the target account.
 
-When a pull request is opened, reopened, updated, or marked ready for review, `.github/workflows/ci.yml` runs the normal verification steps and uploads a short-lived preview bundle. After CI succeeds, `.github/workflows/preview.yml` creates the preview D1 database if needed, applies migrations from the verified bundle, deploys the preview Worker, and posts or updates a PR comment with the preview URL:
+When a pull request is opened, reopened, updated, or marked ready for review, `.github/workflows/preview.yml` first posts or updates a PR comment showing that the preview is waiting for CI at the latest commit. `.github/workflows/ci.yml` runs the normal verification steps and uploads a short-lived preview bundle. After CI succeeds, `.github/workflows/preview.yml` creates the preview D1 database if needed, applies migrations from the verified bundle, deploys the preview Worker, and updates the PR comment with the deployed preview URL:
 
 ```text
 https://pr-<PR number>.<CLOUDFLARE_PREVIEW_DOMAIN_SUFFIX>
