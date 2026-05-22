@@ -5,9 +5,10 @@ export const API_CACHE_CONTROL = "no-store";
 export const SECURITY_HEADERS = {
   "content-security-policy": [
     "default-src 'self'",
-    "script-src 'self'",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data:",
+    "script-src 'self' 'sha256-pX54Ni3i+fLR7PQAS3zwz7i2xx9cgIWZR5pifcQFm94='",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob:",
     "connect-src 'self'",
     "base-uri 'none'",
     "frame-ancestors 'none'",

@@ -92,6 +92,9 @@ export const piece = css({
   minHeight: 0,
   padding: 0,
   border: 0,
+  appearance: "none",
+  WebkitAppearance: "none",
+  WebkitTapHighlightColor: "transparent",
   background: "transparent",
   overflow: "visible",
   cursor: "grab",
@@ -100,6 +103,11 @@ export const piece = css({
   willChange: "transform",
   "&:hover:not(:disabled)": { background: "transparent" },
   "&:active:not(:disabled)": { background: "transparent" },
+  _active: {
+    background: "transparent",
+    filter: "none",
+    transform: "none",
+  },
 });
 
 export const pieceLocked = css({

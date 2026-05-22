@@ -121,8 +121,14 @@ export const topActions = css({
 
 export const themeToggle = css({
   width: "32px",
-  padding: 0,
+  padding: "0 !important",
   color: "ink.60",
+  flexShrink: 0,
+  "& svg": {
+    flexShrink: 0,
+    width: "18px",
+    height: "18px",
+  },
   _hover: { _enabled: { color: "ink" } },
   [narrowMq]: { flex: "0 0 auto !important", width: "38px" },
 });
