@@ -3,7 +3,12 @@ export type Theme = "light" | "dark";
 const STORAGE_KEY = "theme";
 
 export function getInitialTheme(): Theme {
-  const saved = localStorage.getItem(STORAGE_KEY);
+  let saved: string | null = null;
+  try {
+    saved = localStorage.getItem(STORAGE_KEY);
+  } catch {
+    saved = null;
+  }
   if (saved === "light" || saved === "dark") return saved;
   return window.matchMedia("(prefers-color-scheme: dark)").matches
     ? "dark"

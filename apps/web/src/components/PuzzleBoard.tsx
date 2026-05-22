@@ -1,4 +1,4 @@
-import { Show, createMemo, onCleanup, onMount } from "solid-js";
+import { Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import { Lock, LockOpen, Maximize2, Minus, Plus } from "lucide-solid";
 import type { BoardPiece, PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import type { RemoteSelection } from "../hooks/usePuzzle";
@@ -77,9 +77,37 @@ type Props = {
 };
 
 export function PuzzleBoard(props: Props) {
+  const defaultToolbarSize = { width: 220, height: 36 };
   let viewportRef: HTMLDivElement | undefined;
   let worldRef: HTMLDivElement | undefined;
   let toolbarRef: HTMLDivElement | undefined;
+  let toolbarResizeObserver: ResizeObserver | undefined;
+  const [toolbarSize, setToolbarSize] = createSignal(defaultToolbarSize);
+
+  const updateToolbarSize = () => {
+    if (!toolbarRef) {
+      setToolbarSize(defaultToolbarSize);
+      return;
+    }
+    setToolbarSize({
+      width: toolbarRef.offsetWidth || defaultToolbarSize.width,
+      height: toolbarRef.offsetHeight || defaultToolbarSize.height,
+    });
+  };
+
+  const setToolbarEl = (el: HTMLDivElement) => {
+    toolbarRef = el;
+    toolbarResizeObserver?.disconnect();
+    updateToolbarSize();
+    if (typeof ResizeObserver !== "undefined") {
+      toolbarResizeObserver = new ResizeObserver(updateToolbarSize);
+      toolbarResizeObserver.observe(el);
+    }
+  };
+
+  onCleanup(() => {
+    toolbarResizeObserver?.disconnect();
+  });
 
   // ピンチズーム — DOM 直接登録
   onMount(() => {
@@ -169,8 +197,7 @@ export function PuzzleBoard(props: Props) {
     const imgBottom =
       props.pan.y + (props.margin + props.imageOverlayPosition.y + props.layout.boardHeight) * props.zoom;
     if (vpW <= 0 || vpH <= 0 || imgLeft >= vpW || imgRight <= 0 || imgTop >= vpH || imgBottom <= 0) return null;
-    const tbW = toolbarRef?.offsetWidth ?? 220;
-    const tbH = toolbarRef?.offsetHeight ?? 36;
+    const { width: tbW, height: tbH } = toolbarSize();
     const M = 8;
     const rawX = props.pan.x + (props.margin + props.imageOverlayPosition.x + props.layout.boardWidth / 2) * props.zoom;
     const rawTop = props.pan.y + (props.margin + props.imageOverlayPosition.y) * props.zoom - tbH - M;
@@ -281,7 +308,7 @@ export function PuzzleBoard(props: Props) {
       <Show when={toolbarPlacement()}>
         {(p) => (
           <div
-            ref={(el) => (toolbarRef = el)}
+            ref={setToolbarEl}
             class={imageOverlayToolbar}
             role="toolbar"
             aria-label="画像オーバーレイ"
