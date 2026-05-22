@@ -36,6 +36,9 @@ function loadSettings(): PieceEdgeSettings {
   }
 }
 
+/**
+ * Loads piece-edge display settings from localStorage and persists changes.
+ */
 export function useSettings() {
   const [settings, setSettings] = createSignal<PieceEdgeSettings>(loadSettings());
 

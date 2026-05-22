@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ChannelMessage } from "@open-jigsaw-puzzle/shared/protocol";
-import { isAuthorizedPeerMessage, isUndoRedoShortcut } from "./WorkspacePage";
+import { isAuthorizedPeerMessage, isUndoRedoShortcut } from "./peer-permissions";
 
 describe("isAuthorizedPeerMessage", () => {
   it.each([

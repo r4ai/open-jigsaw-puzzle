@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@solidjs/testing-library";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
-import { PuzzleBoard } from "./PuzzleBoard";
+import { PuzzleBoard } from "./puzzle-board";
 
 afterEach(() => {
   cleanup();

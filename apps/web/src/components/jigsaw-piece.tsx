@@ -11,7 +11,7 @@ import {
   remoteSelectionStroke,
   selectionGlow,
   selectionStroke,
-} from "./JigsawPiece.styles";
+} from "./jigsaw-piece.styles";
 
 type Props = {
   geometry: PieceGeometry;

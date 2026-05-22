@@ -1,8 +1,8 @@
 import { For } from "solid-js";
 import { MousePointer2 } from "lucide-solid";
-import type { RemoteCursor } from "../hooks/useRemoteCursors";
+import type { RemoteCursor } from "../hooks/use-remote-cursors";
 import { participantColor } from "../utils/participant";
-import { cursorDragging, remoteCursor } from "./PuzzleBoard.styles";
+import { cursorDragging, remoteCursor } from "./puzzle-board.styles";
 
 type Props = {
   cursors: RemoteCursor[];
