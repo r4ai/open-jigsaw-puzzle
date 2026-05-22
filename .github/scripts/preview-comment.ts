@@ -1,6 +1,30 @@
 export const previewCommentMarker = "<!-- open-puzzle-preview -->";
 
-export function buildPreviewPendingComment({ commitSha, host, previewName, previewUrl }) {
+export type PreviewCommentOptions = {
+  commitSha: string;
+  host: string;
+  previewName: string;
+  previewUrl: string;
+};
+
+export type CleanupPreviewCommentOptions = {
+  previewName: string;
+};
+
+export type PreviewComment = {
+  id: number;
+  body?: string | null;
+  created_at?: string;
+};
+
+export type ManagedPreviewCommentPlan = {
+  body: string;
+  create: boolean;
+  deleteCommentIds: number[];
+  updateCommentId?: number;
+};
+
+export function buildPreviewPendingComment({ commitSha, host, previewName, previewUrl }: PreviewCommentOptions): string {
   return buildPreviewComment([
     "Status: waiting for CI before updating the preview.",
     "",
@@ -12,7 +36,7 @@ export function buildPreviewPendingComment({ commitSha, host, previewName, previ
   ]);
 }
 
-export function buildPreviewDeployedComment({ commitSha, host, previewName, previewUrl }) {
+export function buildPreviewDeployedComment({ commitSha, host, previewName, previewUrl }: PreviewCommentOptions): string {
   return buildPreviewComment([
     "Status: deployed.",
     "",
@@ -24,11 +48,11 @@ export function buildPreviewDeployedComment({ commitSha, host, previewName, prev
   ]);
 }
 
-export function buildPreviewCleanedComment({ previewName }) {
+export function buildPreviewCleanedComment({ previewName }: CleanupPreviewCommentOptions): string {
   return buildPreviewComment(["Status: cleaned up.", "", `Cleaned up preview resources for \`${previewName}\`.`]);
 }
 
-export function planManagedPreviewComment(comments, body) {
+export function planManagedPreviewComment(comments: PreviewComment[], body: string): ManagedPreviewCommentPlan {
   const managedComments = comments
     .filter((comment) => comment.body?.includes(previewCommentMarker))
     .toSorted(compareCommentAge);
@@ -52,11 +76,11 @@ export function planManagedPreviewComment(comments, body) {
   };
 }
 
-function buildPreviewComment(lines) {
+function buildPreviewComment(lines: string[]): string {
   return [previewCommentMarker, "## Preview environment", "", ...lines].join("\n");
 }
 
-function compareCommentAge(left, right) {
+function compareCommentAge(left: PreviewComment, right: PreviewComment): number {
   const leftTime = Date.parse(left.created_at ?? "");
   const rightTime = Date.parse(right.created_at ?? "");
 

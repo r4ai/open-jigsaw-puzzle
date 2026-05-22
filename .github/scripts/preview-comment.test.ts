@@ -5,7 +5,7 @@ import {
   buildPreviewDeployedComment,
   buildPreviewPendingComment,
   planManagedPreviewComment,
-} from "./preview-comment.mjs";
+} from "./preview-comment.ts";
 
 describe("preview comment helpers", () => {
   it("builds a pending comment for a newer commit before the preview is redeployed", () => {
