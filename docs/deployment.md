@@ -34,7 +34,7 @@ pnpm run deploy
 
 ## GitHub Actions Deploy
 
-The CI workflow runs verification on pushes to `main` and uploads a short-lived `production-bundle` artifact. After CI succeeds, the deploy workflow downloads that verified artifact, applies D1 migrations, and deploys the Worker without checking out the repository or running package scripts with Cloudflare secrets.
+The CI workflow runs verification on pushes to `main` and uploads a short-lived `production-bundle` artifact. After CI succeeds, the deploy workflow checks out only the default branch deployment scripts from `.github/scripts`, downloads that verified artifact, applies D1 migrations, and deploys the Worker without checking out application source or running package scripts with Cloudflare secrets.
 
 Configure these under repository Settings > Secrets and variables > Actions:
 
@@ -52,7 +52,9 @@ For manual redeploys, run the Deploy workflow with the CI run id that produced t
 
 The preview workflow deploys one temporary Cloudflare Worker and one temporary D1 database per pull request from a branch in this repository. Forked pull requests are skipped because the workflow needs Cloudflare secrets.
 
-Security boundary: pull request code is built and tested only by the unprivileged CI workflow. The privileged preview workflow is triggered after CI succeeds, downloads the verified build artifact, and then runs Cloudflare commands without running pull request package scripts, tests, or build commands. Cleanup runs from `pull_request_target` and does not checkout or install pull request code.
+Security boundary: pull request code is built and tested only by the unprivileged CI workflow. The privileged preview workflow is triggered after CI succeeds, checks out only the default branch deployment scripts from `.github/scripts`, downloads the verified build artifact, and then runs Cloudflare commands without running pull request package scripts, tests, or build commands. Cleanup runs from `pull_request_target` and does not checkout or install pull request code.
+
+The preview workflow validates that a completed CI run maps to exactly one pull request before deploying. If GitHub reports zero or multiple associated pull requests, the workflow fails instead of guessing which preview environment to update.
 
 Preview resource names use the pull request number:
 
