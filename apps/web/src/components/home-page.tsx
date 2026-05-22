@@ -128,6 +128,7 @@ export function HomePage(props: Props) {
                     <button
                       type="button"
                       class={diff() === value ? selectedCls : ""}
+                      aria-pressed={diff() === value}
                       onClick={() => setDiff(value)}
                     >
                       {value}
@@ -147,6 +148,7 @@ export function HomePage(props: Props) {
                     <button
                       type="button"
                       class={diff() === value ? selectedCls : ""}
+                      aria-pressed={diff() === value}
                       onClick={() => setDiff(value)}
                     >
                       {value}

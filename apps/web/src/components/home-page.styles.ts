@@ -195,7 +195,7 @@ export const difficulty = css({
     minHeight: "44px",
     minWidth: 0,
   },
-  "& button:not(.selected):hover:not(:disabled)": {
+  "& button:not([aria-pressed='true']):hover:not(:disabled)": {
     borderColor: "teal.border",
     background: "teal.surf",
     color: "teal",
