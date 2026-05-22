@@ -70,3 +70,20 @@ jobs:
             apps/api/dist/worker/index.js.map
             apps/api/migrations/**
             apps/web/dist/**
+
+      - name: Upload production bundle
+        if: >-
+          ${{
+            github.event_name == 'push' &&
+            github.ref == 'refs/heads/main'
+          }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: production-bundle
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            apps/api/dist/worker/index.js
+            apps/api/dist/worker/index.js.map
+            apps/api/migrations/**
+            apps/web/dist/**
