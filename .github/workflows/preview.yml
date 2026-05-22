@@ -14,22 +14,52 @@ permissions:
   contents: read
 
 concurrency:
-  group: preview-${{ github.event.workflow_run.pull_requests[0].number || github.event.pull_request.number }}
+  group: preview-${{ github.event.workflow_run.head_repository.full_name || github.repository }}-${{ github.event.workflow_run.head_branch || github.event.pull_request.number }}
   cancel-in-progress: true
 
 env:
   WRANGLER_VERSION: 4.91.0
 
 jobs:
-  deploy:
-    name: Deploy PR preview
+  resolve-preview:
+    name: Resolve PR preview
     if: >-
       ${{
         github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.event == 'pull_request' &&
-        github.event.workflow_run.head_repository.full_name == github.repository &&
-        github.event.workflow_run.pull_requests[0].number
+        github.event.workflow_run.head_repository.full_name == github.repository
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      pr_number: ${{ steps.preview.outputs.pr_number }}
+      commit_sha: ${{ steps.preview.outputs.commit_sha }}
+
+    steps:
+      - name: Checkout deployment scripts
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+
+      - name: Resolve preview pull request
+        id: preview
+        run: node .github/scripts/resolve-preview-pr.ts
+
+  deploy:
+    name: Deploy PR preview
+    needs: resolve-preview
+    if: >-
+      ${{
+        needs.resolve-preview.outputs.pr_number != ''
       }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -42,12 +72,20 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       PREVIEW_DOMAIN_SUFFIX: ${{ vars.CLOUDFLARE_PREVIEW_DOMAIN_SUFFIX }}
-      PREVIEW_NAME: open-jigsaw-puzzle-pr-${{ github.event.workflow_run.pull_requests[0].number }}
-      PREVIEW_HOST: pr-${{ github.event.workflow_run.pull_requests[0].number }}.${{ vars.CLOUDFLARE_PREVIEW_DOMAIN_SUFFIX }}
-      PREVIEW_PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
-      PREVIEW_COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
+      PREVIEW_NAME: open-jigsaw-puzzle-pr-${{ needs.resolve-preview.outputs.pr_number }}
+      PREVIEW_HOST: pr-${{ needs.resolve-preview.outputs.pr_number }}.${{ vars.CLOUDFLARE_PREVIEW_DOMAIN_SUFFIX }}
+      PREVIEW_PR_NUMBER: ${{ needs.resolve-preview.outputs.pr_number }}
+      PREVIEW_COMMIT_SHA: ${{ needs.resolve-preview.outputs.commit_sha }}
 
     steps:
+      - name: Checkout deployment scripts
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
       - name: Download verified preview bundle
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
@@ -72,144 +110,12 @@ jobs:
 
       - name: Ensure preview D1 database
         id: d1
-        run: |
-          node <<'NODE'
-          const { appendFileSync } = require("node:fs");
-          const { spawnSync } = require("node:child_process");
-
-          const databaseName = process.env.PREVIEW_NAME;
-          const uuidPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
-
-          function runWrangler(args, allowFailure = false) {
-            const result = spawnSync("wrangler", args, { encoding: "utf8" });
-            if (result.status === 0 || allowFailure) return result;
-            process.stderr.write(result.stderr);
-            process.stdout.write(result.stdout);
-            throw new Error(`wrangler ${args.join(" ")} failed with exit code ${result.status}.`);
-          }
-
-          function findUuid(value) {
-            if (typeof value === "string") return value.match(uuidPattern)?.[0] ?? null;
-            if (Array.isArray(value)) {
-              for (const item of value) {
-                const uuid = findUuid(item);
-                if (uuid) return uuid;
-              }
-              return null;
-            }
-            if (value && typeof value === "object") {
-              for (const item of Object.values(value)) {
-                const uuid = findUuid(item);
-                if (uuid) return uuid;
-              }
-            }
-            return null;
-          }
-
-          function isMissingDatabase(output) {
-            return /not found|could not find|does not exist|Couldn't find/i.test(output);
-          }
-
-          const info = runWrangler(["d1", "info", databaseName, "--json"], true);
-          let databaseId = null;
-          if (info.status === 0) {
-            databaseId = findUuid(JSON.parse(info.stdout));
-          } else if (!isMissingDatabase(info.stderr + info.stdout)) {
-            process.stderr.write(info.stderr);
-            process.stdout.write(info.stdout);
-            throw new Error(`Unable to inspect D1 database "${databaseName}".`);
-          }
-
-          if (!databaseId) {
-            const create = runWrangler(["d1", "create", databaseName]);
-            databaseId = findUuid(create.stdout + create.stderr);
-          }
-
-          if (!databaseId) {
-            throw new Error(`Unable to determine D1 database id for "${databaseName}".`);
-          }
-
-          console.log(`Preview D1 database ${databaseName} is ready: ${databaseId}`);
-          appendFileSync(process.env.GITHUB_OUTPUT, `database_id=${databaseId}\n`, "utf8");
-          NODE
+        run: node .github/scripts/ensure-preview-d1.ts
 
       - name: Prepare preview Wrangler config
         env:
           OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID: ${{ steps.d1.outputs.database_id }}
-        run: |
-          node <<'NODE'
-          const { writeFileSync } = require("node:fs");
-
-          const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-          const workerNamePattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
-          const d1DatabaseNamePattern = /^[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?$/;
-          const domainLabelPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
-
-          function isValidHostname(hostname) {
-            if (hostname.length > 253 || hostname.includes("://") || hostname.includes("/") || hostname.includes(":")) {
-              return false;
-            }
-            const labels = hostname.split(".");
-            return labels.length >= 2 && labels.every((label) => domainLabelPattern.test(label));
-          }
-
-          const databaseId = process.env.OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID;
-          const workerName = process.env.PREVIEW_NAME;
-          const customDomainHost = process.env.PREVIEW_HOST;
-
-          if (!uuidPattern.test(databaseId)) throw new Error("Invalid D1 database id.");
-          if (!workerNamePattern.test(workerName)) throw new Error("Invalid preview Worker name.");
-          if (!d1DatabaseNamePattern.test(workerName)) throw new Error("Invalid preview D1 database name.");
-          if (!isValidHostname(customDomainHost)) throw new Error("Invalid preview custom domain host.");
-
-          const config = {
-            name: workerName,
-            main: "dist/worker/index.js",
-            compatibility_date: "2026-05-16",
-            assets: {
-              directory: "../web/dist",
-              binding: "ASSETS",
-            },
-            durable_objects: {
-              bindings: [
-                {
-                  name: "ROOMS",
-                  class_name: "PuzzleRoom",
-                },
-              ],
-            },
-            migrations: [
-              {
-                tag: "v1",
-                new_sqlite_classes: ["PuzzleRoom"],
-              },
-            ],
-            triggers: {
-              crons: ["17 * * * *"],
-            },
-            d1_databases: [
-              {
-                binding: "DB",
-                database_name: workerName,
-                database_id: databaseId,
-                migrations_dir: "migrations",
-              },
-            ],
-            vars: {
-              ROOM_TTL_SECONDS: "7200",
-              MAX_PARTICIPANTS: "6",
-              EXPIRED_ROOM_RETENTION_SECONDS: "86400",
-              CLEANUP_BATCH_SIZE: "500",
-              TURN_URLS: "",
-              TURN_USERNAME: "",
-              TURN_CREDENTIAL: "",
-            },
-            workers_dev: false,
-            routes: [{ pattern: customDomainHost, custom_domain: true }],
-          };
-
-          writeFileSync("apps/api/wrangler.preview.jsonc", `${JSON.stringify(config, null, 2)}\n`, "utf8");
-          NODE
+        run: node .github/scripts/write-preview-wrangler-config.ts
 
       - name: Apply preview D1 migrations
         working-directory: apps/api
@@ -279,6 +185,14 @@ jobs:
       PREVIEW_NAME: open-jigsaw-puzzle-pr-${{ github.event.pull_request.number }}
 
     steps:
+      - name: Checkout deployment scripts
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -293,28 +207,7 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN"
 
       - name: Delete preview resources
-        run: |
-          run_cleanup() {
-            label="$1"
-            shift
-            set +e
-            output="$("$@" 2>&1)"
-            status=$?
-            set -e
-            if [ "$status" -eq 0 ]; then
-              printf '%s\n' "$output"
-              return 0
-            fi
-            if printf '%s\n' "$output" | grep -Eiq 'not found|could not find|does not exist|couldn'\''t find'; then
-              echo "$label was already absent."
-              return 0
-            fi
-            printf '%s\n' "$output"
-            return "$status"
-          }
-
-          run_cleanup "Preview Worker" wrangler delete "$PREVIEW_NAME" --force
-          run_cleanup "Preview D1 database" wrangler d1 delete "$PREVIEW_NAME" --skip-confirmation
+        run: node .github/scripts/cleanup-preview-resources.ts
 
       - name: Comment cleanup result
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
