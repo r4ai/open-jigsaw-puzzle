@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { prepareWranglerConfig } from "./wrangler-config.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const appDir = join(scriptDir, "..");
@@ -10,39 +11,8 @@ const outputPath = join(appDir, "wrangler.generated.jsonc");
 await loadLocalEnv(join(appDir, ".dev.vars"));
 await loadLocalEnv(join(appDir, ".env"));
 
-const databaseIdsByBinding = {
-	DB: process.env.OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID,
-};
-
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 const config = await readFile(sourcePath, "utf8");
-let output = config;
-const missing = [];
-
-for (const [binding, databaseId] of Object.entries(databaseIdsByBinding)) {
-	const token = `__${binding.toUpperCase()}_DATABASE_ID__`;
-	if (!output.includes(token)) {
-		continue;
-	}
-
-	if (!databaseId) {
-		missing.push(`${token}: set OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID`);
-		continue;
-	}
-
-	if (!uuidPattern.test(databaseId)) {
-		throw new Error(`Invalid D1 database_id for ${binding}: expected a UUID.`);
-	}
-
-	output = output.replaceAll(token, databaseId);
-}
-
-if (missing.length > 0) {
-	throw new Error(`Missing D1 database_id secret(s):\n${missing.map((item) => `- ${item}`).join("\n")}`);
-}
-
-await writeFile(outputPath, output);
+await writeFile(outputPath, prepareWranglerConfig(config));
 
 async function loadLocalEnv(path) {
 	let contents;

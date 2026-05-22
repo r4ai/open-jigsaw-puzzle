@@ -1,10 +1,11 @@
 # Free Tier Estimate
 
-Pricing references checked on 2026-05-17:
+Pricing references checked on 2026-05-22:
 
 - Cloudflare Workers: https://developers.cloudflare.com/workers/platform/pricing/
 - Cloudflare Durable Objects: https://developers.cloudflare.com/durable-objects/platform/pricing/
 - Cloudflare D1: https://developers.cloudflare.com/d1/platform/pricing/
+- Cloudflare D1 limits: https://developers.cloudflare.com/d1/platform/limits/
 
 ## Current Backend Cost Shape
 
@@ -35,3 +36,15 @@ Under the default six-participant room shape:
 - Storage should stay small because cleanup removes expired rooms and event rows after 24 hours of post-expiry retention.
 
 For planning, a conservative free-tier target is hundreds of full rooms per day. Low thousands per day may fit if signaling remains modest and TURN usage is controlled. Production reliability usually needs a TURN provider, and TURN bandwidth is outside Cloudflare D1/Workers free-tier math.
+
+## Pull Request Preview Environments
+
+Preview deployments use the same Cloudflare account quotas as production. Each active pull request preview creates:
+
+- 1 temporary Worker named `open-jigsaw-puzzle-pr-<PR number>`.
+- 1 temporary D1 database named `open-jigsaw-puzzle-pr-<PR number>`.
+- 1 temporary custom domain named `pr-<PR number>.puzzle.r4ai.dev`.
+
+Workers Free allows 100 Workers per account and 100 custom domains per zone, so temporary Workers and custom domains should not be the first limit for normal repository activity. D1 Free allows 10 databases per account. With one production database, keep active preview environments to 9 or fewer on the Free plan.
+
+Preview traffic also counts toward the account's daily Workers, Durable Objects, and D1 request/write quotas. The intended preview usage is manual review and smoke testing, not load testing. Closing or merging a pull request deletes the matching preview Worker and D1 database.

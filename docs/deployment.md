@@ -44,6 +44,37 @@ The deploy workflow runs on pushes to `main` and manual dispatch. Configure thes
 
 The workflow uses the `production` GitHub Environment, so configure environment protection rules there if deploys should require approval.
 
+## Pull Request Preview Environments
+
+The preview workflow deploys one temporary Cloudflare Worker and one temporary D1 database per pull request from a branch in this repository. Forked pull requests are skipped because the workflow needs Cloudflare secrets.
+
+Preview resource names use the pull request number:
+
+- Worker: `open-jigsaw-puzzle-pr-<PR number>`
+- D1 database: `open-jigsaw-puzzle-pr-<PR number>`
+
+Configure these under repository Settings > Secrets and variables > Actions:
+
+- Secret: `CLOUDFLARE_API_TOKEN`
+- Variable: `CLOUDFLARE_ACCOUNT_ID`
+- Variable: `CLOUDFLARE_PREVIEW_DOMAIN_SUFFIX`
+
+`CLOUDFLARE_ACCOUNT_ID` can also be stored as a secret. Set `CLOUDFLARE_PREVIEW_DOMAIN_SUFFIX` to the preview domain suffix, for example `puzzle.r4ai.dev`.
+
+The Cloudflare API token must allow Worker deploy/delete, Worker custom domain management, and D1 create/read/migrate/delete operations for the target account.
+
+When a pull request is opened, reopened, updated, or marked ready for review, `.github/workflows/preview.yml` runs the normal verification steps, creates the preview D1 database if needed, applies migrations, deploys the preview Worker, and posts or updates a PR comment with the preview URL:
+
+```text
+https://pr-<PR number>.<CLOUDFLARE_PREVIEW_DOMAIN_SUFFIX>
+```
+
+For example, with `CLOUDFLARE_PREVIEW_DOMAIN_SUFFIX=puzzle.r4ai.dev`, pull request 123 is deployed to `https://pr-123.puzzle.r4ai.dev`.
+
+When the pull request is closed or merged, the cleanup job deletes the matching Worker and D1 database, then updates the PR comment. If a resource is already absent, cleanup still completes.
+
+Cloudflare's built-in Worker Preview URLs are not used because they are not generated for Workers that implement Durable Objects. The preview workflow deploys separate temporary Workers instead.
+
 ## Verify Before Deploy
 
 ```bash
