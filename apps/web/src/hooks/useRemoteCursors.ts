@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { createSignal, onCleanup } from "solid-js";
 import type { ChannelMessage } from "@open-jigsaw-puzzle/shared/protocol";
 
 export type RemoteCursor = {
@@ -13,60 +13,53 @@ const CURSOR_THROTTLE_MS = 40;
 const CURSOR_ACTIVE_TTL_MS = 120;
 
 type Props = {
-  myId: string | null;
-  name: string;
+  myId: () => string | null;
+  name: () => string;
   broadcast: (msg: ChannelMessage) => void;
 };
 
 export function useRemoteCursors({ myId, name, broadcast }: Props) {
-  const [remoteCursors, setRemoteCursors] = useState<RemoteCursor[]>([]);
-  const [activeRemoteCursorIds, setActiveRemoteCursorIds] = useState<Set<string>>(new Set());
+  const [remoteCursors, setRemoteCursors] = createSignal<RemoteCursor[]>([]);
+  const [activeRemoteCursorIds, setActiveRemoteCursorIds] = createSignal<Set<string>>(new Set());
 
-  const myIdRef = useRef(myId);
-  const nameRef = useRef(name);
-  const broadcastRef = useRef(broadcast);
-  const lastSentRef = useRef(0);
-  const activityTimers = useRef<Map<string, number>>(new Map());
+  let lastSent = 0;
+  const activityTimers = new Map<string, number>();
 
-  useEffect(() => { myIdRef.current = myId; }, [myId]);
-  useEffect(() => { nameRef.current = name; }, [name]);
-  useEffect(() => { broadcastRef.current = broadcast; }, [broadcast]);
-
-  useEffect(() => {
-    return () => {
-      for (const timer of activityTimers.current.values()) window.clearTimeout(timer);
-      activityTimers.current.clear();
-    };
-  }, []);
+  onCleanup(() => {
+    for (const timer of activityTimers.values()) window.clearTimeout(timer);
+    activityTimers.clear();
+  });
 
   function markActive(participantId: string) {
-    if (participantId === myIdRef.current) return;
-    const existing = activityTimers.current.get(participantId);
+    if (participantId === myId()) return;
+    const existing = activityTimers.get(participantId);
     if (existing !== undefined) window.clearTimeout(existing);
     setActiveRemoteCursorIds((cur) => {
       if (cur.has(participantId)) return cur;
-      return new Set(cur).add(participantId);
+      const next = new Set<string>(cur);
+      next.add(participantId);
+      return next;
     });
     const timer = window.setTimeout(() => clearActive(participantId), CURSOR_ACTIVE_TTL_MS);
-    activityTimers.current.set(participantId, timer);
+    activityTimers.set(participantId, timer);
   }
 
   function clearActive(participantId: string) {
-    const existing = activityTimers.current.get(participantId);
+    const existing = activityTimers.get(participantId);
     if (existing !== undefined) window.clearTimeout(existing);
-    activityTimers.current.delete(participantId);
+    activityTimers.delete(participantId);
     setActiveRemoteCursorIds((cur) => {
       if (!cur.has(participantId)) return cur;
-      const next = new Set(cur);
+      const next = new Set<string>(cur);
       next.delete(participantId);
       return next;
     });
   }
 
   function clearAll() {
-    for (const timer of activityTimers.current.values()) window.clearTimeout(timer);
-    activityTimers.current.clear();
-    setActiveRemoteCursorIds(new Set());
+    for (const timer of activityTimers.values()) window.clearTimeout(timer);
+    activityTimers.clear();
+    setActiveRemoteCursorIds(new Set<string>());
     setRemoteCursors([]);
   }
 
@@ -76,12 +69,12 @@ export function useRemoteCursors({ myId, name, broadcast }: Props) {
   }
 
   function publishCursor(cursor: { x: number; y: number } | null, force = false) {
-    const id = myIdRef.current;
+    const id = myId();
     if (!id) return;
     const now = Date.now();
-    if (!force && now - lastSentRef.current < CURSOR_THROTTLE_MS) return;
-    lastSentRef.current = now;
-    broadcastRef.current({ type: "presence", participantId: id, name: nameRef.current, cursor });
+    if (!force && now - lastSent < CURSOR_THROTTLE_MS) return;
+    lastSent = now;
+    broadcast({ type: "presence", participantId: id, name: name(), cursor });
   }
 
   function handleMessage(_from: string, msg: ChannelMessage) {

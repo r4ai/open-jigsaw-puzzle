@@ -1,8 +1,29 @@
-import { Dialog } from "@base-ui/react/dialog";
-import { Slider } from "@base-ui/react/slider";
-import { X } from "lucide-react";
+import { For } from "solid-js";
+import { Dialog, Slider } from "@ark-ui/solid";
+import { Portal } from "solid-js/web";
+import { X } from "lucide-solid";
 import type { PieceEdgeSettings } from "../hooks/useSettings";
-import styles from "./SettingsModal.module.css";
+import {
+  backdrop,
+  body,
+  closeBtn,
+  doneBtn,
+  footer,
+  header,
+  hint,
+  labelCls,
+  popup,
+  positioner,
+  resetBtn,
+  section,
+  sectionHeader,
+  slider,
+  sliderRange,
+  sliderThumb,
+  sliderTrack,
+  title,
+  valueCls,
+} from "./SettingsModal.styles";
 
 type Props = {
   open: boolean;
@@ -36,75 +57,85 @@ const ROWS: Row[] = [
   },
 ];
 
-export function SettingsModal({ open, onOpenChange, settings, onChange, onReset }: Props) {
+export function SettingsModal(props: Props) {
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Backdrop className={styles.backdrop} />
-        <Dialog.Popup className={styles.popup}>
-          <header className={styles.header}>
-            <Dialog.Title className={styles.title}>表示設定</Dialog.Title>
-            <Dialog.Close className={styles.closeBtn} aria-label="閉じる">
-              <X size={16} />
-            </Dialog.Close>
-          </header>
+    <Dialog.Root
+      open={props.open}
+      onOpenChange={(d) => props.onOpenChange(d.open)}
+    >
+      <Portal>
+        <Dialog.Backdrop class={backdrop} />
+        <Dialog.Positioner class={positioner}>
+          <Dialog.Content class={popup}>
+            <header class={header}>
+              <Dialog.Title class={title}>表示設定</Dialog.Title>
+              <Dialog.CloseTrigger class={closeBtn} aria-label="閉じる">
+                <X size={16} />
+              </Dialog.CloseTrigger>
+            </header>
 
-          <div className={styles.body}>
-            {ROWS.map((row) => (
-              <OpacitySlider
-                key={row.key}
-                label={row.label}
-                hint={row.hint}
-                value={settings[row.key]}
-                onValueChange={(v) => onChange(row.key, v)}
-              />
-            ))}
-          </div>
+            <div class={body}>
+              <For each={ROWS}>
+                {(row) => (
+                  <OpacitySlider
+                    label={row.label}
+                    hint={row.hint}
+                    value={props.settings[row.key]}
+                    onValueChange={(v) => props.onChange(row.key, v)}
+                  />
+                )}
+              </For>
+            </div>
 
-          <footer className={styles.footer}>
-            <button type="button" className={styles.resetBtn} onClick={onReset}>
-              既定値に戻す
-            </button>
-            <Dialog.Close className={styles.doneBtn}>完了</Dialog.Close>
-          </footer>
-        </Dialog.Popup>
-      </Dialog.Portal>
+            <footer class={footer}>
+              <button
+                type="button"
+                class={resetBtn}
+                onClick={props.onReset}
+              >
+                既定値に戻す
+              </button>
+              <Dialog.CloseTrigger class={doneBtn}>完了</Dialog.CloseTrigger>
+            </footer>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Portal>
     </Dialog.Root>
   );
 }
 
-function OpacitySlider({
-  label,
-  hint,
-  value,
-  onValueChange,
-}: {
+function OpacitySlider(props: {
   label: string;
   hint: string;
   value: number;
   onValueChange: (value: number) => void;
 }) {
   return (
-    <section className={styles.section}>
+    <section class={section}>
       <Slider.Root
-        value={value}
-        onValueChange={(v) => onValueChange(v)}
+        value={[props.value]}
+        onValueChange={(details) => {
+          const v = details.value[0];
+          if (typeof v === "number") props.onValueChange(v);
+        }}
         min={0}
         max={1}
         step={0.01}
       >
-        <div className={styles.sectionHeader}>
-          <Slider.Label className={styles.label}>{label}</Slider.Label>
-          <Slider.Value className={styles.value}>
-            {(_formatted, values) => `${Math.round((values[0] ?? 0) * 100)}%`}
-          </Slider.Value>
+        <div class={sectionHeader}>
+          <Slider.Label class={labelCls}>{props.label}</Slider.Label>
+          <Slider.ValueText class={valueCls}>
+            {`${Math.round(props.value * 100)}%`}
+          </Slider.ValueText>
         </div>
-        <p className={styles.hint}>{hint}</p>
-        <Slider.Control className={styles.slider}>
-          <Slider.Track className={styles.sliderTrack}>
-            <Slider.Indicator className={styles.sliderIndicator} />
-            <Slider.Thumb className={styles.sliderThumb} />
+        <p class={hint}>{props.hint}</p>
+        <Slider.Control class={slider}>
+          <Slider.Track class={sliderTrack}>
+            <Slider.Range class={sliderRange} />
           </Slider.Track>
+          <Slider.Thumb class={sliderThumb} index={0}>
+            <Slider.HiddenInput />
+          </Slider.Thumb>
         </Slider.Control>
       </Slider.Root>
     </section>

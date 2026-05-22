@@ -4,7 +4,10 @@ Login-free online image jigsaw puzzle MVP for Cloudflare Workers.
 
 ## Stack
 
-- Vite + React + TypeScript SPA
+- Vite + Solid + TypeScript SPA
+- @solidjs/router for routing
+- Panda CSS for design tokens and styling
+- Ark UI (Solid) for accessible primitives (Dialog / Slider)
 - Hono on Cloudflare Workers API
 - Durable Objects WebSocket signaling hub
 - D1 metadata storage

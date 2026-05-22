@@ -1,39 +1,49 @@
-import { ImagePlus, Loader2 } from "lucide-react";
-import styles from "./EmptyBoard.module.css";
+import { Show } from "solid-js";
+import { ImagePlus, Loader2 } from "lucide-solid";
+import {
+  dropTarget,
+  emptyBoard,
+  emptyHint,
+  emptySub,
+  emptyUploadButton,
+  loadingCopy,
+  loadingIcon,
+} from "./EmptyBoard.styles";
 
 type Props = {
   isHost: boolean;
   statusText: string;
   onPickImage: () => void;
-  onDragOver: (e: React.DragEvent<HTMLElement>) => void;
-  onDrop: (e: React.DragEvent<HTMLElement>) => void;
+  onDragOver: (e: DragEvent) => void;
+  onDrop: (e: DragEvent) => void;
 };
 
-export function EmptyBoard({ isHost, statusText, onPickImage, onDragOver, onDrop }: Props) {
+export function EmptyBoard(props: Props) {
   return (
     <div
-      className={`${styles.emptyBoard} ${isHost ? styles.dropTarget : ""}`}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
+      class={`${emptyBoard} ${props.isHost ? dropTarget : ""}`}
+      onDragOver={(e) => props.onDragOver(e)}
+      onDrop={(e) => props.onDrop(e)}
     >
-      {isHost ? (
-        <>
-          <button className={styles.emptyUploadButton} onClick={onPickImage}>
-            <ImagePlus size={18} />
-            画像を選択
-          </button>
-          <span className={styles.emptyHint}>ドラッグ&ドロップ可</span>
-          <span className={styles.emptySub}>{statusText}</span>
-        </>
-      ) : (
-        <>
-          <Loader2 className={styles.loadingIcon} size={28} />
-          <div className={styles.loadingCopy}>
-            <strong>ホストまたは画像を持つ参加者からの配布を待っています</strong>
-            <span>{statusText}</span>
-          </div>
-        </>
-      )}
+      <Show
+        when={props.isHost}
+        fallback={
+          <>
+            <Loader2 class={loadingIcon} size={28} />
+            <div class={loadingCopy}>
+              <strong>ホストまたは画像を持つ参加者からの配布を待っています</strong>
+              <span>{props.statusText}</span>
+            </div>
+          </>
+        }
+      >
+        <button class={emptyUploadButton} onClick={props.onPickImage}>
+          <ImagePlus size={18} />
+          画像を選択
+        </button>
+        <span class={emptyHint}>ドラッグ&ドロップ可</span>
+        <span class={emptySub}>{props.statusText}</span>
+      </Show>
     </div>
   );
 }

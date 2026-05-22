@@ -3,67 +3,59 @@ import type { ChannelMessage } from "@open-jigsaw-puzzle/shared/protocol";
 import { isAuthorizedPeerMessage, isUndoRedoShortcut } from "./WorkspacePage";
 
 describe("isAuthorizedPeerMessage", () => {
-  it("keeps whole-board state sync host-only", () => {
-    const msg: ChannelMessage = {
-      type: "state-sync",
-      pieces: [{ id: 0, x: 12, y: 34, z: 5, locked: false }],
-      lockedCount: 0,
-    };
+  it.each([
+    [{ type: "presence", participantId: "peer-1", name: "Ada", cursor: null }, true],
+    [{ type: "presence", participantId: "other", name: "Ada", cursor: null }, false],
+    [{ type: "piece-move", by: "peer-1", pieceId: 1, x: 2, y: 3, z: 4 }, true],
+    [{ type: "piece-move", by: "other", pieceId: 1, x: 2, y: 3, z: 4 }, false],
+    [{ type: "state-sync", pieces: [], lockedCount: 0 }, true],
+    [{ type: "image-meta", imageId: "img", mimeType: "image/png", width: 1, height: 1, chunks: 1, byteLength: 1 }, true],
+    [{ type: "puzzle-completed", by: "peer-1", elapsedMs: 1000 }, true],
+    [{ type: "puzzle-completed", by: "other", elapsedMs: 1000 }, false],
+  ] satisfies Array<[ChannelMessage, boolean]>)(
+    "returns %s for %o",
+    (message, expected) => {
+      expect(isAuthorizedPeerMessage("peer-1", message, "peer-1")).toBe(expected);
+    },
+  );
 
-    expect(isAuthorizedPeerMessage("peer-2", msg, "host-1")).toBe(false);
-    expect(isAuthorizedPeerMessage("host-1", msg, "host-1")).toBe(true);
-  });
-
-  it("keeps image transfer messages host-only", () => {
-    const msg: ChannelMessage = {
-      type: "image-meta",
-      imageId: "image-1",
-      mimeType: "image/jpeg",
-      width: 800,
-      height: 600,
-      chunks: 2,
-      byteLength: 1000,
-    };
-
-    expect(isAuthorizedPeerMessage("peer-2", msg, "host-1")).toBe(false);
-    expect(isAuthorizedPeerMessage("host-1", msg, "host-1")).toBe(true);
-  });
-
-  it("accepts selection presence only from the selected participant", () => {
-    const msg: ChannelMessage = {
-      type: "selection-presence",
-      participantId: "peer-1",
-      pieceIds: [1, 2],
-      imageOverlaySelected: true,
-    };
-
-    expect(isAuthorizedPeerMessage("peer-1", msg, "host-1")).toBe(true);
-    expect(isAuthorizedPeerMessage("peer-2", msg, "host-1")).toBe(false);
-  });
-
-  it("accepts batched piece moves only from the sender", () => {
-    const msg: ChannelMessage = {
-      type: "piece-moves",
-      by: "peer-1",
-      moves: [{ pieceId: 1, x: 12, y: 34, z: 5 }],
-    };
-
-    expect(isAuthorizedPeerMessage("peer-1", msg, "host-1")).toBe(true);
-    expect(isAuthorizedPeerMessage("peer-2", msg, "host-1")).toBe(false);
+  it.each([
+    { type: "state-sync", pieces: [], lockedCount: 0 },
+    { type: "image-meta", imageId: "img", mimeType: "image/png", width: 1, height: 1, chunks: 1, byteLength: 1 },
+    { type: "image-overlay", x: 0, y: 0, locked: false, opacity: 1 },
+  ] satisfies ChannelMessage[])("rejects host-only messages from non-host peers: %o", (message) => {
+    expect(isAuthorizedPeerMessage("peer-1", message, "host")).toBe(false);
   });
 });
 
 describe("isUndoRedoShortcut", () => {
-  it("accepts ctrl+z and ctrl+shift+z", () => {
-    expect(isUndoRedoShortcut(new KeyboardEvent("keydown", { key: "z", ctrlKey: true }))).toBe(true);
-    expect(isUndoRedoShortcut(new KeyboardEvent("keydown", { key: "Z", ctrlKey: true, shiftKey: true }))).toBe(true);
+  it("accepts ctrl+z outside editable fields", () => {
+    expect(isUndoRedoShortcut(keyboardEvent({ key: "z", ctrlKey: true }))).toBe(true);
   });
 
-  it("ignores typing targets", () => {
+  it("rejects shortcuts from editable targets", () => {
     const input = document.createElement("input");
-    const event = new KeyboardEvent("keydown", { key: "z", ctrlKey: true });
-    Object.defineProperty(event, "target", { value: input });
 
-    expect(isUndoRedoShortcut(event)).toBe(false);
+    expect(isUndoRedoShortcut(keyboardEvent({ key: "z", ctrlKey: true, target: input }))).toBe(false);
+  });
+
+  it("rejects alt-modified undo shortcuts", () => {
+    expect(isUndoRedoShortcut(keyboardEvent({ key: "z", ctrlKey: true, altKey: true }))).toBe(false);
   });
 });
+
+function keyboardEvent(init: {
+  key: string;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  altKey?: boolean;
+  target?: EventTarget;
+}): KeyboardEvent {
+  return {
+    key: init.key,
+    ctrlKey: init.ctrlKey ?? false,
+    metaKey: init.metaKey ?? false,
+    altKey: init.altKey ?? false,
+    target: init.target ?? document.createElement("div"),
+  } as KeyboardEvent;
+}

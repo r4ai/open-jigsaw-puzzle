@@ -1,7 +1,17 @@
-import { memo, useMemo } from "react";
+import { Show, createMemo } from "solid-js";
 import type { PieceGeometry, PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import { createPiecePath } from "../utils/piece-path";
-import styles from "./JigsawPiece.module.css";
+import {
+  pieceEdge,
+  pieceEdgeLocked,
+  pieceShape,
+  pieceShapeLocked,
+  pieceSvg,
+  remoteSelectionGlow,
+  remoteSelectionStroke,
+  selectionGlow,
+  selectionStroke,
+} from "./JigsawPiece.styles";
 
 type Props = {
   geometry: PieceGeometry;
@@ -14,58 +24,53 @@ type Props = {
   remoteColor?: string | null;
 };
 
-export const JigsawPiece = memo(function JigsawPiece({ geometry, imageDataUrl, layout, pieceId, locked, selected, selectionColor, remoteColor }: Props) {
-  const tabSize = layout.tabSize;
-  const path = useMemo(
-    () => createPiecePath(layout.pieceWidth, layout.pieceHeight, geometry, tabSize),
-    [geometry, layout.pieceHeight, layout.pieceWidth, tabSize],
+export function JigsawPiece(props: Props) {
+  const tabSize = () => props.layout.tabSize;
+  const path = createMemo(() =>
+    createPiecePath(props.layout.pieceWidth, props.layout.pieceHeight, props.geometry, tabSize()),
   );
 
   return (
     <svg
       aria-hidden="true"
-      className={styles.pieceSvg}
+      class={pieceSvg}
       style={{
-        left: `${(-tabSize / layout.pieceWidth) * 100}%`,
-        top: `${(-tabSize / layout.pieceHeight) * 100}%`,
-        width: `${((layout.pieceWidth + tabSize * 2) / layout.pieceWidth) * 100}%`,
-        height: `${((layout.pieceHeight + tabSize * 2) / layout.pieceHeight) * 100}%`,
-        "--selection-color": selectionColor ?? "transparent",
-        "--remote-color": remoteColor ?? "transparent",
-      } as React.CSSProperties}
-      viewBox={`${-tabSize} ${-tabSize} ${layout.pieceWidth + tabSize * 2} ${layout.pieceHeight + tabSize * 2}`}
+        left: `${(-tabSize() / props.layout.pieceWidth) * 100}%`,
+        top: `${(-tabSize() / props.layout.pieceHeight) * 100}%`,
+        width: `${((props.layout.pieceWidth + tabSize() * 2) / props.layout.pieceWidth) * 100}%`,
+        height: `${((props.layout.pieceHeight + tabSize() * 2) / props.layout.pieceHeight) * 100}%`,
+        "--selection-color": props.selectionColor ?? "transparent",
+        "--remote-color": props.remoteColor ?? "transparent",
+      }}
+      viewBox={`${-tabSize()} ${-tabSize()} ${props.layout.pieceWidth + tabSize() * 2} ${props.layout.pieceHeight + tabSize() * 2}`}
     >
       <defs>
-        <clipPath id={`piece-clip-${pieceId}`}>
-          <path d={path} />
+        <clipPath id={`piece-clip-${props.pieceId}`}>
+          <path d={path()} />
         </clipPath>
       </defs>
       <g
-        className={locked ? styles.pieceShapeLocked : styles.pieceShape}
-        clipPath={`url(#piece-clip-${pieceId})`}
+        class={props.locked ? pieceShapeLocked : pieceShape}
+        clip-path={`url(#piece-clip-${props.pieceId})`}
       >
         <image
-          href={imageDataUrl}
-          x={-geometry.sourceX}
-          y={-geometry.sourceY}
-          width={layout.boardWidth}
-          height={layout.boardHeight}
+          href={props.imageDataUrl}
+          x={-props.geometry.sourceX}
+          y={-props.geometry.sourceY}
+          width={props.layout.boardWidth}
+          height={props.layout.boardHeight}
           preserveAspectRatio="none"
         />
       </g>
-      {remoteColor && (
-        <>
-          <path className={styles.remoteSelectionGlow} d={path} />
-          <path className={styles.remoteSelectionStroke} d={path} />
-        </>
-      )}
-      {selected && (
-        <>
-          <path className={styles.selectionGlow} d={path} />
-          <path className={styles.selectionStroke} d={path} />
-        </>
-      )}
-      <path className={`${styles.pieceEdge} ${locked ? styles.pieceEdgeLocked : ""}`} d={path} />
+      <Show when={props.remoteColor}>
+        <path class={remoteSelectionGlow} d={path()} />
+        <path class={remoteSelectionStroke} d={path()} />
+      </Show>
+      <Show when={props.selected}>
+        <path class={selectionGlow} d={path()} />
+        <path class={selectionStroke} d={path()} />
+      </Show>
+      <path class={`${pieceEdge} ${props.locked ? pieceEdgeLocked : ""}`} d={path()} />
     </svg>
   );
-});
+}

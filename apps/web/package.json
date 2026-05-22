@@ -4,28 +4,31 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "tsc -p tsconfig.json && vite build",
+    "panda:gen": "panda codegen",
+    "dev": "panda codegen && vite --host 0.0.0.0",
+    "build": "panda codegen && tsc -p tsconfig.json && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "vitest run --passWithNoTests",
-    "typecheck": "tsc -p tsconfig.json"
+    "test": "panda codegen && vitest run --passWithNoTests",
+    "typecheck": "panda codegen && tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@base-ui/react": "^1.4.1",
+    "@ark-ui/solid": "^5.36.2",
     "@open-jigsaw-puzzle/shared": "workspace:*",
-    "@tanstack/react-router": "^1.169.2",
-    "@vitejs/plugin-react": "^5.1.1",
-    "lucide-react": "^0.561.0",
+    "@solidjs/router": "^0.16.1",
+    "lucide-solid": "^1.16.0",
     "openapi-fetch": "^0.17.0",
-    "react": "^19.2.1",
-    "react-dom": "^19.2.1",
-    "vite": "^7.2.7"
+    "solid-js": "^1.9.13"
   },
   "devDependencies": {
-    "@types/react": "^19.2.7",
-    "@types/react-dom": "^19.2.3",
+    "@pandacss/dev": "^1.11.1",
+    "@solidjs/testing-library": "^0.8.10",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/user-event": "^14.6.1",
+    "@vitest/coverage-v8": "4.1.6",
     "jsdom": "^27.3.0",
     "typescript": "^5.9.3",
+    "vite": "^7.2.7",
+    "vite-plugin-solid": "^2.11.12",
     "vitest": "^4.0.15"
   }
 }

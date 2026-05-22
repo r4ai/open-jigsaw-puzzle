@@ -1,83 +1,7 @@
-import { memo, useCallback } from "react";
+import { For } from "solid-js";
 import type { BoardPiece, PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import { JigsawPiece } from "./JigsawPiece";
-import styles from "./PuzzleBoard.module.css";
-
-type PuzzlePieceViewProps = {
-  piece: BoardPiece;
-  geometry: PuzzleLayout["pieces"][number];
-  imageDataUrl: string;
-  layout: PuzzleLayout;
-  margin: number;
-  selected: boolean;
-  selectionColor: string | null;
-  remoteColor: string | null;
-  onPointerDown: (e: React.PointerEvent, piece: BoardPiece) => void;
-  registerElement: (id: number, el: HTMLElement | null) => void;
-};
-
-const PuzzlePieceView = memo(function PuzzlePieceView({
-  piece,
-  geometry,
-  imageDataUrl,
-  layout,
-  margin,
-  selected,
-  selectionColor,
-  remoteColor,
-  onPointerDown,
-  registerElement,
-}: PuzzlePieceViewProps) {
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    onPointerDown(e, piece);
-  }, [onPointerDown, piece]);
-
-  const pieceId = piece.id;
-  const handleRef = useCallback((el: HTMLButtonElement | null) => {
-    registerElement(pieceId, el);
-  }, [pieceId, registerElement]);
-
-  return (
-    <button
-      ref={handleRef}
-      className={`${styles.piece} ${piece.locked ? styles.locked : ""}`}
-      style={{
-        transform: `translate3d(${margin + piece.x}px, ${margin + piece.y}px, 0)`,
-        width: `${layout.pieceWidth}px`,
-        height: `${layout.pieceHeight}px`,
-        zIndex: piece.z,
-      } as React.CSSProperties}
-      aria-label={`piece ${piece.id + 1}`}
-      onPointerDown={handlePointerDown}
-    >
-      <JigsawPiece
-        geometry={geometry}
-        imageDataUrl={imageDataUrl}
-        layout={layout}
-        pieceId={piece.id}
-        locked={piece.locked}
-        selected={selected}
-        selectionColor={selectionColor}
-        remoteColor={remoteColor}
-      />
-    </button>
-  );
-}, arePuzzlePieceViewPropsEqual);
-
-function arePuzzlePieceViewPropsEqual(prev: PuzzlePieceViewProps, next: PuzzlePieceViewProps): boolean {
-  return (
-    prev.piece === next.piece &&
-    prev.geometry === next.geometry &&
-    prev.imageDataUrl === next.imageDataUrl &&
-    prev.layout === next.layout &&
-    prev.margin === next.margin &&
-    prev.selected === next.selected &&
-    prev.selectionColor === next.selectionColor &&
-    prev.remoteColor === next.remoteColor &&
-    prev.onPointerDown === next.onPointerDown &&
-    prev.registerElement === next.registerElement
-  );
-}
+import { piece as pieceCls, pieceLocked } from "./PuzzleBoard.styles";
 
 type Props = {
   pieces: BoardPiece[];
@@ -87,42 +11,43 @@ type Props = {
   selectedPieceIds: Set<number>;
   myColor: string | null;
   remotePieceColors: Map<number, string>;
-  onPiecePointerDown: (e: React.PointerEvent, piece: BoardPiece) => void;
+  onPiecePointerDown: (e: PointerEvent, piece: BoardPiece) => void;
   registerPieceElement: (id: number, el: HTMLElement | null) => void;
 };
 
-export const PiecesLayer = memo(function PiecesLayer({
-  pieces,
-  layout,
-  imageDataUrl,
-  margin,
-  selectedPieceIds,
-  myColor,
-  remotePieceColors,
-  onPiecePointerDown,
-  registerPieceElement,
-}: Props) {
+export function PiecesLayer(props: Props) {
   return (
-    <>
-      {pieces.map((piece) => {
-        const geometry = layout.pieces[piece.id];
-        const remoteColor = remotePieceColors.get(piece.id) ?? null;
+    <For each={props.pieces}>
+      {(piece) => {
+        const geometry = props.layout.pieces[piece.id];
+        const remoteColor = () => props.remotePieceColors.get(piece.id) ?? null;
+        const selected = () => props.selectedPieceIds.has(piece.id);
         return (
-          <PuzzlePieceView
-            key={piece.id}
-            piece={piece}
-            geometry={geometry}
-            imageDataUrl={imageDataUrl}
-            layout={layout}
-            margin={margin}
-            selected={selectedPieceIds.has(piece.id)}
-            selectionColor={myColor}
-            remoteColor={remoteColor}
-            onPointerDown={onPiecePointerDown}
-            registerElement={registerPieceElement}
-          />
+          <button
+            ref={(el) => props.registerPieceElement(piece.id, el)}
+            class={`${pieceCls} ${piece.locked ? pieceLocked : ""}`}
+            style={{
+              transform: `translate3d(${props.margin + piece.x}px, ${props.margin + piece.y}px, 0)`,
+              width: `${props.layout.pieceWidth}px`,
+              height: `${props.layout.pieceHeight}px`,
+              "z-index": piece.z,
+            }}
+            aria-label={`piece ${piece.id + 1}`}
+            onPointerDown={(e) => props.onPiecePointerDown(e, piece)}
+          >
+            <JigsawPiece
+              geometry={geometry}
+              imageDataUrl={props.imageDataUrl}
+              layout={props.layout}
+              pieceId={piece.id}
+              locked={piece.locked}
+              selected={selected()}
+              selectionColor={props.myColor}
+              remoteColor={remoteColor()}
+            />
+          </button>
         );
-      })}
-    </>
+      }}
+    </For>
   );
-});
+}

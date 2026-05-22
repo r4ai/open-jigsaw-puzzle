@@ -1,69 +1,53 @@
-import { useEffect, useRef, useState } from "react";
+import { createSignal, onCleanup } from "solid-js";
 import type { BoardPiece, PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import { createInitialPieces, createPuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import type { ChannelMessage, RoomSummary, SyncedPiece } from "@open-jigsaw-puzzle/shared/protocol";
 import { chunkString, dataUrlToBlob, resizeImage } from "../image";
-
-// data URL フォールバック時など blob: 以外の URL を渡されても安全に revoke できるようにする
-function revokeIfBlobUrl(url: string): void {
-  if (!url.startsWith("blob:")) return;
-  if (typeof URL === "undefined" || typeof URL.revokeObjectURL !== "function") return;
-  URL.revokeObjectURL(url);
-}
 import { createIncomingImage, rememberIncomingImage, storeIncomingImageChunk } from "../incoming-image";
 import type { IncomingImage } from "../incoming-image";
 import { countLockedPieces } from "../utils/puzzle-ops";
 import { formatBytes } from "../utils/format";
 import type { LoadingProgress } from "../utils/format";
 
+function revokeIfBlobUrl(url: string): void {
+  if (!url.startsWith("blob:")) return;
+  if (typeof URL === "undefined" || typeof URL.revokeObjectURL !== "function") return;
+  URL.revokeObjectURL(url);
+}
+
 type Props = {
   send: (to: string, msg: ChannelMessage) => void;
   broadcast: (msg: ChannelMessage) => void;
-  room: RoomSummary | null;
+  room: () => RoomSummary | null;
   getPieces: () => BoardPiece[];
   getStartedAtMs: () => number | null;
   onImageComplete: (dataUrl: string, width: number, height: number, layout: PuzzleLayout) => void;
 };
 
-export function useImageTransfer({ send, broadcast, room, getPieces, getStartedAtMs, onImageComplete }: Props) {
-  const [imageObjectUrl, setImageObjectUrl] = useState<string | null>(null);
-  const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
-  const [loadingProgress, setLoadingProgress] = useState<LoadingProgress>({ phase: "idle" });
+export function useImageTransfer(props: Props) {
+  const [imageObjectUrl, setImageObjectUrl] = createSignal<string | null>(null);
+  const [imageSize, setImageSize] = createSignal<{ width: number; height: number } | null>(null);
+  const [loadingProgress, setLoadingProgress] = createSignal<LoadingProgress>({ phase: "idle" });
 
-  const imageDataRef = useRef<string | null>(null);
-  const imageObjectUrlRef = useRef<string | null>(null);
-  const imageSizeRef = useRef<{ width: number; height: number } | null>(null);
-  const roomRef = useRef<RoomSummary | null>(null);
-  const incomingRef = useRef<Map<string, IncomingImage>>(new Map());
-
-  const sendRef = useRef(send);
-  const broadcastRef = useRef(broadcast);
-  const getPiecesRef = useRef(getPieces);
-  const getStartedAtMsRef = useRef(getStartedAtMs);
-  const onImageCompleteRef = useRef(onImageComplete);
-
-  useEffect(() => { sendRef.current = send; }, [send]);
-  useEffect(() => { broadcastRef.current = broadcast; }, [broadcast]);
-  useEffect(() => { getPiecesRef.current = getPieces; }, [getPieces]);
-  useEffect(() => { getStartedAtMsRef.current = getStartedAtMs; }, [getStartedAtMs]);
-  useEffect(() => { onImageCompleteRef.current = onImageComplete; }, [onImageComplete]);
-  useEffect(() => { roomRef.current = room; }, [room]);
+  let imageDataNow: string | null = null;
+  let imageObjectUrlNow: string | null = null;
+  let imageSizeNow: { width: number; height: number } | null = null;
+  const incoming = new Map<string, IncomingImage>();
 
   function replaceObjectUrl(nextUrl: string | null) {
-    const prev = imageObjectUrlRef.current;
+    const prev = imageObjectUrlNow;
     if (prev && prev !== nextUrl) revokeIfBlobUrl(prev);
-    imageObjectUrlRef.current = nextUrl;
+    imageObjectUrlNow = nextUrl;
     setImageObjectUrl(nextUrl);
   }
 
   function setImage(dataUrl: string, width: number, height: number) {
-    imageDataRef.current = dataUrl;
-    imageSizeRef.current = { width, height };
+    imageDataNow = dataUrl;
+    imageSizeNow = { width, height };
     let nextUrl: string;
     try {
       nextUrl = URL.createObjectURL(dataUrlToBlob(dataUrl));
     } catch {
-      // 環境が Blob/createObjectURL 非対応など、フォールバックとして data URL を直接利用
       nextUrl = dataUrl;
     }
     replaceObjectUrl(nextUrl);
@@ -71,25 +55,22 @@ export function useImageTransfer({ send, broadcast, room, getPieces, getStartedA
   }
 
   function clearImage() {
-    imageDataRef.current = null;
-    imageSizeRef.current = null;
+    imageDataNow = null;
+    imageSizeNow = null;
     replaceObjectUrl(null);
     setImageSize(null);
-    incomingRef.current.clear();
+    incoming.clear();
   }
 
-  useEffect(() => {
-    return () => {
-      const prev = imageObjectUrlRef.current;
-      if (prev) revokeIfBlobUrl(prev);
-      imageObjectUrlRef.current = null;
-    };
-  }, []);
+  onCleanup(() => {
+    if (imageObjectUrlNow) revokeIfBlobUrl(imageObjectUrlNow);
+    imageObjectUrlNow = null;
+  });
 
   function sendImage(
-    dataUrl = imageDataRef.current,
-    width = imageSizeRef.current?.width,
-    height = imageSizeRef.current?.height,
+    dataUrl = imageDataNow,
+    width = imageSizeNow?.width,
+    height = imageSizeNow?.height,
     to?: string,
   ) {
     if (!dataUrl || !width || !height) return;
@@ -108,14 +89,14 @@ export function useImageTransfer({ send, broadcast, room, getPieces, getStartedA
       chunks: chunks.length,
       byteLength: dataUrl.length,
     };
-    if (to) sendRef.current(to, meta);
-    else broadcastRef.current(meta);
+    if (to) props.send(to, meta);
+    else props.broadcast(meta);
 
     let lastProgressAt = startedAt;
     chunks.forEach((data, index) => {
       const chunkMsg: ChannelMessage = { type: "image-chunk", imageId, index, data };
-      if (to) sendRef.current(to, chunkMsg);
-      else broadcastRef.current(chunkMsg);
+      if (to) props.send(to, chunkMsg);
+      else props.broadcast(chunkMsg);
       const now = Date.now();
       if (index === chunks.length - 1 || now - lastProgressAt >= 100) {
         lastProgressAt = now;
@@ -126,17 +107,17 @@ export function useImageTransfer({ send, broadcast, room, getPieces, getStartedA
   }
 
   function sendSnapshot(to?: string, piecesOverride?: BoardPiece[]) {
-    sendImage(imageDataRef.current, imageSizeRef.current?.width, imageSizeRef.current?.height, to);
-    const snapshotPieces = piecesOverride ?? getPiecesRef.current();
+    sendImage(imageDataNow, imageSizeNow?.width, imageSizeNow?.height, to);
+    const snapshotPieces = piecesOverride ?? props.getPieces();
     const synced: SyncedPiece[] = snapshotPieces.map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
-    const syncMsg: ChannelMessage = { type: "state-sync", pieces: synced, lockedCount: countLockedPieces(synced), startedAtMs: getStartedAtMsRef.current() };
-    if (to) sendRef.current(to, syncMsg);
-    else broadcastRef.current(syncMsg);
+    const syncMsg: ChannelMessage = { type: "state-sync", pieces: synced, lockedCount: countLockedPieces(synced), startedAtMs: props.getStartedAtMs() };
+    if (to) props.send(to, syncMsg);
+    else props.broadcast(syncMsg);
   }
 
   function requestImageFromPeers(myId: string | null) {
-    if (!myId || imageDataRef.current) return;
-    broadcastRef.current({ type: "request-image", participantId: myId });
+    if (!myId || imageDataNow) return;
+    props.broadcast({ type: "request-image", participantId: myId });
   }
 
   async function handleImageUpload(file: File, currentRoom: RoomSummary) {
@@ -145,17 +126,17 @@ export function useImageTransfer({ send, broadcast, room, getPieces, getStartedA
     const nextLayout = createPuzzleLayout(currentRoom.difficulty, resized.width, resized.height);
     const nextPieces = createInitialPieces(nextLayout);
     setImage(resized.dataUrl, resized.width, resized.height);
-    onImageCompleteRef.current(resized.dataUrl, resized.width, resized.height, nextLayout);
+    props.onImageComplete(resized.dataUrl, resized.width, resized.height, nextLayout);
     sendSnapshot(undefined, nextPieces);
   }
 
   function handleMessage(_from: string, msg: ChannelMessage) {
     switch (msg.type) {
       case "request-image":
-        if (imageDataRef.current && imageSizeRef.current) sendSnapshot(msg.participantId);
+        if (imageDataNow && imageSizeNow) sendSnapshot(msg.participantId);
         break;
       case "image-meta": {
-        const incoming = createIncomingImage({
+        const next = createIncomingImage({
           imageId: msg.imageId,
           mimeType: msg.mimeType,
           chunks: msg.chunks,
@@ -163,8 +144,8 @@ export function useImageTransfer({ send, broadcast, room, getPieces, getStartedA
           width: msg.width,
           height: msg.height,
         });
-        if (!incoming) return;
-        rememberIncomingImage(incomingRef.current, incoming);
+        if (!next) return;
+        rememberIncomingImage(incoming, next);
         setLoadingProgress({
           phase: "receiving",
           imageId: msg.imageId,
@@ -176,29 +157,29 @@ export function useImageTransfer({ send, broadcast, room, getPieces, getStartedA
         break;
       }
       case "image-chunk": {
-        const incoming = incomingRef.current.get(msg.imageId);
-        if (!incoming) return;
-        const stored = storeIncomingImageChunk(incoming, msg.index, msg.data);
+        const target = incoming.get(msg.imageId);
+        if (!target) return;
+        const stored = storeIncomingImageChunk(target, msg.index, msg.data);
         if (!stored) return;
         setLoadingProgress((cur) => ({
           phase: "receiving",
           imageId: msg.imageId,
           chunksReceived: stored.chunksReceived,
-          totalChunks: incoming.expected,
-          byteLength: incoming.byteLength,
+          totalChunks: target.expected,
+          byteLength: target.byteLength,
           startedAt: cur.phase === "receiving" && cur.imageId === msg.imageId ? cur.startedAt : Date.now(),
         }));
         if (stored.dataUrl) {
-          incomingRef.current.delete(msg.imageId);
-          setImage(stored.dataUrl, incoming.width, incoming.height);
-          const currentRoom = roomRef.current;
+          incoming.delete(msg.imageId);
+          setImage(stored.dataUrl, target.width, target.height);
+          const currentRoom = props.room();
           const nextLayout = currentRoom
-            ? createPuzzleLayout(currentRoom.difficulty, incoming.width, incoming.height)
+            ? createPuzzleLayout(currentRoom.difficulty, target.width, target.height)
             : null;
           if (nextLayout) {
-            onImageCompleteRef.current(stored.dataUrl, incoming.width, incoming.height, nextLayout);
+            props.onImageComplete(stored.dataUrl, target.width, target.height, nextLayout);
           }
-          setLoadingProgress({ phase: "complete", detail: `${incoming.expected} チャンクを受信しました` });
+          setLoadingProgress({ phase: "complete", detail: `${target.expected} チャンクを受信しました` });
         }
         break;
       }
@@ -209,7 +190,7 @@ export function useImageTransfer({ send, broadcast, room, getPieces, getStartedA
     imageDataUrl: imageObjectUrl,
     imageSize,
     loadingProgress,
-    imageDataRef,
+    getImageData: () => imageDataNow,
     clearImage,
     handleImageUpload,
     sendSnapshot,
