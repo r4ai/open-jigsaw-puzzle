@@ -11,7 +11,7 @@
     "generate:openapi": "tsx apps/api/scripts/generate-openapi.ts && openapi-typescript apps/api/openapi.json -o apps/web/src/api/openapi.d.ts",
     "check:openapi": "pnpm generate:openapi && git diff --exit-code -- apps/api/openapi.json apps/web/src/api/openapi.d.ts",
     "preview": "pnpm --filter @open-jigsaw-puzzle/web preview",
-    "test": "pnpm -r test",
+    "test": "vitest run .github/scripts && pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "db:migrate:remote": "pnpm --filter @open-jigsaw-puzzle/api prepare:wrangler && pnpm --filter @open-jigsaw-puzzle/api exec wrangler d1 migrations apply open-jigsaw-puzzle --remote --config wrangler.generated.jsonc",
     "deploy": "pnpm build && pnpm --filter @open-jigsaw-puzzle/api run deploy"

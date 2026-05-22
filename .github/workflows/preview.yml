@@ -1,0 +1,339 @@
+name: Preview
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - closed
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-${{ github.event.workflow_run.head_repository.full_name || github.repository }}-${{ github.event.workflow_run.head_branch || github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  WRANGLER_VERSION: 4.91.0
+
+jobs:
+  mark-pending:
+    name: Mark PR preview pending
+    if: >-
+      ${{
+        github.event_name == 'pull_request_target' &&
+        github.event.action != 'closed' &&
+        github.event.pull_request.head.repo.full_name == github.repository
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+
+    env:
+      PREVIEW_NAME: open-jigsaw-puzzle-pr-${{ github.event.pull_request.number }}
+      PREVIEW_HOST: pr-${{ github.event.pull_request.number }}.${{ vars.CLOUDFLARE_PREVIEW_DOMAIN_SUFFIX }}
+      PREVIEW_COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+
+    steps:
+      - name: Checkout deployment scripts
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - name: Comment pending preview update
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        env:
+          PREVIEW_URL: https://${{ env.PREVIEW_HOST }}
+        with:
+          script: |
+            const { pathToFileURL } = require('node:url');
+            const {
+              buildPreviewPendingComment,
+              planManagedPreviewComment,
+            } = await import(pathToFileURL(`${process.env.GITHUB_WORKSPACE}/.github/scripts/preview-comment.ts`).href);
+            const body = buildPreviewPendingComment({
+              commitSha: process.env.PREVIEW_COMMIT_SHA,
+              host: process.env.PREVIEW_HOST,
+              previewName: process.env.PREVIEW_NAME,
+              previewUrl: process.env.PREVIEW_URL,
+            });
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+            const plan = planManagedPreviewComment(comments, body);
+            for (const comment_id of plan.deleteCommentIds) {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id,
+              });
+            }
+            if (plan.updateCommentId) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: plan.updateCommentId,
+                body: plan.body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: plan.body,
+              });
+            }
+
+  resolve-preview:
+    name: Resolve PR preview
+    if: >-
+      ${{
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'pull_request' &&
+        github.event.workflow_run.head_repository.full_name == github.repository
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      pr_number: ${{ steps.preview.outputs.pr_number }}
+      commit_sha: ${{ steps.preview.outputs.commit_sha }}
+
+    steps:
+      - name: Checkout deployment scripts
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+
+      - name: Resolve preview pull request
+        id: preview
+        run: node .github/scripts/resolve-preview-pr.ts
+
+  deploy:
+    name: Deploy PR preview
+    needs: resolve-preview
+    if: >-
+      ${{
+        needs.resolve-preview.result == 'success' &&
+        needs.resolve-preview.outputs.pr_number != ''
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      PREVIEW_DOMAIN_SUFFIX: ${{ vars.CLOUDFLARE_PREVIEW_DOMAIN_SUFFIX }}
+      PREVIEW_NAME: open-jigsaw-puzzle-pr-${{ needs.resolve-preview.outputs.pr_number }}
+      PREVIEW_HOST: pr-${{ needs.resolve-preview.outputs.pr_number }}.${{ vars.CLOUDFLARE_PREVIEW_DOMAIN_SUFFIX }}
+      PREVIEW_PR_NUMBER: ${{ needs.resolve-preview.outputs.pr_number }}
+      PREVIEW_COMMIT_SHA: ${{ needs.resolve-preview.outputs.commit_sha }}
+
+    steps:
+      - name: Checkout deployment scripts
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - name: Download verified preview bundle
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: preview-bundle
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: .
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+
+      - name: Install Wrangler
+        run: npm install --global "wrangler@$WRANGLER_VERSION"
+
+      - name: Validate Cloudflare configuration
+        run: |
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$PREVIEW_DOMAIN_SUFFIX"
+
+      - name: Ensure preview D1 database
+        id: d1
+        run: node .github/scripts/ensure-preview-d1.ts
+
+      - name: Prepare preview Wrangler config
+        env:
+          OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID: ${{ steps.d1.outputs.database_id }}
+        run: node .github/scripts/write-preview-wrangler-config.ts
+
+      - name: Apply preview D1 migrations
+        working-directory: apps/api
+        run: wrangler d1 migrations apply "$PREVIEW_NAME" --remote --config wrangler.preview.jsonc
+
+      - name: Deploy preview Worker
+        working-directory: apps/api
+        run: wrangler deploy --config wrangler.preview.jsonc
+
+      - name: Comment preview URL
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        env:
+          PREVIEW_URL: https://${{ env.PREVIEW_HOST }}
+        with:
+          script: |
+            const { pathToFileURL } = require('node:url');
+            const {
+              buildPreviewDeployedComment,
+              planManagedPreviewComment,
+            } = await import(pathToFileURL(`${process.env.GITHUB_WORKSPACE}/.github/scripts/preview-comment.ts`).href);
+            const body = buildPreviewDeployedComment({
+              commitSha: process.env.PREVIEW_COMMIT_SHA,
+              host: process.env.PREVIEW_HOST,
+              previewName: process.env.PREVIEW_NAME,
+              previewUrl: process.env.PREVIEW_URL,
+            });
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.PREVIEW_PR_NUMBER),
+              per_page: 100,
+            });
+            const plan = planManagedPreviewComment(comments, body);
+            for (const comment_id of plan.deleteCommentIds) {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id,
+              });
+            }
+            if (plan.updateCommentId) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: plan.updateCommentId,
+                body: plan.body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: Number(process.env.PREVIEW_PR_NUMBER),
+                body: plan.body,
+              });
+            }
+
+  cleanup:
+    name: Cleanup PR preview
+    if: >-
+      ${{
+        github.event_name == 'pull_request_target' &&
+        github.event.action == 'closed' &&
+        github.event.pull_request.head.repo.full_name == github.repository
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      PREVIEW_NAME: open-jigsaw-puzzle-pr-${{ github.event.pull_request.number }}
+
+    steps:
+      - name: Checkout deployment scripts
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+
+      - name: Install Wrangler
+        run: npm install --global "wrangler@$WRANGLER_VERSION"
+
+      - name: Validate Cloudflare configuration
+        run: |
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$CLOUDFLARE_API_TOKEN"
+
+      - name: Delete preview resources
+        run: node .github/scripts/cleanup-preview-resources.ts
+
+      - name: Comment cleanup result
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        with:
+          script: |
+            const { pathToFileURL } = require('node:url');
+            const {
+              buildPreviewCleanedComment,
+              planManagedPreviewComment,
+            } = await import(pathToFileURL(`${process.env.GITHUB_WORKSPACE}/.github/scripts/preview-comment.ts`).href);
+            const body = buildPreviewCleanedComment({
+              previewName: process.env.PREVIEW_NAME,
+            });
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+            const plan = planManagedPreviewComment(comments, body);
+            for (const comment_id of plan.deleteCommentIds) {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id,
+              });
+            }
+            if (plan.updateCommentId) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: plan.updateCommentId,
+                body: plan.body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: plan.body,
+              });
+            }
