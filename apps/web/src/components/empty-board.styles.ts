@@ -1,59 +1,71 @@
 import { css } from "../../styled-system/css";
 
-export const emptyBoard = css({
-  flex: 1,
-  border: "1.5px dashed {colors.canvas.rim}",
-  borderRadius: "10px",
-  display: "grid",
-  placeItems: "center",
-  alignContent: "center",
-  gap: "14px",
-  color: "onCanvas.fade",
-  background: "canvas.base",
-  textAlign: "center",
-  padding: "32px",
-  minHeight: 0,
-});
-
-export const dropTarget = css({
-  borderColor: "drop.border",
-  background:
-    "radial-gradient(circle, {colors.drop.dot} 1px, transparent 1px), {colors.canvas.base}",
-  backgroundSize: "24px 24px",
-});
-
-export const emptyUploadButton = css({
-  display: "inline-flex",
+export const root = css({
+  position: "absolute",
+  inset: 0,
+  display: "flex",
+  flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
+  gap: "22px",
+  textAlign: "center",
+  padding: "32px",
+  pointerEvents: "none",
+});
+
+export const dropArea = css({
+  pointerEvents: "auto",
+});
+
+export const iconWrap = css({
+  width: "72px",
+  height: "72px",
+  borderRadius: "20px",
+  background: "color-mix(in oklch, {colors.canvas.text} 5%, transparent)",
+  border:
+    "1px dashed color-mix(in oklch, {colors.canvas.text} 22%, transparent)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "canvas.textDim",
+});
+
+export const textBlock = css({
+  display: "grid",
   gap: "8px",
-  minWidth: "176px",
-  minHeight: "44px",
-  borderColor: "teal",
-  background: "teal",
+  padding: "0 20px",
+});
+
+export const primaryText = css({
+  margin: 0,
+  color: "canvas.text",
+  font: "500 1rem {fonts.ui}",
+});
+
+export const secondaryText = css({
+  margin: 0,
+  color: "canvas.textDim",
+  font: "400 0.75rem {fonts.mono}",
+  letterSpacing: "0.04em",
+});
+
+export const uploadButton = css({
+  pointerEvents: "auto",
+  background: "accent",
+  borderColor: "accent",
   color: "#fff",
   fontWeight: 600,
-  borderRadius: "10px",
-  fontSize: "0.9375rem",
+  height: "40px",
+  fontSize: "0.875rem",
+  boxShadow: "0 4px 16px color-mix(in oklch, {colors.accent} 40%, transparent)",
   _hover: {
-    _enabled: { background: "teal.dark", borderColor: "teal.dark" },
+    _enabled: { background: "accent.dim", borderColor: "accent.dim" },
   },
-});
-
-export const emptyHint = css({
-  font: "400 0.8125rem {fonts.ui}",
-  color: "onCanvas.ghost",
-});
-
-export const emptySub = css({
-  font: "400 0.75rem/1.5 {fonts.mono}",
-  color: "onCanvas.ghost",
-  maxWidth: "400px",
 });
 
 export const loadingIcon = css({
   animation: "spin 0.9s linear infinite",
-  color: "teal.border",
+  color: "canvas.textDim",
 });
 
 export const loadingCopy = css({
@@ -62,12 +74,12 @@ export const loadingCopy = css({
   justifyItems: "center",
   maxWidth: "min(480px, 100%)",
   "& strong": {
-    color: "onCanvas.strong",
+    color: "canvas.text",
     fontSize: "0.9375rem",
     fontWeight: 500,
   },
   "& span": {
-    color: "onCanvas.sub",
+    color: "canvas.textDim",
     font: "400 0.8125rem/1.55 {fonts.mono}",
   },
 });

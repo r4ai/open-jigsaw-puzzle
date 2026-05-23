@@ -7,6 +7,7 @@ import {
   onMount,
 } from "solid-js";
 import { useNavigate } from "@solidjs/router";
+import { AlertCircle } from "lucide-solid";
 import {
   createPuzzleLayout,
   getWorkspaceMargin,
@@ -31,17 +32,14 @@ import {
   isUndoRedoShortcut,
 } from "../utils/peer-permissions";
 import { SettingsModal } from "./settings-modal";
-import { Topbar } from "./topbar";
 import { PuzzleBoard } from "./puzzle-board";
 import { EmptyBoard } from "./empty-board";
-import { Sidebar } from "./sidebar";
 import { CompletionOverlay } from "./completion-overlay";
-import {
-  boardWrap,
-  sidebarCollapsed,
-  toast,
-  workspace,
-} from "./workspace-page.styles";
+import { CornerPanelTL } from "./corner-panel-tl";
+import { CornerPanelTR } from "./corner-panel-tr";
+import { CornerPanelBL } from "./corner-panel-bl";
+import { CornerPanelBR } from "./corner-panel-br";
+import { toast, workspace } from "./workspace-page.styles";
 
 type Props = {
   roomId: string;
@@ -55,7 +53,6 @@ export function WorkspacePage(props: Props) {
   const navigate = useNavigate();
   const [draftName, setDraftName] = createSignal(props.name);
   const [error, setError] = createSignal<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = createSignal(true);
   const [settingsOpen, setSettingsOpen] = createSignal(false);
   const { settings, update: updateSetting, reset: resetSettings } = useSettings();
   const [completionDismissed, setCompletionDismissed] = createSignal(false);
@@ -63,7 +60,6 @@ export function WorkspacePage(props: Props) {
   const [status, setStatus] = createSignal("画像を選ぶとパズルを開始できます");
   let fileInput: HTMLInputElement | undefined;
 
-  // Dispatch refs — initialized after all hooks have been called.
   const dispatch = {
     onMessage: (_from: string, _msg: ChannelMessage) => {},
     onHello: (_myId: string, _p: Participant[], _r: RoomSummary) => {},
@@ -135,7 +131,6 @@ export function WorkspacePage(props: Props) {
   const viewport = useViewport();
   const imageOverlay = useImageOverlay({ broadcast: signaling.broadcast });
 
-  // ── Wire dispatch ────────────────────────────────────────────────────────────
   dispatch.onHello = (myId) => {
     setStatus("接続しました");
     imageTransfer.requestImageFromPeers(myId);
@@ -175,7 +170,6 @@ export function WorkspacePage(props: Props) {
     imageOverlay.handleMessage(from, msg);
   };
 
-  // ── Effects ───────────────────────────────────────────────────────────────────
   createEffect(() => {
     void signaling.enterRoom(props.roomId);
   });
@@ -206,12 +200,7 @@ export function WorkspacePage(props: Props) {
     onCleanup(() => window.removeEventListener("keydown", handleKeyDown));
   });
 
-  // ── Derived values ────────────────────────────────────────────────────────────
   const isDark = () => props.theme === "dark";
-  const nameChanged = createMemo(() => {
-    const me = myParticipant();
-    return Boolean(me && sanitizeName(draftName()) !== me.name);
-  });
   const loadingSummary = createMemo(
     () => describeLoadingProgress(imageTransfer.loadingProgress()) ?? status(),
   );
@@ -224,8 +213,10 @@ export function WorkspacePage(props: Props) {
   const canOrganize = createMemo(
     () => Boolean(isHost() && layout() && hasLoosePiece()),
   );
+  const hasBoard = createMemo(
+    () => Boolean(layout() && imageTransfer.imageDataUrl()),
+  );
 
-  // ── Event handlers ────────────────────────────────────────────────────────────
   function updateDisplayName() {
     const me = myParticipant();
     if (!me) return;
@@ -273,7 +264,7 @@ export function WorkspacePage(props: Props) {
       `${window.location.origin}/rooms/${props.roomId}`,
     );
     setCopied(true);
-    window.setTimeout(() => setCopied(false), 1200);
+    window.setTimeout(() => setCopied(false), 1400);
   }
 
   function handleOrganize() {
@@ -336,38 +327,87 @@ export function WorkspacePage(props: Props) {
 
   return (
     <main
-      class={`${workspace} ${!sidebarOpen() ? sidebarCollapsed : ""}`}
+      class={workspace}
       style={{
         "--piece-edge-opacity-locked": settings().edgeOpacityLocked,
         "--piece-edge-opacity-unlocked": settings().edgeOpacityUnlocked,
         "--piece-edge-opacity-selected": settings().edgeOpacitySelected,
       }}
     >
-      <Topbar
-        roomId={signaling.room()?.id}
-        participantCount={signaling.participants().length}
-        connectedPeers={signaling.connectedPeers()}
-        lockedCount={puzzle.lockedCount()}
-        totalPieces={puzzle.pieces().length}
-        difficulty={signaling.room()?.difficulty ?? 0}
-        isDark={isDark()}
-        sidebarOpen={sidebarOpen()}
-        copied={copied()}
-        canOrganize={canOrganize()}
-        onOrganize={handleOrganize}
-        onCopyShareUrl={() => void copyShareUrl()}
-        onToggleTheme={props.onToggleTheme}
-        onToggleSidebar={() => setSidebarOpen((v) => !v)}
-        onOpenSettings={() => setSettingsOpen(true)}
-      />
-
-      <SettingsModal
-        open={settingsOpen()}
-        onOpenChange={setSettingsOpen}
-        settings={settings()}
-        onChange={updateSetting}
-        onReset={resetSettings}
-      />
+      <Show
+        when={hasBoard()}
+        fallback={
+          <div
+            style={{ position: "absolute", inset: 0 }}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+          >
+            <EmptyBoard
+              isHost={isHost()}
+              statusText={loadingSummary()}
+              onPickImage={() => fileInput?.click()}
+            />
+          </div>
+        }
+      >
+        <PuzzleBoard
+          layout={layout()!}
+          imageDataUrl={imageTransfer.imageDataUrl()!}
+          pieces={puzzle.pieces()}
+          zoom={viewport.zoom()}
+          pan={viewport.pan()}
+          panning={Boolean(viewport.panning())}
+          margin={margin()}
+          complete={puzzle.complete()}
+          remoteCursors={cursors.remoteCursors()}
+          activeRemoteCursorIds={cursors.activeRemoteCursorIds()}
+          selectedPieceIds={puzzle.selectedPieceIds()}
+          imageOverlaySelected={puzzle.imageOverlaySelected()}
+          imageOverlayLocked={imageOverlay.locked()}
+          imageOverlayOpacity={imageOverlay.opacity()}
+          selectionBox={puzzle.selectionBox()}
+          remoteSelections={puzzle.remoteSelections()}
+          myId={signaling.myId()}
+          setViewportEl={viewport.setViewportEl}
+          setWorldEl={viewport.setWorldEl}
+          getViewportEl={viewport.getViewportEl}
+          imageOverlayPosition={imageOverlay.position()}
+          onToggleImageLock={() => imageOverlay.toggleLock()}
+          onChangeImageOpacity={(v) => imageOverlay.changeOpacity(v)}
+          onImageOverlayPointerDown={(e) => {
+            if (e.button !== 0) return;
+            puzzle.handleImageOverlayPointerDown(e, viewport.getWorkspacePoint);
+            if (e.ctrlKey || e.metaKey) return;
+            if (!imageOverlay.locked())
+              imageOverlay.handlePointerDown(e, viewport.getWorkspacePoint);
+          }}
+          onPiecePointerDown={(e, piece) =>
+            puzzle.handlePointerDown(e, piece, viewport.getWorkspacePoint, margin())
+          }
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          onPointerLeave={() => cursors.publishCursor(null, true)}
+          onViewportPointerDown={handleViewportPointerDown}
+          onWheel={viewport.handleWheel}
+          onApplyPinch={(f, px, py, nx, ny) =>
+            viewport.applyPinch(f, px, py, nx, ny)
+          }
+          registerPieceElement={puzzle.registerPieceElement}
+          onSetPinching={(v) => {
+            viewport.setIsPinching(v);
+            if (v) {
+              viewport.cancelPan();
+              imageOverlay.handleDragEnd();
+              const l = layout();
+              if (l) {
+                const threshold = Math.min(l.pieceWidth, l.pieceHeight) * 0.22;
+                puzzle.handleDragEnd(threshold);
+              }
+            }
+          }}
+        />
+      </Show>
 
       <input
         ref={(el) => (fileInput = el)}
@@ -377,96 +417,45 @@ export function WorkspacePage(props: Props) {
         style={{ display: "none" }}
       />
 
-      <section class={boardWrap}>
-        <Show
-          when={layout() && imageTransfer.imageDataUrl()}
-          fallback={
-            <EmptyBoard
-              isHost={isHost()}
-              statusText={loadingSummary()}
-              onPickImage={() => fileInput?.click()}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-            />
+      <CornerPanelTL
+        roomId={signaling.room()?.id}
+        participantCount={signaling.participants().length}
+        lockedCount={puzzle.lockedCount()}
+        totalPieces={puzzle.pieces().length || signaling.room()?.difficulty || 0}
+        onLogoClick={() => {
+          if (window.confirm("ホームに戻ります。現在のゲームの進捗は保存されません。続けますか？")) {
+            navigate("/");
           }
-        >
-          <PuzzleBoard
-            layout={layout()!}
-            imageDataUrl={imageTransfer.imageDataUrl()!}
-            pieces={puzzle.pieces()}
-            zoom={viewport.zoom()}
-            pan={viewport.pan()}
-            panning={Boolean(viewport.panning())}
-            margin={margin()}
-            complete={puzzle.complete()}
-            loadingSummary={loadingSummary()}
-            remoteCursors={cursors.remoteCursors()}
-            activeRemoteCursorIds={cursors.activeRemoteCursorIds()}
-            selectedPieceIds={puzzle.selectedPieceIds()}
-            imageOverlaySelected={puzzle.imageOverlaySelected()}
-            imageOverlayLocked={imageOverlay.locked()}
-            imageOverlayOpacity={imageOverlay.opacity()}
-            selectionBox={puzzle.selectionBox()}
-            remoteSelections={puzzle.remoteSelections()}
-            myId={signaling.myId()}
-            setViewportEl={viewport.setViewportEl}
-            setWorldEl={viewport.setWorldEl}
-            getViewportEl={viewport.getViewportEl}
-            imageOverlayPosition={imageOverlay.position()}
-            onToggleImageLock={() => imageOverlay.toggleLock()}
-            onChangeImageOpacity={(v) => imageOverlay.changeOpacity(v)}
-            onImageOverlayPointerDown={(e) => {
-              if (e.button !== 0) return;
-              puzzle.handleImageOverlayPointerDown(e, viewport.getWorkspacePoint);
-              if (e.ctrlKey || e.metaKey) return;
-              if (!imageOverlay.locked())
-                imageOverlay.handlePointerDown(e, viewport.getWorkspacePoint);
-            }}
-            onPiecePointerDown={(e, piece) =>
-              puzzle.handlePointerDown(e, piece, viewport.getWorkspacePoint, margin())
-            }
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-            onPointerLeave={() => cursors.publishCursor(null, true)}
-            onViewportPointerDown={handleViewportPointerDown}
-            onWheel={viewport.handleWheel}
-            onZoomIn={() => viewport.changeZoom(ZOOM_STEP)}
-            onZoomOut={() => viewport.changeZoom(-ZOOM_STEP)}
-            onResetZoom={viewport.resetZoom}
-            onApplyPinch={(f, px, py, nx, ny) =>
-              viewport.applyPinch(f, px, py, nx, ny)
-            }
-            registerPieceElement={puzzle.registerPieceElement}
-            onSetPinching={(v) => {
-              viewport.setIsPinching(v);
-              if (v) {
-                viewport.cancelPan();
-                imageOverlay.handleDragEnd();
-                const l = layout();
-                if (l) {
-                  const threshold = Math.min(l.pieceWidth, l.pieceHeight) * 0.22;
-                  puzzle.handleDragEnd(threshold);
-                }
-              }
-            }}
-          />
-        </Show>
-      </section>
-
-      <Sidebar
-        myParticipant={myParticipant()}
-        participants={signaling.participants()}
-        draftName={draftName()}
-        sidebarOpen={sidebarOpen()}
-        onDraftNameChange={setDraftName}
-        onDraftNameBlur={() => setDraftName(sanitizeName(draftName()))}
-        onSaveName={updateDisplayName}
-        nameChanged={nameChanged()}
+        }}
       />
 
+      <CornerPanelTR
+        participants={signaling.participants()}
+        isDark={isDark()}
+        copied={copied()}
+        onShare={() => void copyShareUrl()}
+        onOpenSettings={() => setSettingsOpen(true)}
+        onToggleTheme={props.onToggleTheme}
+      />
+
+      <Show when={canOrganize()}>
+        <CornerPanelBL onOrganize={handleOrganize} />
+      </Show>
+
+      <Show when={hasBoard()}>
+        <CornerPanelBR
+          zoom={viewport.zoom()}
+          onZoomIn={() => viewport.changeZoom(ZOOM_STEP)}
+          onZoomOut={() => viewport.changeZoom(-ZOOM_STEP)}
+          onResetZoom={viewport.resetZoom}
+        />
+      </Show>
+
       <Show when={error()}>
-        <p class={toast}>{error()}</p>
+        <div class={toast}>
+          <AlertCircle size={15} />
+          {error()}
+        </div>
       </Show>
 
       <Show when={showCompletion()}>
@@ -480,7 +469,17 @@ export function WorkspacePage(props: Props) {
           onClose={() => setCompletionDismissed(true)}
         />
       </Show>
+
+      <SettingsModal
+        open={settingsOpen()}
+        onOpenChange={setSettingsOpen}
+        settings={settings()}
+        onChange={updateSetting}
+        onReset={resetSettings}
+        userName={draftName()}
+        onUserNameInput={setDraftName}
+        onUserNameCommit={updateDisplayName}
+      />
     </main>
   );
 }
-

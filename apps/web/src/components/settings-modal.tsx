@@ -1,7 +1,7 @@
 import { For } from "solid-js";
 import { Dialog, Slider } from "@ark-ui/solid";
 import { Portal } from "solid-js/web";
-import { X } from "lucide-solid";
+import { Settings as SettingsIcon, X } from "lucide-solid";
 import type { PieceEdgeSettings } from "../hooks/use-settings";
 import {
   backdrop,
@@ -10,28 +10,26 @@ import {
   doneBtn,
   footer,
   header,
+  headerIcon,
+  headerTitle,
   hint,
   labelCls,
   popup,
   positioner,
   resetBtn,
   section,
+  sectionGroup,
+  sectionGroupSliders,
   sectionHeader,
+  sectionLabel,
   slider,
   sliderRange,
   sliderThumb,
   sliderTrack,
   title,
+  userNameLabel,
   valueCls,
 } from "./settings-modal.styles";
-
-type Props = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  settings: PieceEdgeSettings;
-  onChange: <K extends keyof PieceEdgeSettings>(key: K, value: number) => void;
-  onReset: () => void;
-};
 
 type Row = {
   key: keyof PieceEdgeSettings;
@@ -57,6 +55,17 @@ const ROWS: Row[] = [
   },
 ];
 
+type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  settings: PieceEdgeSettings;
+  onChange: <K extends keyof PieceEdgeSettings>(key: K, value: number) => void;
+  onReset: () => void;
+  userName: string;
+  onUserNameInput: (name: string) => void;
+  onUserNameCommit: () => void;
+};
+
 export function SettingsModal(props: Props) {
   return (
     <Dialog.Root
@@ -68,31 +77,55 @@ export function SettingsModal(props: Props) {
         <Dialog.Positioner class={positioner}>
           <Dialog.Content class={popup}>
             <header class={header}>
-              <Dialog.Title class={title}>表示設定</Dialog.Title>
+              <div class={headerTitle}>
+                <span class={headerIcon}>
+                  <SettingsIcon size={17} />
+                </span>
+                <Dialog.Title class={title}>設定</Dialog.Title>
+              </div>
               <Dialog.CloseTrigger class={closeBtn} aria-label="閉じる">
-                <X size={16} />
+                <X size={15} />
               </Dialog.CloseTrigger>
             </header>
 
             <div class={body}>
-              <For each={ROWS}>
-                {(row) => (
-                  <OpacitySlider
-                    label={row.label}
-                    hint={row.hint}
-                    value={props.settings[row.key]}
-                    onValueChange={(v) => props.onChange(row.key, v)}
+              <div class={sectionGroup}>
+                <p class={sectionLabel}>プロフィール</p>
+                <label class={userNameLabel}>
+                  ユーザー名
+                  <input
+                    type="text"
+                    value={props.userName}
+                    maxLength={24}
+                    placeholder="表示名を入力"
+                    onInput={(e) =>
+                      props.onUserNameInput(e.currentTarget.value)
+                    }
+                    onBlur={() => props.onUserNameCommit()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") props.onUserNameCommit();
+                    }}
                   />
-                )}
-              </For>
+                </label>
+              </div>
+
+              <div class={sectionGroupSliders}>
+                <p class={sectionLabel}>表示</p>
+                <For each={ROWS}>
+                  {(row) => (
+                    <OpacitySlider
+                      label={row.label}
+                      hint={row.hint}
+                      value={props.settings[row.key]}
+                      onValueChange={(v) => props.onChange(row.key, v)}
+                    />
+                  )}
+                </For>
+              </div>
             </div>
 
             <footer class={footer}>
-              <button
-                type="button"
-                class={resetBtn}
-                onClick={props.onReset}
-              >
+              <button type="button" class={resetBtn} onClick={props.onReset}>
                 既定値に戻す
               </button>
               <Dialog.CloseTrigger class={doneBtn}>完了</Dialog.CloseTrigger>
