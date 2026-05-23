@@ -424,7 +424,11 @@ export function WorkspacePage(props: Props) {
         participantCount={signaling.participants().length}
         lockedCount={puzzle.lockedCount()}
         totalPieces={puzzle.pieces().length || signaling.room()?.difficulty || 0}
-        onLogoClick={() => navigate("/")}
+        onLogoClick={() => {
+          if (window.confirm("ホームに戻ります。現在のゲームの進捗は保存されません。続けますか？")) {
+            navigate("/");
+          }
+        }}
       />
 
       <CornerPanelTR

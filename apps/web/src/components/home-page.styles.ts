@@ -1,12 +1,12 @@
 import { css } from "../../styled-system/css";
 
 export const home = css({
-  display: "grid",
-  gridTemplateColumns: "1fr 420px",
+  display: "flex",
+  flexDirection: "column",
   minHeight: "100dvh",
   lg: {
-    display: "flex",
-    flexDirection: "column",
+    display: "grid",
+    gridTemplateColumns: "1fr 420px",
   },
 });
 
@@ -14,15 +14,17 @@ export const hero = css({
   background: "hero.bg",
   display: "flex",
   flexDirection: "column",
-  justifyContent: "center",
-  padding: "6rem",
+  justifyContent: "flex-start",
+  padding: "2.25rem",
+  flex: 1,
+  minHeight: "380px",
   position: "relative",
   overflow: "hidden",
   lg: {
-    justifyContent: "flex-start",
-    padding: "2.25rem",
-    flex: 1,
-    minHeight: "380px",
+    justifyContent: "center",
+    padding: "6rem",
+    flex: "initial",
+    minHeight: "initial",
   },
 });
 
@@ -70,12 +72,13 @@ export const heroContent = css({
   display: "grid",
   gap: "2.5rem",
   animation: "fadeUp 0.7s {easings.standard} both",
-  lg: { paddingTop: "1.25rem" },
+  paddingTop: "1.25rem",
+  lg: { paddingTop: 0 },
 });
 
 export const heading = css({
   margin: 0,
-  font: "400 7.5rem/0.93 {fonts.display}",
+  font: "400 clamp(2.75rem, 13vw, 5rem)/0.93 {fonts.display}",
   letterSpacing: "-0.035em",
   color: "hero.text",
   textWrap: "balance",
@@ -83,30 +86,31 @@ export const heading = css({
     fontStyle: "italic",
     color: "hero.deco",
   },
-  lg: { fontSize: "clamp(2.75rem, 13vw, 5rem)" },
+  lg: { fontSize: "7.5rem" },
 });
 
 export const tagline = css({
   margin: 0,
   color: "hero.textDim",
-  fontSize: "1.35rem",
+  fontSize: "clamp(0.95rem, 3.5vw, 1.2rem)",
   lineHeight: 1.75,
-  lg: { fontSize: "clamp(0.95rem, 3.5vw, 1.2rem)" },
+  lg: { fontSize: "1.35rem" },
 });
 
 export const panelWrap = css({
   background: "surface.1",
-  borderLeft: "1px solid {colors.border}",
+  borderLeft: "none",
+  borderTop: "1px solid {colors.border}",
   display: "flex",
-  alignItems: "center",
+  alignItems: "flex-start",
   justifyContent: "center",
-  padding: "64px 44px",
+  padding: "36px 24px 48px",
   position: "relative",
   lg: {
-    borderLeft: "none",
-    borderTop: "1px solid {colors.border}",
-    alignItems: "flex-start",
-    padding: "36px 24px 48px",
+    borderLeft: "1px solid {colors.border}",
+    borderTop: "none",
+    alignItems: "center",
+    padding: "64px 44px",
   },
 });
 
@@ -124,11 +128,11 @@ export const themeToggle = css({
 
 export const panelInner = css({
   width: "100%",
-  maxWidth: "360px",
+  maxWidth: "100%",
   display: "grid",
   gap: "18px",
   animation: "fadeUp 0.7s {easings.standard} 0.1s both",
-  lg: { maxWidth: "100%" },
+  lg: { maxWidth: "360px" },
 });
 
 export const panelHeader = css({
