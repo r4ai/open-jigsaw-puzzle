@@ -38,6 +38,7 @@ jobs:
     permissions:
       contents: read
       issues: write
+      pull-requests: write
 
     env:
       PREVIEW_NAME: open-jigsaw-puzzle-pr-${{ github.event.pull_request.number }}
@@ -146,6 +147,7 @@ jobs:
       actions: read
       contents: read
       issues: write
+      pull-requests: write
 
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -263,6 +265,7 @@ jobs:
     permissions:
       contents: read
       issues: write
+      pull-requests: write
 
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
