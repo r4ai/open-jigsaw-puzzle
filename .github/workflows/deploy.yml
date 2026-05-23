@@ -84,9 +84,9 @@ jobs:
         run: node .github/scripts/write-production-wrangler-config.ts
 
       - name: Apply D1 migrations
-        working-directory: apps/api
+        working-directory: api
         run: wrangler d1 migrations apply open-jigsaw-puzzle --remote --config wrangler.production.jsonc
 
       - name: Deploy Worker
-        working-directory: apps/api
+        working-directory: api
         run: wrangler deploy --config wrangler.production.jsonc
