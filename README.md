@@ -1,49 +1,36 @@
-# Open Jigsaw Puzzle
+<div align="center">
+  <img src="apps/web/public/favicon.png" width="96" alt="Open Jigsaw Puzzle" />
+  <h1>Open Jigsaw Puzzle</h1>
+  <p><b>みんなで一緒にパズルを楽しもう</b></p>
+  <p>ログイン不要。リンクを共有して、画像を選んで、みんなでジグソーパズルを解こう。</p>
 
-Login-free online image jigsaw puzzle MVP for Cloudflare Workers.
+  <img src="https://img.shields.io/badge/Cloudflare_Workers-F38020?style=flat&logo=cloudflare&logoColor=white" alt="Cloudflare Workers" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/SolidJS-2C4F7C?style=flat&logo=solid&logoColor=white" alt="SolidJS" />
+  <img src="https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white" alt="Vite" />
+  <img src="https://img.shields.io/badge/Hono-E36002?style=flat&logo=hono&logoColor=white" alt="Hono" />
 
-## Stack
+<br /><br />
 
-- Vite + Solid + TypeScript SPA
-- @solidjs/router for routing
-- Panda CSS for design tokens and styling
-- Ark UI (Solid) for accessible primitives (Dialog / Slider)
-- Hono on Cloudflare Workers API
-- Durable Objects WebSocket signaling hub
-- D1 metadata storage
-- Native WebRTC DataChannel mesh for image and puzzle-state sync
+  <img src="apps/web/public/og-image.png" alt="Open Jigsaw Puzzle" width="640" />
+</div>
 
-Images are resized in the browser and sent peer-to-peer. They are not stored in D1, R2, or Worker storage.
+---
 
-## Local Development
+## スタック
 
-```bash
-pnpm install
-printf 'OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID=00000000-0000-4000-8000-000000000000\n' >> apps/api/.env
-pnpm --filter @open-jigsaw-puzzle/api prepare:wrangler
-pnpm --filter @open-jigsaw-puzzle/api exec wrangler d1 migrations apply open-jigsaw-puzzle --local --config wrangler.generated.jsonc
-pnpm build
-pnpm --filter @open-jigsaw-puzzle/api dev -- --local --ip 0.0.0.0 --port 8787
-```
+| レイヤー         | 技術                                           |
+| ---------------- | ---------------------------------------------- |
+| フロントエンド   | Vite + SolidJS + TypeScript                    |
+| スタイリング     | Panda CSS + Ark UI                             |
+| API              | Hono on Cloudflare Workers                     |
+| リアルタイム通信 | Durable Objects WebSocket + WebRTC DataChannel |
+| メタデータ       | Cloudflare D1                                  |
 
-Open `http://127.0.0.1:8787`.
+画像はブラウザでリサイズされ、ピア間で P2P 転送される。サーバーには保存されない。
 
-## Verification
+## ドキュメント
 
-```bash
-pnpm typecheck
-pnpm test
-pnpm build
-pnpm --filter @open-jigsaw-puzzle/api prepare:wrangler
-pnpm --filter @open-jigsaw-puzzle/api exec wrangler deploy --dry-run --outdir dist/worker --config wrangler.generated.jsonc
-```
-
-Before remote deploy, create a real D1 database and set `OPEN_JIGSAW_PUZZLE_D1_DATABASE_ID` in your shell or GitHub Actions secrets.
-
-For production rooms, configure TURN credentials through `TURN_URLS`, `TURN_USERNAME`, and `TURN_CREDENTIAL`.
-STUN-only WebRTC works on some networks, but TURN is required for reliable connections across restrictive NATs,
-mobile carriers, and corporate networks.
-
-## Deployment
-
-See [Deployment](docs/deployment.md) for Cloudflare setup.
+- [ローカル開発](docs/development.md)
+- [デプロイ](docs/deployment.md)
+- [無料枠の試算](docs/free-tier-estimate.md)
