@@ -16,17 +16,11 @@ type Props = {
   isHost: boolean;
   statusText: string;
   onPickImage: () => void;
-  onDragOver: (e: DragEvent) => void;
-  onDrop: (e: DragEvent) => void;
 };
 
 export function EmptyBoard(props: Props) {
   return (
-    <div
-      class={`${root} ${props.isHost ? dropArea : ""}`}
-      onDragOver={(e) => props.onDragOver(e)}
-      onDrop={(e) => props.onDrop(e)}
-    >
+    <div class={`${root} ${props.isHost ? dropArea : ""}`}>
       <Show
         when={props.isHost}
         fallback={

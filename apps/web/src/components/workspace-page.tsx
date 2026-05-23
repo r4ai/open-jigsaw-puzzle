@@ -346,8 +346,6 @@ export function WorkspacePage(props: Props) {
               isHost={isHost()}
               statusText={loadingSummary()}
               onPickImage={() => fileInput?.click()}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
             />
           </div>
         }

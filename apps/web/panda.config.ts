@@ -430,7 +430,7 @@ export default defineConfig({
         transition: "border-color 120ms, box-shadow 120ms",
         outline: "none",
       },
-    'input:not([type="range"]):focus': {
+    'input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus': {
       borderColor: "accent",
       boxShadow: "0 0 0 3px {colors.accent.focus}",
     },
