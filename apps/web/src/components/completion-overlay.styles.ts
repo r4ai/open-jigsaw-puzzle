@@ -4,7 +4,10 @@ export const overlay = css({
   position: "fixed",
   inset: 0,
   zIndex: 10000,
-  background: "oklch(8% 0.005 80 / 0.55)",
+  background: {
+    base: "oklch(60% 0.005 80 / 0.35)",
+    _dark: "oklch(8% 0.005 80 / 0.55)",
+  },
   backdropFilter: "blur(14px) saturate(140%)",
   display: "flex",
   alignItems: "center",
