@@ -25,7 +25,7 @@ const btn = css({
   },
 });
 
-const actionText = css({ md: { display: "none" } });
+const actionText = css({ display: "none", md: { display: "inline" } });
 
 type Props = {
   onOrganize: () => void;

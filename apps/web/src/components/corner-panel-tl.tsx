@@ -34,11 +34,11 @@ const logoBtn = css({
 });
 
 const brandLabel = css({
-  display: "flex",
+  display: "none",
   flexDirection: "column",
   gap: "2px",
   lineHeight: 1,
-  md: { display: "none" },
+  md: { display: "flex" },
 });
 
 const brandRoomLabel = css({
@@ -55,19 +55,20 @@ const brandRoomId = css({
 });
 
 const divider = css({
+  display: "none",
   width: "1px",
   height: "22px",
   background:
     "color-mix(in oklch, {colors.glass.text} 18%, transparent)",
   flexShrink: 0,
-  md: { display: "none" },
+  md: { display: "block" },
 });
 
 const stats = css({
-  display: "flex",
+  display: "none",
   alignItems: "center",
   gap: "5px",
-  md: { display: "none" },
+  md: { display: "flex" },
 });
 
 type Props = {

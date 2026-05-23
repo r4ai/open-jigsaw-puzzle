@@ -33,7 +33,8 @@ const fitBtn = css({
       opacity: 1,
     },
   },
-  sm: { display: "none" },
+  display: "none",
+  sm: { display: "flex" },
 });
 
 type Props = {

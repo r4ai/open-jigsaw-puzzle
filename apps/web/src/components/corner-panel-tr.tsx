@@ -16,12 +16,13 @@ const root = css({
 });
 
 const divider = css({
+  display: "none",
   width: "1px",
   height: "22px",
   background: "color-mix(in oklch, {colors.glass.text} 18%, transparent)",
   flexShrink: 0,
   marginLeft: "4px",
-  md: { display: "none" },
+  md: { display: "block" },
 });
 
 const shareBtn = css({
@@ -50,7 +51,7 @@ const shareBtnCopied = css({
   color: "accent!",
 });
 
-const actionText = css({ md: { display: "none" } });
+const actionText = css({ display: "none", md: { display: "inline" } });
 
 type Props = {
   participants: Participant[];

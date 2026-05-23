@@ -50,12 +50,12 @@ const overflowBubble = css({
   color: "glass.text",
   border: "1.5px solid {colors.glass.borderStrong}",
   outline: "2px solid {colors.canvas}",
-  display: "flex",
+  display: "none",
   alignItems: "center",
   justifyContent: "center",
   font: "600 11px/1 {fonts.mono}",
   flexShrink: 0,
-  sm: { display: "none" },
+  sm: { display: "flex" },
 });
 
 const stack = css({
