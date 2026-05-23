@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Open Jigsaw Puzzle">
+  <rect width="64" height="64" rx="14" fill="#111111"/>
+  <path
+    d="M14 14h18v8.6c3.9 0 6.4 2 6.4 5.4s-2.5 5.4-6.4 5.4V50H14V33.4h8.6c0 3.9 2 6.4 5.4 6.4s5.4-2.5 5.4-6.4H50V14H33.4c0 3.9-2 6.4-5.4 6.4s-5.4-2.5-5.4-6.4H14Z"
+    fill="#ffffff"
+  />
+  <path
+    d="M33.4 14H50v19.4H33.4c0 3.9-2 6.4-5.4 6.4s-5.4-2.5-5.4-6.4H14V50h18V33.4c3.9 0 6.4-2 6.4-5.4s-2.5-5.4-6.4-5.4V14h1.4Z"
+    fill="none"
+    stroke="#3f8f8a"
+    stroke-width="3"
+    stroke-linejoin="round"
+  />
+</svg>
