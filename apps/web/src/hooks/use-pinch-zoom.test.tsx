@@ -27,7 +27,7 @@ describe("usePinchZoom", () => {
     expect(onSetPinching).not.toHaveBeenCalled();
   });
 
-  it("captures two-finger camera gestures that start over child controls", () => {
+  it("captures two-finger camera gestures that start over child controls", async () => {
     const onApplyPinch = vi.fn();
     const onSetPinching = vi.fn();
     const childPointerDown = vi.fn();
@@ -53,15 +53,18 @@ describe("usePinchZoom", () => {
     child!.dispatchEvent(pointerEvent("pointerdown", 1, 100, 100));
     child!.dispatchEvent(pointerEvent("pointerdown", 2, 200, 100));
     child!.dispatchEvent(pointerEvent("pointermove", 2, 230, 120));
+    child!.dispatchEvent(pointerEvent("pointermove", 2, 240, 130));
+    await flushAnimationFrame();
 
     expect(childPointerDown).toHaveBeenCalledTimes(1);
     expect(onSetPinching).toHaveBeenCalledWith(true);
+    expect(onApplyPinch).toHaveBeenCalledTimes(1);
     expect(onApplyPinch).toHaveBeenCalledWith({
       distFactor: expect.any(Number),
       prevMidX: 150,
       prevMidY: 100,
-      newMidX: 165,
-      newMidY: 110,
+      newMidX: 170,
+      newMidY: 115,
     });
   });
 
@@ -178,6 +181,10 @@ function pointerEvent(type: string, pointerId: number, clientX: number, clientY:
     clientY: { value: clientY },
   });
   return event;
+}
+
+async function flushAnimationFrame(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 30));
 }
 
 function prepareViewportElement(element: HTMLDivElement) {

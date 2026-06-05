@@ -36,7 +36,7 @@ describe("useImageOverlay", () => {
     ]);
   });
 
-  it("moves the overlay by pointer drag and ignores unrelated pointers", () => {
+  it("moves the overlay by pointer drag and ignores unrelated pointers", async () => {
     const broadcasts: ChannelMessage[] = [];
     const target = { setPointerCapture: vi.fn() };
     const { result } = renderHook(() => useImageOverlay({ broadcast: (message) => broadcasts.push(message) }));
@@ -45,11 +45,13 @@ describe("useImageOverlay", () => {
     result.handlePointerDown(pointerEvent(7, 10, 15, target), point);
     result.handleDragMove(pointerEvent(8, 100, 100, target), point);
     result.handleDragMove(pointerEvent(7, 15, 25, target), point);
+    result.handleDragMove(pointerEvent(7, 25, 35, target), point);
+    await flushAnimationFrame();
     result.handleDragEnd(8);
 
     expect(result.isDragging()).toBe(true);
-    expect(result.position()).toEqual({ x: 225, y: 10 });
-    expect(broadcasts).toEqual([{ type: "image-overlay", x: 225, y: 10, locked: false, opacity: 1 }]);
+    expect(result.position()).toEqual({ x: 235, y: 20 });
+    expect(broadcasts).toEqual([{ type: "image-overlay", x: 235, y: 20, locked: false, opacity: 1 }]);
 
     result.handleDragEnd(7);
     expect(result.isDragging()).toBe(false);
@@ -106,4 +108,8 @@ function pointerEvent(pointerId: number, clientX: number, clientY: number, curre
     preventDefault: vi.fn(),
     stopPropagation: vi.fn(),
   } as unknown as PointerEvent;
+}
+
+async function flushAnimationFrame(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 30));
 }
