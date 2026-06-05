@@ -79,6 +79,14 @@ describe("useViewport coordinates and zoom", () => {
     expect(api.zoom()).toBe(1.6);
     expect(api.pan()).toEqual({ x: -80, y: -70 });
   });
+
+  it("keeps small pinch zoom changes instead of rounding them away", () => {
+    const { api } = setupViewport();
+
+    api.applyPinch(1.006, 100, 100, 100, 100);
+
+    expect(api.zoom()).toBeCloseTo(0.8048);
+  });
 });
 
 function setupViewport(): { api: ViewportApi; viewport: HTMLDivElement } {

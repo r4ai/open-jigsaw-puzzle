@@ -27,6 +27,7 @@ export function usePinchZoom(props: Props) {
     let prevMidX = 0;
     let prevMidY = 0;
     let prevDist = 1;
+    let pinching = false;
 
     function midAndDist() {
       const [a, b] = [...touches.values()];
@@ -47,6 +48,7 @@ export function usePinchZoom(props: Props) {
         prevDist = dist;
         e.preventDefault();
         e.stopPropagation();
+        pinching = true;
         props.onSetPinching(true);
       } else if (touches.size > 2) {
         e.preventDefault();
@@ -82,7 +84,10 @@ export function usePinchZoom(props: Props) {
     function onUp(e: PointerEvent) {
       if (e.pointerType !== "touch") return;
       touches.delete(e.pointerId);
-      if (touches.size < 2) props.onSetPinching(false);
+      if (touches.size < 2 && pinching) {
+        pinching = false;
+        props.onSetPinching(false);
+      }
     }
 
     el.addEventListener("pointerdown", onDown, { capture: true });

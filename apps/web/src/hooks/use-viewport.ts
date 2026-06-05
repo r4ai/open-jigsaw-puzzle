@@ -127,7 +127,7 @@ export function useViewport() {
     const cp = panNow;
     const wx = (prevMidX - rect.left - cp.x) / cz;
     const wy = (prevMidY - rect.top - cp.y) / cz;
-    const nextZoom = clamp(roundZoom(cz * distFactor), MIN_ZOOM, MAX_ZOOM);
+    const nextZoom = clamp(cz * distFactor, MIN_ZOOM, MAX_ZOOM);
     commitZoom(nextZoom);
     commitPan({
       x: (newMidX - rect.left) - wx * nextZoom,

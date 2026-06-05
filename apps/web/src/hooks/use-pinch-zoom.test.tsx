@@ -5,6 +5,27 @@ import { usePinchZoom } from "./use-pinch-zoom";
 afterEach(() => cleanup());
 
 describe("usePinchZoom", () => {
+  it("does not report pinch end after a single-touch gesture", () => {
+    const onSetPinching = vi.fn();
+    let viewport: HTMLDivElement | undefined;
+
+    render(() => {
+      usePinchZoom({
+        getElement: () => viewport,
+        onApplyPinch: () => {},
+        onSetPinching,
+      });
+
+      return <div ref={(el) => (viewport = el)} />;
+    });
+
+    viewport!.dispatchEvent(pointerEvent("pointerdown", 1, 100, 100));
+    viewport!.dispatchEvent(pointerEvent("pointermove", 1, 120, 120));
+    viewport!.dispatchEvent(pointerEvent("pointerup", 1, 120, 120));
+
+    expect(onSetPinching).not.toHaveBeenCalled();
+  });
+
   it("captures two-finger camera gestures that start over child controls", () => {
     const onApplyPinch = vi.fn();
     const onSetPinching = vi.fn();
@@ -41,6 +62,29 @@ describe("usePinchZoom", () => {
       newMidX: 165,
       newMidY: 110,
     });
+  });
+
+  it("reports pinch end only after an actual two-finger gesture", () => {
+    const onSetPinching = vi.fn();
+    let viewport: HTMLDivElement | undefined;
+
+    render(() => {
+      usePinchZoom({
+        getElement: () => viewport,
+        onApplyPinch: () => {},
+        onSetPinching,
+      });
+
+      return <div ref={(el) => (viewport = el)} />;
+    });
+
+    viewport!.dispatchEvent(pointerEvent("pointerdown", 1, 100, 100));
+    viewport!.dispatchEvent(pointerEvent("pointerdown", 2, 200, 100));
+    viewport!.dispatchEvent(pointerEvent("pointerup", 2, 200, 100));
+
+    expect(onSetPinching).toHaveBeenCalledTimes(2);
+    expect(onSetPinching).toHaveBeenNthCalledWith(1, true);
+    expect(onSetPinching).toHaveBeenNthCalledWith(2, false);
   });
 });
 
