@@ -1,6 +1,7 @@
 import { cleanup, render } from "@solidjs/testing-library";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { usePinchZoom } from "./use-pinch-zoom";
+import { useViewport } from "./use-viewport";
 
 afterEach(() => cleanup());
 
@@ -86,15 +87,114 @@ describe("usePinchZoom", () => {
     expect(onSetPinching).toHaveBeenNthCalledWith(1, true);
     expect(onSetPinching).toHaveBeenNthCalledWith(2, false);
   });
+
+  it("keeps the next one-finger viewport pan available after a one-finger touch", () => {
+    let viewport: HTMLDivElement | undefined;
+    let api!: ReturnType<typeof useViewport>;
+
+    render(() => {
+      api = useViewport();
+      usePinchZoom({
+        getElement: () => viewport,
+        onApplyPinch: (event) =>
+          api.applyPinch(
+            event.distFactor,
+            event.prevMidX,
+            event.prevMidY,
+            event.newMidX,
+            event.newMidY,
+          ),
+        onSetPinching: api.setTouchGestureActive,
+      });
+
+      return (
+        <div
+          ref={(el) => {
+            viewport = el;
+            prepareViewportElement(el);
+            api.setViewportEl(el);
+          }}
+          onPointerDown={(event) => api.handleViewportPointerDown(event)}
+        />
+      );
+    });
+
+    viewport!.dispatchEvent(pointerEvent("pointerdown", 1, 100, 100));
+    viewport!.dispatchEvent(pointerEvent("pointermove", 1, 120, 120));
+    viewport!.dispatchEvent(pointerEvent("pointerup", 1, 120, 120));
+    viewport!.dispatchEvent(pointerEvent("pointerdown", 2, 140, 140));
+
+    expect(api!.panning()?.pointerId).toBe(2);
+  });
+
+  it("suppresses only the leftover touch after a two-finger camera gesture", () => {
+    let viewport: HTMLDivElement | undefined;
+    let api!: ReturnType<typeof useViewport>;
+
+    render(() => {
+      api = useViewport();
+      usePinchZoom({
+        getElement: () => viewport,
+        onApplyPinch: (event) =>
+          api.applyPinch(
+            event.distFactor,
+            event.prevMidX,
+            event.prevMidY,
+            event.newMidX,
+            event.newMidY,
+          ),
+        onSetPinching: api.setTouchGestureActive,
+      });
+
+      return (
+        <div
+          ref={(el) => {
+            viewport = el;
+            prepareViewportElement(el);
+            api.setViewportEl(el);
+          }}
+          onPointerDown={(event) => api.handleViewportPointerDown(event)}
+        />
+      );
+    });
+
+    viewport!.dispatchEvent(pointerEvent("pointerdown", 1, 100, 100));
+    viewport!.dispatchEvent(pointerEvent("pointerdown", 2, 200, 100));
+    viewport!.dispatchEvent(pointerEvent("pointerup", 2, 200, 100));
+    viewport!.dispatchEvent(pointerEvent("pointerdown", 1, 120, 100));
+
+    expect(api!.panning()).toBeNull();
+
+    viewport!.dispatchEvent(pointerEvent("pointerup", 1, 120, 100));
+    viewport!.dispatchEvent(pointerEvent("pointerdown", 3, 140, 140));
+
+    expect(api!.panning()?.pointerId).toBe(3);
+  });
 });
 
 function pointerEvent(type: string, pointerId: number, clientX: number, clientY: number): Event {
   const event = new Event(type, { bubbles: true, cancelable: true });
   Object.defineProperties(event, {
+    button: { value: 0 },
     pointerId: { value: pointerId },
     pointerType: { value: "touch" },
     clientX: { value: clientX },
     clientY: { value: clientY },
   });
   return event;
+}
+
+function prepareViewportElement(element: HTMLDivElement) {
+  element.setPointerCapture = vi.fn();
+  element.getBoundingClientRect = () => ({
+    x: 0,
+    y: 0,
+    width: 800,
+    height: 600,
+    top: 0,
+    right: 800,
+    bottom: 600,
+    left: 0,
+    toJSON: () => ({}),
+  });
 }
