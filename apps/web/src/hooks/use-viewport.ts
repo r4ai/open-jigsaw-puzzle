@@ -122,7 +122,7 @@ export function useViewport() {
     const cp = panNow;
     const wx = (prevMidX - rect.left - cp.x) / cz;
     const wy = (prevMidY - rect.top - cp.y) / cz;
-    const nextZoom = clamp(roundZoom(cz * distFactor), MIN_ZOOM, MAX_ZOOM);
+    const nextZoom = clamp(cz * distFactor, MIN_ZOOM, MAX_ZOOM);
     commitZoom(nextZoom);
     commitPan({
       x: (newMidX - rect.left) - wx * nextZoom,
@@ -156,6 +156,13 @@ export function useViewport() {
     setPanning(null);
   }
 
+  function setTouchGestureActive(active: boolean) {
+    isPinching = active;
+    if (active) {
+      cancelPan();
+    }
+  }
+
   return {
     zoom,
     pan,
@@ -165,6 +172,7 @@ export function useViewport() {
     getViewportEl: () => viewportEl,
     getIsPinching: () => isPinching,
     setIsPinching: (v: boolean) => { isPinching = v; },
+    setTouchGestureActive,
     getWorkspacePoint,
     changeZoom,
     resetZoom,

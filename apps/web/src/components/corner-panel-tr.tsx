@@ -10,8 +10,8 @@ const root = css({
   right: "16px",
   display: "flex",
   alignItems: "center",
-  gap: "8px",
-  padding: "6px 8px",
+  gap: "10px",
+  padding: "8px 10px",
   md: { top: "10px", right: "10px", padding: "6px", gap: "4px" },
 });
 
@@ -26,9 +26,9 @@ const divider = css({
 });
 
 const shareBtn = css({
-  height: "32px",
-  minHeight: "32px",
-  padding: "0 11px",
+  height: "44px",
+  minHeight: "44px",
+  padding: "0 13px",
   gap: "5px",
   background: "transparent",
   border: "1px solid transparent",
@@ -41,6 +41,11 @@ const shareBtn = css({
     _enabled: {
       background: "color-mix(in oklch, {colors.glass.text} 10%, transparent)",
     },
+  },
+  md: {
+    height: "32px",
+    minHeight: "32px",
+    padding: "0 11px",
   },
 });
 

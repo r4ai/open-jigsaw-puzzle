@@ -376,14 +376,24 @@ export function WorkspacePage(props: Props) {
           onChangeImageOpacity={(v) => imageOverlay.changeOpacity(v)}
           onImageOverlayPointerDown={(e) => {
             if (e.button !== 0) return;
+            if (viewport.getIsPinching()) {
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
             puzzle.handleImageOverlayPointerDown(e, viewport.getWorkspacePoint);
             if (e.ctrlKey || e.metaKey) return;
             if (!imageOverlay.locked())
               imageOverlay.handlePointerDown(e, viewport.getWorkspacePoint);
           }}
-          onPiecePointerDown={(e, piece) =>
-            puzzle.handlePointerDown(e, piece, viewport.getWorkspacePoint, margin())
-          }
+          onPiecePointerDown={(e, piece) => {
+            if (viewport.getIsPinching()) {
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+            puzzle.handlePointerDown(e, piece, viewport.getWorkspacePoint, margin());
+          }}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
@@ -395,15 +405,11 @@ export function WorkspacePage(props: Props) {
           }
           registerPieceElement={puzzle.registerPieceElement}
           onSetPinching={(v) => {
-            viewport.setIsPinching(v);
+            viewport.setTouchGestureActive(v);
             if (v) {
-              viewport.cancelPan();
-              imageOverlay.handleDragEnd();
-              const l = layout();
-              if (l) {
-                const threshold = Math.min(l.pieceWidth, l.pieceHeight) * 0.22;
-                puzzle.handleDragEnd(threshold);
-              }
+              imageOverlay.cancelDrag();
+              puzzle.cancelDrag();
+              puzzle.clearSelection();
             }
           }}
         />

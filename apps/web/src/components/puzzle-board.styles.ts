@@ -161,23 +161,27 @@ export const imageOverlayToolbar = css({
   zIndex: 100,
   display: "flex",
   alignItems: "center",
-  gap: "1px",
+  gap: "2px",
   background: "glass.strong",
   backdropFilter: "blur(18px) saturate(160%)",
   border: "1px solid {colors.glass.border}",
   borderRadius: "10px",
-  padding: "3px 6px",
+  padding: "4px 6px",
   transform: "translateX(-50%)",
   pointerEvents: "all",
   whiteSpace: "nowrap",
   boxShadow: "glass",
   color: "glass.text",
+  md: {
+    gap: "1px",
+    padding: "3px 6px",
+  },
 });
 
 export const toolbarBtn = css({
-  width: "28px",
-  height: "28px",
-  minHeight: "unset",
+  width: "44px",
+  height: "44px",
+  minHeight: "44px",
   padding: 0,
   borderRadius: "7px",
   background: "transparent",
@@ -197,6 +201,11 @@ export const toolbarBtn = css({
     },
   },
   _active: { _enabled: { transform: "none" } },
+  md: {
+    width: "28px",
+    height: "28px",
+    minHeight: "unset",
+  },
 });
 
 export const toolbarBtnActive = css({
@@ -217,7 +226,12 @@ export const toolbarOpacityGroup = css({
   display: "flex",
   alignItems: "center",
   gap: "7px",
-  padding: "0 7px 0 5px",
+  minHeight: "44px",
+  padding: "0 9px 0 7px",
+  md: {
+    minHeight: "auto",
+    padding: "0 7px 0 5px",
+  },
 });
 
 export const toolbarLabel = css({
@@ -230,13 +244,17 @@ export const toolbarLabel = css({
 export const toolbarSlider = css({
   WebkitAppearance: "none",
   appearance: "none",
-  width: "88px",
-  height: "20px",
+  width: "132px",
+  height: "44px",
   outline: "none",
   border: "none",
   cursor: "pointer",
   flexShrink: 0,
   background: "transparent",
+  md: {
+    width: "88px",
+    height: "20px",
+  },
   "&::-webkit-slider-runnable-track": {
     height: "3px",
     borderRadius: "2px",

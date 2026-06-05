@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createSignal, onCleanup } from "solid-js";
 import type { ChannelMessage } from "@open-jigsaw-puzzle/shared/protocol";
 import type { PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 
@@ -22,6 +22,12 @@ export function useImageOverlay({ broadcast }: Props) {
   let lockedNow = false;
   let opacityNow = 1;
   let dragging: DragState | null = null;
+  let pendingDragPosition: Position | null = null;
+  let dragFrame: number | null = null;
+
+  onCleanup(() => {
+    if (dragFrame !== null) cancelAnimationFrame(dragFrame);
+  });
 
   function broadcast_({ x, y }: Position) {
     broadcast({ type: "image-overlay", x, y, locked: lockedNow, opacity: opacityNow });
@@ -67,8 +73,7 @@ export function useImageOverlay({ broadcast }: Props) {
       x: dragging.originX + pointer.x - dragging.startX,
       y: dragging.originY + pointer.y - dragging.startY,
     };
-    commitPosition(pos);
-    broadcast_(pos);
+    scheduleDragPosition(pos);
   }
 
   function moveBy(deltaX: number, deltaY: number) {
@@ -81,7 +86,44 @@ export function useImageOverlay({ broadcast }: Props) {
 
   function handleDragEnd(pointerId?: number) {
     if (pointerId !== undefined && dragging && pointerId !== dragging.pointerId) return;
+    flushDragPosition();
     dragging = null;
+  }
+
+  function cancelDrag(pointerId?: number) {
+    if (!dragging) return false;
+    if (pointerId !== undefined && pointerId !== dragging.pointerId) return false;
+    clearPendingDragPosition();
+    const pos = { x: dragging.originX, y: dragging.originY };
+    dragging = null;
+    commitPosition(pos);
+    broadcast_(pos);
+    return true;
+  }
+
+  function scheduleDragPosition(pos: Position) {
+    pendingDragPosition = pos;
+    if (dragFrame !== null) return;
+    dragFrame = requestAnimationFrame(() => {
+      dragFrame = null;
+      flushDragPosition();
+    });
+  }
+
+  function flushDragPosition() {
+    const pos = pendingDragPosition;
+    pendingDragPosition = null;
+    if (!pos) return;
+    commitPosition(pos);
+    broadcast_(pos);
+  }
+
+  function clearPendingDragPosition() {
+    pendingDragPosition = null;
+    if (dragFrame !== null) {
+      cancelAnimationFrame(dragFrame);
+      dragFrame = null;
+    }
   }
 
   function toggleLock() {
@@ -120,6 +162,7 @@ export function useImageOverlay({ broadcast }: Props) {
     handleDragMove,
     moveBy,
     handleDragEnd,
+    cancelDrag,
     toggleLock,
     changeOpacity,
     handleMessage,

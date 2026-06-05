@@ -27,6 +27,17 @@ describe("useViewport pointer ownership", () => {
 
     expect(api.panning()).toBeNull();
   });
+
+  it("allows a new one-finger pan after a multi-touch camera gesture ends", () => {
+    const { api, viewport } = setupViewport();
+
+    api.setTouchGestureActive(true);
+    api.setTouchGestureActive(false);
+
+    api.handleViewportPointerDown(pointerEvent({ pointerId: 2, currentTarget: viewport, target: viewport }));
+
+    expect(api.panning()?.pointerId).toBe(2);
+  });
 });
 
 describe("useViewport coordinates and zoom", () => {
@@ -66,6 +77,14 @@ describe("useViewport coordinates and zoom", () => {
 
     expect(api.zoom()).toBe(1.6);
     expect(api.pan()).toEqual({ x: -80, y: -70 });
+  });
+
+  it("keeps small pinch zoom changes instead of rounding them away", () => {
+    const { api } = setupViewport();
+
+    api.applyPinch(1.006, 100, 100, 100, 100);
+
+    expect(api.zoom()).toBeCloseTo(0.8048);
   });
 });
 
