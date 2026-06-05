@@ -409,6 +409,7 @@ export function WorkspacePage(props: Props) {
             if (v) {
               imageOverlay.cancelDrag();
               puzzle.cancelDrag();
+              puzzle.clearSelection();
             }
           }}
         />

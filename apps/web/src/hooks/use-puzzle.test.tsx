@@ -141,6 +141,36 @@ describe("usePuzzle local drag", () => {
       y: start.y,
     });
   });
+
+  it("clears piece and image selections when a touch gesture takes over", async () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const broadcasts: ChannelMessage[] = [];
+    const { api } = setupPuzzle({ layout, broadcast: (message) => broadcasts.push(message) });
+
+    api.setNewPieces(layout);
+    const { piece } = registerPieceElement(api, 0);
+    api.handlePointerDown(
+      makePointerEvent({ pointerId: 7, pointerType: "touch", clientX: 10, clientY: 15 }),
+      piece,
+      () => ({ x: piece.x, y: piece.y }),
+      50,
+    );
+
+    expect(api.selectedPieceIds().has(0)).toBe(true);
+
+    api.cancelDrag();
+    api.clearSelection();
+
+    expect(api.selectedPieceIds()).toEqual(new Set());
+    expect(api.imageOverlaySelected()).toBe(false);
+    await flushAnimationFrames();
+    expect([...broadcasts].reverse().find((message) => message.type === "selection-presence")).toEqual({
+      type: "selection-presence",
+      participantId: "local",
+      pieceIds: [],
+      imageOverlaySelected: false,
+    });
+  });
 });
 
 type RenderOptions = {
