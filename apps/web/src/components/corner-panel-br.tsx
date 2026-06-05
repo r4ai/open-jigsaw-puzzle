@@ -10,15 +10,15 @@ const root = css({
   display: "flex",
   flexDirection: "column",
   alignItems: "stretch",
-  padding: "4px",
-  gap: "2px",
+  padding: "6px",
+  gap: "4px",
   md: { bottom: "10px", right: "10px" },
 });
 
 const fitBtn = css({
-  height: "28px",
-  minHeight: "28px",
-  padding: "0 8px",
+  height: "44px",
+  minHeight: "44px",
+  padding: "0 10px",
   background: "transparent",
   border: "1px solid transparent",
   color: "glass.textDim",
@@ -33,8 +33,12 @@ const fitBtn = css({
       opacity: 1,
     },
   },
-  display: "none",
-  sm: { display: "flex" },
+  display: "flex",
+  md: {
+    height: "28px",
+    minHeight: "28px",
+    padding: "0 8px",
+  },
 });
 
 type Props = {

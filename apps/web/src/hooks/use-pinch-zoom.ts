@@ -46,7 +46,11 @@ export function usePinchZoom(props: Props) {
         prevMidY = midY;
         prevDist = dist;
         e.preventDefault();
+        e.stopPropagation();
         props.onSetPinching(true);
+      } else if (touches.size > 2) {
+        e.preventDefault();
+        e.stopPropagation();
       }
     }
 
@@ -56,6 +60,7 @@ export function usePinchZoom(props: Props) {
       if (touches.size < 2) return;
       const { midX, midY, dist } = midAndDist();
       e.preventDefault();
+      e.stopPropagation();
       if (prevDist <= 0 || dist <= 0) {
         prevMidX = midX;
         prevMidY = midY;
@@ -80,15 +85,15 @@ export function usePinchZoom(props: Props) {
       if (touches.size < 2) props.onSetPinching(false);
     }
 
-    el.addEventListener("pointerdown", onDown);
-    el.addEventListener("pointermove", onMove);
-    el.addEventListener("pointerup", onUp);
-    el.addEventListener("pointercancel", onUp);
+    el.addEventListener("pointerdown", onDown, { capture: true });
+    el.addEventListener("pointermove", onMove, { capture: true });
+    el.addEventListener("pointerup", onUp, { capture: true });
+    el.addEventListener("pointercancel", onUp, { capture: true });
     onCleanup(() => {
-      el.removeEventListener("pointerdown", onDown);
-      el.removeEventListener("pointermove", onMove);
-      el.removeEventListener("pointerup", onUp);
-      el.removeEventListener("pointercancel", onUp);
+      el.removeEventListener("pointerdown", onDown, { capture: true });
+      el.removeEventListener("pointermove", onMove, { capture: true });
+      el.removeEventListener("pointerup", onUp, { capture: true });
+      el.removeEventListener("pointercancel", onUp, { capture: true });
     });
   });
 }

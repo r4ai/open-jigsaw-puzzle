@@ -41,9 +41,12 @@ import {
 
 type DragState = {
   pointerId: number;
+  pointerType: string;
+  startClient: { x: number; y: number };
   pieceIds: number[];
   startPointer: { x: number; y: number };
   startPieces: Map<number, BoardPiece>;
+  committed: boolean;
   lastDeltaX: number;
   lastDeltaY: number;
   moveImageOverlay: boolean;
@@ -65,6 +68,7 @@ export type RemoteSelection = {
 };
 type BatchedPieceMove = Extract<ChannelMessage, { type: "piece-moves" }>["moves"][number];
 type BatchedPieceLock = Extract<ChannelMessage, { type: "piece-locks" }>["locks"][number];
+const TOUCH_DRAG_THRESHOLD_PX = 6;
 
 type Props = {
   broadcast: (msg: ChannelMessage) => void;
@@ -393,9 +397,12 @@ export function usePuzzle(props: Props) {
     }
     dragging = {
       pointerId: event.pointerId,
+      pointerType: event.pointerType,
+      startClient: { x: event.clientX, y: event.clientY },
       pieceIds: [...activePieceIds],
       startPointer: pointer,
       startPieces,
+      committed: event.pointerType !== "touch",
       lastDeltaX: 0,
       lastDeltaY: 0,
       moveImageOverlay: nextSelection.imageOverlaySelected,
@@ -438,9 +445,12 @@ export function usePuzzle(props: Props) {
       bringSelectionToFront(nextSelection.pieceIds);
       dragging = {
         pointerId: event.pointerId,
+        pointerType: event.pointerType,
+        startClient: { x: event.clientX, y: event.clientY },
         pieceIds: [...nextSelection.pieceIds],
         startPointer: pointer,
         startPieces,
+        committed: event.pointerType !== "touch",
         lastDeltaX: 0,
         lastDeltaY: 0,
         moveImageOverlay: false,
@@ -458,6 +468,17 @@ export function usePuzzle(props: Props) {
     if (event.pointerId !== dragging.pointerId) return;
     const pointer = getPoint(event);
     if (!pointer) return;
+    if (!dragging.committed) {
+      const clientDistance = Math.hypot(
+        event.clientX - dragging.startClient.x,
+        event.clientY - dragging.startClient.y,
+      );
+      if (dragging.pointerType === "touch" && clientDistance < TOUCH_DRAG_THRESHOLD_PX) {
+        event.preventDefault();
+        return;
+      }
+      dragging.committed = true;
+    }
     dragMargin = margin;
     const deltaX = pointer.x - dragging.startPointer.x;
     const deltaY = pointer.y - dragging.startPointer.y;
@@ -514,6 +535,10 @@ export function usePuzzle(props: Props) {
     }
     flushPendingDragMove();
     dragging = null;
+    if (!ended.committed) {
+      livePieceTransforms.clear();
+      return;
+    }
     const live = new Map(livePieceTransforms);
     livePieceTransforms.clear();
     updatePieces((cur) => {
@@ -550,6 +575,30 @@ export function usePuzzle(props: Props) {
       rememberMove(ended.startPieces, next);
       return next;
     });
+  }
+
+  function cancelDrag(pointerId?: number): boolean {
+    if (!dragging) return false;
+    if (pointerId !== undefined && pointerId !== dragging.pointerId) return false;
+    const canceled = dragging;
+    if (dragFrame !== null) {
+      cancelAnimationFrame(dragFrame);
+      dragFrame = null;
+    }
+    pendingDragMove = null;
+    dragging = null;
+
+    const rollbacks: BatchedPieceMove[] = [];
+    for (const [id, startPiece] of canceled.startPieces) {
+      livePieceTransforms.delete(id);
+      setPieceDomTransform(id, startPiece.x, startPiece.y);
+      if (canceled.committed) {
+        rollbacks.push({ pieceId: id, x: startPiece.x, y: startPiece.y, z: startPiece.z });
+      }
+    }
+    livePieceTransforms.clear();
+    publishPieceMoves(rollbacks);
+    return true;
   }
 
   function handleSelectionBoxPointerDown(
@@ -735,6 +784,7 @@ export function usePuzzle(props: Props) {
     applySyncedPieces,
     organizePieces,
     clearSelection,
+    cancelDrag,
     handlePointerDown,
     handleImageOverlayPointerDown,
     handleDragMove,

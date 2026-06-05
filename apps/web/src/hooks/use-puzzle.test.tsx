@@ -89,6 +89,58 @@ describe("usePuzzle local drag", () => {
     expect(api.pieces()[0]?.x).toBeCloseTo(start.x + 30);
     expect(api.pieces()[0]?.y).toBeCloseTo(start.y + 40);
   });
+
+  it("does not broadcast a touch tap with only tiny movement", async () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const broadcasts: ChannelMessage[] = [];
+    const { api } = setupPuzzle({ layout, broadcast: (message) => broadcasts.push(message) });
+
+    api.setNewPieces(layout);
+    const { piece } = registerPieceElement(api, 0);
+
+    dragPiece(api, piece, {
+      pointerId: 7,
+      pointerType: "touch",
+      startPoint: { x: 0, y: 0 },
+      nextPoint: { x: 2, y: 3 },
+      margin: 50,
+    });
+    await flushAnimationFrames();
+
+    expect(broadcasts.some((message) => message.type === "piece-move" || message.type === "piece-moves")).toBe(false);
+    api.handleDragEnd(1, 7);
+    expect(api.pieces()[0]).toMatchObject({ x: piece.x, y: piece.y });
+  });
+
+  it("cancels an active drag without committing or snapping the piece", async () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const broadcasts: ChannelMessage[] = [];
+    const { api } = setupPuzzle({ layout, broadcast: (message) => broadcasts.push(message) });
+
+    api.setNewPieces(layout);
+    const { piece, pieceEl } = registerPieceElement(api, 0);
+    const start = { x: piece.x, y: piece.y };
+
+    dragPiece(api, piece, {
+      pointerId: 7,
+      pointerType: "touch",
+      startPoint: { x: 0, y: 0 },
+      nextPoint: { x: 30, y: 40 },
+      margin: 50,
+    });
+    await flushAnimationFrames();
+
+    api.cancelDrag();
+
+    expect(api.pieces()[0]).toMatchObject(start);
+    expect(pieceEl.style.transform).toBe(`translate3d(${50 + start.x}px, ${50 + start.y}px, 0)`);
+    expect(broadcasts.at(-1)).toMatchObject({
+      type: "piece-move",
+      pieceId: 0,
+      x: start.x,
+      y: start.y,
+    });
+  });
 });
 
 type RenderOptions = {
@@ -122,31 +174,33 @@ function dragPiece(
   piece: NonNullable<ReturnType<PuzzleApi["pieces"]>[number]>,
   options: {
     pointerId: number;
+    pointerType?: "mouse" | "pen" | "touch";
     startPoint: { x: number; y: number };
     nextPoint: { x: number; y: number };
     margin: number;
   },
 ): void {
   api.handlePointerDown(
-    makePointerEvent({ pointerId: options.pointerId, clientX: options.startPoint.x, clientY: options.startPoint.y }),
+    makePointerEvent({ pointerId: options.pointerId, pointerType: options.pointerType, clientX: options.startPoint.x, clientY: options.startPoint.y }),
     piece,
     () => options.startPoint,
     options.margin,
   );
   api.handleDragMove(
-    makePointerEvent({ pointerId: options.pointerId, clientX: options.nextPoint.x, clientY: options.nextPoint.y }),
+    makePointerEvent({ pointerId: options.pointerId, pointerType: options.pointerType, clientX: options.nextPoint.x, clientY: options.nextPoint.y }),
     () => options.nextPoint,
     options.margin,
   );
 }
 
-function makePointerEvent(init: { pointerId: number; clientX: number; clientY: number }): PointerEvent {
+function makePointerEvent(init: { pointerId: number; pointerType?: "mouse" | "pen" | "touch"; clientX: number; clientY: number }): PointerEvent {
   return {
     button: 0,
     shiftKey: false,
     ctrlKey: false,
     metaKey: false,
     pointerId: init.pointerId,
+    pointerType: init.pointerType ?? "mouse",
     clientX: init.clientX,
     clientY: init.clientY,
     preventDefault: () => {},

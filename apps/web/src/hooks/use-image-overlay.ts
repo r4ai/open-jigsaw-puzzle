@@ -84,6 +84,16 @@ export function useImageOverlay({ broadcast }: Props) {
     dragging = null;
   }
 
+  function cancelDrag(pointerId?: number) {
+    if (!dragging) return false;
+    if (pointerId !== undefined && pointerId !== dragging.pointerId) return false;
+    const pos = { x: dragging.originX, y: dragging.originY };
+    dragging = null;
+    commitPosition(pos);
+    broadcast_(pos);
+    return true;
+  }
+
   function toggleLock() {
     lockedNow = !lockedNow;
     setLocked(lockedNow);
@@ -120,6 +130,7 @@ export function useImageOverlay({ broadcast }: Props) {
     handleDragMove,
     moveBy,
     handleDragEnd,
+    cancelDrag,
     toggleLock,
     changeOpacity,
     handleMessage,

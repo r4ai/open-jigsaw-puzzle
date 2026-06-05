@@ -55,6 +55,21 @@ describe("useImageOverlay", () => {
     expect(result.isDragging()).toBe(false);
   });
 
+  it("cancels a drag back to its origin", () => {
+    const broadcasts: ChannelMessage[] = [];
+    const target = { setPointerCapture: vi.fn() };
+    const { result } = renderHook(() => useImageOverlay({ broadcast: (message) => broadcasts.push(message) }));
+
+    result.initPosition(layout);
+    result.handlePointerDown(pointerEvent(7, 10, 15, target), point);
+    result.handleDragMove(pointerEvent(7, 15, 25, target), point);
+
+    expect(result.cancelDrag(7)).toBe(true);
+    expect(result.isDragging()).toBe(false);
+    expect(result.position()).toEqual({ x: 220, y: 0 });
+    expect(broadcasts.at(-1)).toEqual({ type: "image-overlay", x: 220, y: 0, locked: false, opacity: 1 });
+  });
+
   it("applies remote overlay state", () => {
     const { result } = renderHook(() => useImageOverlay({ broadcast: () => {} }));
 

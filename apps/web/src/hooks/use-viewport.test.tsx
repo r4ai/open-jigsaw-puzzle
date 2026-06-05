@@ -27,6 +27,18 @@ describe("useViewport pointer ownership", () => {
 
     expect(api.panning()).toBeNull();
   });
+
+  it("suppresses the remaining touch after a multi-touch camera gesture", () => {
+    const { api, viewport } = setupViewport();
+
+    api.setTouchGestureActive(true);
+    api.setTouchGestureActive(false);
+
+    api.handleViewportPointerDown(pointerEvent({ pointerId: 2, currentTarget: viewport, target: viewport }));
+
+    expect(api.panning()).toBeNull();
+    expect(api.consumeTouchGestureSuppression(2)).toBe(false);
+  });
 });
 
 describe("useViewport coordinates and zoom", () => {

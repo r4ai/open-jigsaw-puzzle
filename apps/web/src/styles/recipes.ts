@@ -22,9 +22,9 @@ export const glassPanel = cva({
 /** Square icon button used inside glass overlays. */
 export const glassIconButton = cva({
   base: {
-    width: "36px",
-    height: "36px",
-    minHeight: "36px",
+    width: "44px",
+    height: "44px",
+    minHeight: "44px",
     padding: 0,
     background: "transparent",
     border: "1px solid transparent",
@@ -41,6 +41,11 @@ export const glassIconButton = cva({
       },
     },
     _disabled: { opacity: 0.4 },
+    md: {
+      width: "36px",
+      height: "36px",
+      minHeight: "36px",
+    },
   },
   variants: {
     active: {
