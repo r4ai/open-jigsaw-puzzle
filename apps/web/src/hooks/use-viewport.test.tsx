@@ -28,7 +28,7 @@ describe("useViewport pointer ownership", () => {
     expect(api.panning()).toBeNull();
   });
 
-  it("suppresses the remaining touch after a multi-touch camera gesture", () => {
+  it("allows a new one-finger pan after a multi-touch camera gesture ends", () => {
     const { api, viewport } = setupViewport();
 
     api.setTouchGestureActive(true);
@@ -36,8 +36,7 @@ describe("useViewport pointer ownership", () => {
 
     api.handleViewportPointerDown(pointerEvent({ pointerId: 2, currentTarget: viewport, target: viewport }));
 
-    expect(api.panning()).toBeNull();
-    expect(api.consumeTouchGestureSuppression(2)).toBe(false);
+    expect(api.panning()?.pointerId).toBe(2);
   });
 });
 

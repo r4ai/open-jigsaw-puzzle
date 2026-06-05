@@ -24,7 +24,6 @@ export function useViewport() {
   let pendingPan: PanOffset | null = null;
   let panFrame: number | null = null;
   let isPinching = false;
-  let suppressTouchAfterGesture = false;
   let panningNow: PanState | null = null;
 
   onCleanup(() => {
@@ -100,10 +99,6 @@ export function useViewport() {
   }
 
   function handleViewportPointerDown(event: PointerEvent) {
-    if (event.pointerType === "touch" && consumeTouchGestureSuppression(event.pointerId)) {
-      event.preventDefault();
-      return;
-    }
     if (isPinching) return;
     if (!shouldStartViewportPan(event.button, event.target)) return;
     if (!viewportEl) return;
@@ -164,17 +159,8 @@ export function useViewport() {
   function setTouchGestureActive(active: boolean) {
     isPinching = active;
     if (active) {
-      suppressTouchAfterGesture = false;
       cancelPan();
-      return;
     }
-    suppressTouchAfterGesture = true;
-  }
-
-  function consumeTouchGestureSuppression(_pointerId?: number): boolean {
-    if (!suppressTouchAfterGesture) return false;
-    suppressTouchAfterGesture = false;
-    return true;
   }
 
   return {
@@ -187,7 +173,6 @@ export function useViewport() {
     getIsPinching: () => isPinching,
     setIsPinching: (v: boolean) => { isPinching = v; },
     setTouchGestureActive,
-    consumeTouchGestureSuppression,
     getWorkspacePoint,
     changeZoom,
     resetZoom,

@@ -376,7 +376,7 @@ export function WorkspacePage(props: Props) {
           onChangeImageOpacity={(v) => imageOverlay.changeOpacity(v)}
           onImageOverlayPointerDown={(e) => {
             if (e.button !== 0) return;
-            if (viewport.getIsPinching() || viewport.consumeTouchGestureSuppression(e.pointerId)) {
+            if (viewport.getIsPinching()) {
               e.preventDefault();
               e.stopPropagation();
               return;
@@ -387,7 +387,7 @@ export function WorkspacePage(props: Props) {
               imageOverlay.handlePointerDown(e, viewport.getWorkspacePoint);
           }}
           onPiecePointerDown={(e, piece) => {
-            if (viewport.getIsPinching() || viewport.consumeTouchGestureSuppression(e.pointerId)) {
+            if (viewport.getIsPinching()) {
               e.preventDefault();
               e.stopPropagation();
               return;

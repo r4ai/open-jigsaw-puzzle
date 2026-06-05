@@ -127,7 +127,7 @@ describe("usePinchZoom", () => {
     expect(api!.panning()?.pointerId).toBe(2);
   });
 
-  it("suppresses only the leftover touch after a two-finger camera gesture", () => {
+  it("allows the next one-finger viewport pan after a two-finger camera gesture", () => {
     let viewport: HTMLDivElement | undefined;
     let api!: ReturnType<typeof useViewport>;
 
@@ -161,10 +161,6 @@ describe("usePinchZoom", () => {
     viewport!.dispatchEvent(pointerEvent("pointerdown", 1, 100, 100));
     viewport!.dispatchEvent(pointerEvent("pointerdown", 2, 200, 100));
     viewport!.dispatchEvent(pointerEvent("pointerup", 2, 200, 100));
-    viewport!.dispatchEvent(pointerEvent("pointerdown", 1, 120, 100));
-
-    expect(api!.panning()).toBeNull();
-
     viewport!.dispatchEvent(pointerEvent("pointerup", 1, 120, 100));
     viewport!.dispatchEvent(pointerEvent("pointerdown", 3, 140, 140));
 
