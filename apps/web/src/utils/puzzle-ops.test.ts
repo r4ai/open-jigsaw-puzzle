@@ -205,6 +205,32 @@ describe("piece connection helpers", () => {
       layout.cols,
     ]);
   });
+
+  it("does not connect pieces that are visually adjacent but not layout neighbors", () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const pieces = createInitialPieces(layout).map((piece) => {
+      if (piece.id === 0) return { ...piece, x: 1800, y: 1400 };
+      if (piece.id === 2) return { ...piece, x: 1800 + layout.pieceWidth, y: 1400 };
+      return piece;
+    });
+
+    expect([...getConnectedLoosePieceIds(pieces, new Set([0]), layout)]).toEqual([0]);
+  });
+
+  it("collects a large snapped loose cluster through layout neighbors", () => {
+    const layout = createPuzzleLayout(2000, 1280, 720);
+    const pieces = createInitialPieces(layout).map((piece) => {
+      if (piece.id >= 500) return piece;
+      const geometry = layout.pieces[piece.id]!;
+      return {
+        ...piece,
+        x: 2000 + geometry.col * layout.pieceWidth,
+        y: 1600 + geometry.row * layout.pieceHeight,
+      };
+    });
+
+    expect(getConnectedLoosePieceIds(pieces, new Set([0]), layout).size).toBe(500);
+  });
 });
 
 function seededRandom(seed: number): () => number {

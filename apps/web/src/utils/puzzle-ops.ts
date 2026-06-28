@@ -173,7 +173,9 @@ export function getConnectedLoosePieceIds(
     const piece = pieceById.get(pieceId);
     if (!piece) continue;
 
-    for (const candidate of pieces) {
+    for (const candidateId of getLayoutNeighborIds(piece.id, layout)) {
+      const candidate = pieceById.get(candidateId);
+      if (!candidate) continue;
       if (candidate.locked || connected.has(candidate.id)) continue;
       if (!areSnappedNeighbors(piece, candidate, layout, tolerance)) continue;
       connected.add(candidate.id);
@@ -202,8 +204,9 @@ export function snapLoosePiecesToNeighbors(
   for (const moved of pieces) {
     if (!movableIds.has(moved.id)) continue;
 
-    for (const anchor of pieces) {
-      if (movableIds.has(anchor.id) || !areLayoutNeighbors(moved.id, anchor.id, layout)) continue;
+    for (const anchorId of getLayoutNeighborIds(moved.id, layout)) {
+      const anchor = pieceById.get(anchorId);
+      if (!anchor || movableIds.has(anchor.id)) continue;
       const expectedX = anchor.x + moved.targetX - anchor.targetX;
       const expectedY = anchor.y + moved.targetY - anchor.targetY;
       const deltaX = expectedX - moved.x;
@@ -367,6 +370,17 @@ function areLayoutNeighbors(aId: number, bId: number, layout: PuzzleLayout): boo
   const b = layout.pieces[bId];
   if (!a || !b || a.id !== aId || b.id !== bId) return false;
   return Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1;
+}
+
+function getLayoutNeighborIds(pieceId: number, layout: PuzzleLayout): number[] {
+  const piece = layout.pieces[pieceId];
+  if (!piece || piece.id !== pieceId) return [];
+  const ids: number[] = [];
+  if (piece.row > 0) ids.push(pieceId - layout.cols);
+  if (piece.col < layout.cols - 1) ids.push(pieceId + 1);
+  if (piece.row < layout.rows - 1) ids.push(pieceId + layout.cols);
+  if (piece.col > 0) ids.push(pieceId - 1);
+  return ids;
 }
 
 function shuffle<T>(items: T[], rng: () => number): T[] {

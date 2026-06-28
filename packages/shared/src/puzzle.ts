@@ -214,7 +214,7 @@ function createScatterSlots(layout: PuzzleLayout, margin: number, gap: number, s
   const required = layout.pieces.length;
   const padding = Math.max(4, Math.min(layout.pieceWidth, layout.pieceHeight) * 0.06);
   const slotsTarget = Math.ceil(required * 1.35);
-  const maxAttempts = required * 90;
+  const maxAttempts = required * 24;
   const spatialIndex = createSlotSpatialIndex(layout, padding);
   const slots: Array<{ x: number; y: number; sort: number }> = [];
 
