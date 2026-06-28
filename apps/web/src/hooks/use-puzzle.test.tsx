@@ -173,9 +173,150 @@ describe("usePuzzle local drag", () => {
   });
 });
 
+describe("usePuzzle state sync", () => {
+  it("records the host start time and merges synced pieces", () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const { api } = setupPuzzle({ layout, isHost: false });
+
+    api.setNewPieces(layout);
+    expect(api.getStartedAtMs()).toBeNull();
+
+    api.handleMessage("peer-1", {
+      type: "state-sync",
+      by: "peer-1",
+      startedAtMs: 12_345,
+      lockedCount: 1,
+      pieces: [{ id: 0, x: 5, y: 6, z: 7, locked: true }],
+    });
+
+    expect(api.getStartedAtMs()).toBe(12_345);
+    expect(api.pieces()[0]).toMatchObject({ x: 5, y: 6, z: 7, locked: true });
+    expect(api.pieces()[1]?.locked).toBe(false);
+  });
+
+  it("buffers a sync received before pieces exist and applies it on the next image", () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const { api } = setupPuzzle({ layout, isHost: false });
+
+    api.handleMessage("peer-1", {
+      type: "state-sync",
+      by: "peer-1",
+      startedAtMs: 999,
+      lockedCount: 0,
+      pieces: [{ id: 0, x: 21, y: 22, z: 23, locked: false }],
+    });
+    expect(api.pieces()).toHaveLength(0);
+
+    api.receiveImage(layout);
+
+    expect(api.pieces()).toHaveLength(layout.pieces.length);
+    expect(api.pieces()[0]).toMatchObject({ x: 21, y: 22, z: 23 });
+  });
+});
+
+describe("usePuzzle remote presence", () => {
+  it("brings a piece to front via piece-front without touching other fields", () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const { api } = setupPuzzle({ layout });
+
+    api.setNewPieces(layout);
+    const before = api.pieces()[2]!;
+    api.handleMessage("peer-1", { type: "piece-front", by: "peer-1", pieceId: 2, z: 999 });
+
+    expect(api.pieces()[2]).toMatchObject({ x: before.x, y: before.y, z: 999, locked: before.locked });
+  });
+
+  it("upserts and removes a remote selection", () => {
+    const { api } = setupPuzzle();
+
+    api.handleMessage("peer-2", {
+      type: "selection-presence",
+      participantId: "peer-2",
+      pieceIds: [1, 3],
+      imageOverlaySelected: true,
+    });
+    expect(api.remoteSelections()).toEqual([
+      { participantId: "peer-2", pieceIds: [1, 3], imageOverlaySelected: true },
+    ]);
+
+    api.handleMessage("peer-2", {
+      type: "selection-presence",
+      participantId: "peer-2",
+      pieceIds: [4],
+      imageOverlaySelected: false,
+    });
+    expect(api.remoteSelections()).toEqual([
+      { participantId: "peer-2", pieceIds: [4], imageOverlaySelected: false },
+    ]);
+
+    api.removeRemoteSelection("peer-2");
+    expect(api.remoteSelections()).toEqual([]);
+  });
+
+  it("keeps the first completion time and ignores later ones", () => {
+    const { api } = setupPuzzle({ isHost: false });
+
+    api.handleMessage("peer-1", { type: "puzzle-completed", by: "peer-1", elapsedMs: 9_999 });
+    expect(api.clearedElapsedMs()).toBe(9_999);
+
+    api.handleMessage("peer-1", { type: "puzzle-completed", by: "peer-1", elapsedMs: 5_555 });
+    expect(api.clearedElapsedMs()).toBe(9_999);
+  });
+});
+
+describe("usePuzzle history", () => {
+  it("undoes a committed drag and restores the original position", async () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const { api } = setupPuzzle({ layout });
+
+    api.setNewPieces(layout);
+    const { piece } = registerPieceElement(api, 0);
+    const start = { x: piece.x, y: piece.y };
+
+    dragPiece(api, piece, { pointerId: 7, startPoint: { x: 0, y: 0 }, nextPoint: { x: 30, y: 40 }, margin: 50 });
+    await flushAnimationFrames();
+    api.handleDragEnd(1, 7);
+    expect(api.pieces()[0]?.x).toBeCloseTo(start.x + 30);
+
+    expect(api.undoLastMove()).toBe("applied");
+    expect(api.pieces()[0]).toMatchObject(start);
+  });
+
+  it("blocks undo once a remote move advances the version", async () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const { api } = setupPuzzle({ layout });
+
+    api.setNewPieces(layout);
+    const { piece } = registerPieceElement(api, 0);
+
+    dragPiece(api, piece, { pointerId: 7, startPoint: { x: 0, y: 0 }, nextPoint: { x: 30, y: 40 }, margin: 50 });
+    await flushAnimationFrames();
+    api.handleDragEnd(1, 7);
+
+    api.handleMessage("peer-1", { type: "piece-move", by: "peer-1", pieceId: 5, x: 1, y: 2, z: 3 });
+
+    expect(api.undoLastMove()).toBe("blocked");
+  });
+});
+
+describe("usePuzzle organize", () => {
+  it("broadcasts a state-sync when arranging loose pieces", () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const broadcasts: ChannelMessage[] = [];
+    const { api } = setupPuzzle({ layout, broadcast: (message) => broadcasts.push(message) });
+
+    api.setNewPieces(layout);
+    broadcasts.length = 0;
+    api.organizePieces(layout);
+
+    expect(broadcasts.some((message) => message.type === "state-sync")).toBe(true);
+  });
+});
+
 type RenderOptions = {
   layout?: PuzzleLayout | null;
   broadcast?: (msg: ChannelMessage) => void;
+  isHost?: boolean;
 };
 
 function setupPuzzle(options: RenderOptions = {}): { api: PuzzleApi } {
@@ -183,7 +324,7 @@ function setupPuzzle(options: RenderOptions = {}): { api: PuzzleApi } {
     usePuzzle({
       broadcast: options.broadcast ?? ((_msg: ChannelMessage) => {}),
       myId: () => "local",
-      isHost: () => true,
+      isHost: () => options.isHost ?? true,
       layout: () => options.layout ?? null,
     }),
   );
