@@ -47,6 +47,7 @@ import {
   type RemoteSelection,
   type SelectionBoxState,
 } from "./puzzle/types";
+import { reduceMessage, type SyncCommand } from "./puzzle/message-reducer";
 
 export type { RemoteSelection };
 
@@ -627,87 +628,57 @@ export function usePuzzle(props: Props) {
     return true;
   }
 
-  function handleMessage(_from: string, msg: ChannelMessage) {
-    switch (msg.type) {
-      case "piece-move":
-        if (msg.by !== props.myId()) remoteMoveVersion += 1;
-        props.onPieceMoved?.(msg.by);
-        updatePieces((cur) =>
-          updatePieceById(cur, msg.pieceId, (piece) => {
-            if (piece.locked) return piece;
-            const { x, y } = constrainPosition(msg.pieceId, msg.x, msg.y);
-            return { ...piece, x, y, z: msg.z };
-          }),
-        );
+  function upsertRemoteSelection(selection: RemoteSelection) {
+    setRemoteSelections((cur) => {
+      const exists = cur.some((s) => s.participantId === selection.participantId);
+      return exists
+        ? cur.map((s) => (s.participantId === selection.participantId ? selection : s))
+        : [...cur, selection];
+    });
+  }
+
+  function setStartedAtMsIfUnset(ms: number) {
+    if (startedAtMs === null) startedAtMs = ms;
+  }
+
+  function markCleared(elapsedMs: number) {
+    if (clearedElapsedMsNow !== null) return;
+    clearedElapsedMsNow = elapsedMs;
+    setClearedElapsedMs(elapsedMs);
+  }
+
+  function runSyncCommand(command: SyncCommand) {
+    switch (command.kind) {
+      case "bumpRemoteVersion":
+        remoteMoveVersion += 1;
         break;
-      case "piece-moves":
-        if (msg.by !== props.myId()) remoteMoveVersion += 1;
-        props.onPieceMoved?.(msg.by);
-        updatePieces((cur) => {
-          const movesById = new Map(msg.moves.map((move) => [move.pieceId, move]));
-          return cur.map((piece) => {
-            const move = movesById.get(piece.id);
-            if (!move || piece.locked) return piece;
-            const { x, y } = constrainPosition(move.pieceId, move.x, move.y);
-            return { ...piece, x, y, z: move.z };
-          });
-        });
+      case "notifyMoved":
+        props.onPieceMoved?.(command.by);
         break;
-      case "piece-lock":
-        if (msg.by !== props.myId()) remoteMoveVersion += 1;
-        props.onPieceLocked?.(msg.by);
-        updatePieces((cur) =>
-          updatePieceById(cur, msg.pieceId, (piece) => {
-            const { x, y } = constrainPosition(msg.pieceId, msg.x, msg.y);
-            return { ...piece, x, y, z: msg.z, locked: true };
-          }),
-        );
+      case "notifyLocked":
+        props.onPieceLocked?.(command.by);
         break;
-      case "piece-locks":
-        if (msg.by !== props.myId()) remoteMoveVersion += 1;
-        props.onPieceLocked?.(msg.by);
-        updatePieces((cur) => {
-          const locksById = new Map(msg.locks.map((lock) => [lock.pieceId, lock]));
-          return cur.map((piece) => {
-            const lock = locksById.get(piece.id);
-            if (!lock) return piece;
-            const { x, y } = constrainPosition(lock.pieceId, lock.x, lock.y);
-            return { ...piece, x, y, z: lock.z, locked: true };
-          });
-        });
+      case "transformPieces":
+        updatePieces(command.transform);
         break;
-      case "piece-front":
-        updatePieces((cur) =>
-          updatePieceById(cur, msg.pieceId, (piece) => ({ ...piece, z: msg.z })),
-        );
+      case "applySynced":
+        applySyncedPieces(command.pieces);
         break;
-      case "selection-presence":
-        setRemoteSelections((cur) => {
-          const next: RemoteSelection = {
-            participantId: msg.participantId,
-            pieceIds: msg.pieceIds,
-            imageOverlaySelected: msg.imageOverlaySelected,
-          };
-          const exists = cur.some((s) => s.participantId === msg.participantId);
-          return exists
-            ? cur.map((s) => (s.participantId === msg.participantId ? next : s))
-            : [...cur, next];
-        });
+      case "setStartedAtMs":
+        setStartedAtMsIfUnset(command.startedAtMs);
         break;
-      case "state-sync":
-        if (!msg.by || msg.by !== props.myId()) remoteMoveVersion += 1;
-        if (msg.startedAtMs != null && startedAtMs === null) {
-          startedAtMs = msg.startedAtMs;
-        }
-        applySyncedPieces(msg.pieces);
+      case "upsertRemoteSelection":
+        upsertRemoteSelection(command.selection);
         break;
-      case "puzzle-completed":
-        if (clearedElapsedMsNow === null) {
-          clearedElapsedMsNow = msg.elapsedMs;
-          setClearedElapsedMs(msg.elapsedMs);
-        }
+      case "markCleared":
+        markCleared(command.elapsedMs);
         break;
     }
+  }
+
+  function handleMessage(_from: string, msg: ChannelMessage) {
+    const commands = reduceMessage(msg, { myId: props.myId(), constrain: constrainPosition });
+    for (const command of commands) runSyncCommand(command);
   }
 
   function removeRemoteSelection(participantId: string) {
