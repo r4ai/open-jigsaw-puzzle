@@ -6,7 +6,6 @@ import type {
 } from "@open-jigsaw-puzzle/shared/puzzle";
 import type { ChannelMessage } from "@open-jigsaw-puzzle/shared/protocol";
 import {
-  countLockedPieces,
   createEmptySelection,
   getConnectedLoosePieceIds,
   normalizeRect,
@@ -20,13 +19,6 @@ import {
 } from "../utils/puzzle-ops";
 import type { Rect, SelectionState } from "../utils/puzzle-ops";
 import {
-  applyPieceSnapshots,
-  createMoveHistoryEntry,
-  createPieceHistory,
-  type HistoryResult,
-  type PieceHistorySnapshot,
-} from "../utils/puzzle-history";
-import {
   TOUCH_DRAG_THRESHOLD_PX,
   type BatchedPieceLock,
   type BatchedPieceMove,
@@ -38,6 +30,7 @@ import {
 import { reduceMessage, type SyncCommand } from "./puzzle/message-reducer";
 import { usePieceStore } from "./puzzle/use-piece-store";
 import { useCompletionTimer } from "./puzzle/use-completion-timer";
+import { usePuzzleHistory } from "./puzzle/use-puzzle-history";
 
 export type { RemoteSelection };
 
@@ -73,9 +66,6 @@ export function usePuzzle(props: Props) {
   let imageOverlaySelectedNow = false;
   let lastSelectedPieceId: number | null = null;
   let selectionBoxNow: SelectionBoxState | null = null;
-  const history = createPieceHistory();
-  let remoteMoveVersion = 0;
-
   onCleanup(() => {
     if (dragFrame !== null) cancelAnimationFrame(dragFrame);
     if (selectionPresenceFrame !== null) cancelAnimationFrame(selectionPresenceFrame);
@@ -100,6 +90,14 @@ export function usePuzzle(props: Props) {
     complete: () => store.complete(),
     getPieces: () => store.getPieces(),
   });
+
+  const history = usePuzzleHistory({
+    broadcast: props.broadcast,
+    myId: props.myId,
+    getStartedAtMs: timer.getStartedAtMs,
+    updatePieces: (updater) => store.updatePieces(updater),
+  });
+  const { rememberMove, undoLastMove, redoLastMove, clearMoveHistory } = history;
 
   const store = usePieceStore({
     broadcast: props.broadcast,
@@ -175,42 +173,6 @@ export function usePuzzle(props: Props) {
     setSelectedPieceIds(next.pieceIds);
     setImageOverlaySelected(next.imageOverlaySelected);
     publishSelection(next.pieceIds, next.imageOverlaySelected);
-  }
-
-  function rememberMove(startPieces: Map<number, BoardPiece>, nextPieces: BoardPiece[]) {
-    history.remember(createMoveHistoryEntry(startPieces.values(), nextPieces, remoteMoveVersion));
-  }
-
-  function applyHistorySnapshots(snapshots: PieceHistorySnapshot[]) {
-    updatePieces((cur) => {
-      const next = applyPieceSnapshots(cur, snapshots);
-      const synced = next.map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
-      props.broadcast({
-        type: "state-sync",
-        pieces: synced,
-        lockedCount: countLockedPieces(synced),
-        by: props.myId() ?? "local",
-        startedAtMs: timer.getStartedAtMs(),
-      });
-      return next;
-    });
-  }
-
-  function undoLastMove(): HistoryResult {
-    const { result, snapshots } = history.undo(remoteMoveVersion);
-    if (result === "applied") applyHistorySnapshots(snapshots);
-    return result;
-  }
-
-  function redoLastMove(): HistoryResult {
-    const { result, snapshots } = history.redo(remoteMoveVersion);
-    if (result === "applied") applyHistorySnapshots(snapshots);
-    return result;
-  }
-
-  function clearMoveHistory(resetRemoteVersion = false) {
-    history.clear();
-    if (resetRemoteVersion) remoteMoveVersion = 0;
   }
 
   function clearSelection() {
@@ -545,7 +507,7 @@ export function usePuzzle(props: Props) {
   function runSyncCommand(command: SyncCommand) {
     switch (command.kind) {
       case "bumpRemoteVersion":
-        remoteMoveVersion += 1;
+        history.bumpRemoteVersion();
         break;
       case "notifyMoved":
         props.onPieceMoved?.(command.by);
