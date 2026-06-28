@@ -1,25 +1,14 @@
-import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
-import {
-  createInitialPieces,
-  isComplete,
-  snapPiece,
-} from "@open-jigsaw-puzzle/shared/puzzle";
+import { createEffect, createSignal, onCleanup } from "solid-js";
+import { snapPiece } from "@open-jigsaw-puzzle/shared/puzzle";
 import type {
   BoardPiece,
   PuzzleLayout,
 } from "@open-jigsaw-puzzle/shared/puzzle";
-import type {
-  ChannelMessage,
-  SyncedPiece,
-} from "@open-jigsaw-puzzle/shared/protocol";
+import type { ChannelMessage } from "@open-jigsaw-puzzle/shared/protocol";
 import {
-  arrangeLoosePieces,
-  bringSelectedPiecesToFront,
   countLockedPieces,
   createEmptySelection,
   getConnectedLoosePieceIds,
-  MAX_CANVAS_COORDINATE,
-  mergeSyncedPieces,
   normalizeRect,
   selectByRect,
   selectOnlyImageOverlay,
@@ -28,7 +17,6 @@ import {
   toggleImageOverlaySelection,
   togglePieceSelection,
   addPieceRangeSelection,
-  updatePieceById,
 } from "../utils/puzzle-ops";
 import type { Rect, SelectionState } from "../utils/puzzle-ops";
 import {
@@ -48,6 +36,7 @@ import {
   type SelectionBoxState,
 } from "./puzzle/types";
 import { reduceMessage, type SyncCommand } from "./puzzle/message-reducer";
+import { usePieceStore } from "./puzzle/use-piece-store";
 
 export type { RemoteSelection };
 
@@ -66,7 +55,6 @@ type Props = {
  * participant's board consistent.
  */
 export function usePuzzle(props: Props) {
-  const [pieces, setPieces] = createSignal<BoardPiece[]>([]);
   const [selectedPieceIds, setSelectedPieceIds] = createSignal<Set<number>>(new Set());
   const [imageOverlaySelected, setImageOverlaySelected] = createSignal(false);
   const [selectionBox, setSelectionBox] = createSignal<Rect | null>(null);
@@ -75,8 +63,6 @@ export function usePuzzle(props: Props) {
 
   let startedAtMs: number | null = null;
   let clearedElapsedMsNow: number | null = null;
-  let piecesNow: BoardPiece[] = [];
-  let pendingSync: SyncedPiece[] | null = null;
   let dragging: DragState | null = null;
   let pendingDragMove: PendingDragMove | null = null;
   let dragFrame: number | null = null;
@@ -108,24 +94,27 @@ export function usePuzzle(props: Props) {
     el.style.transform = `translate3d(${dragMargin + x}px, ${dragMargin + y}px, 0)`;
   }
 
-  function constrainPosition(pieceId: number, x: number, y: number): { x: number; y: number } {
-    if (
-      !Number.isFinite(x) || !Number.isFinite(y) ||
-      Math.abs(x) > MAX_CANVAS_COORDINATE || Math.abs(y) > MAX_CANVAS_COORDINATE
-    ) {
-      const fallback = piecesNow[pieceId];
-      return { x: fallback?.x ?? 0, y: fallback?.y ?? 0 };
-    }
-    return { x, y };
-  }
-
-  function updatePieces(updater: (cur: BoardPiece[]) => BoardPiece[]) {
-    setPieces((cur) => {
-      const next = updater(cur);
-      piecesNow = next;
-      return next;
-    });
-  }
+  const store = usePieceStore({
+    broadcast: props.broadcast,
+    myId: props.myId,
+    getStartedAtMs: () => startedAtMs,
+    resetTimer,
+    clearMoveHistory,
+  });
+  const {
+    pieces,
+    getPieces,
+    updatePieces,
+    constrainPosition,
+    bringToFront,
+    bringSelectionToFront,
+    setNewPieces,
+    receiveImage,
+    applySyncedPieces,
+    organizePieces,
+    complete,
+    lockedCount,
+  } = store;
 
   function publishSelectionNow(pieceIds: Set<number>, imageSelected: boolean) {
     const participantId = props.myId();
@@ -229,95 +218,10 @@ export function usePuzzle(props: Props) {
     };
   }
 
-  function bringToFront(pieceId: number): number {
-    const nextZ = Math.max(0, ...piecesNow.map((p) => p.z)) + 1;
-    updatePieces((cur) => updatePieceById(cur, pieceId, (p) => ({ ...p, z: nextZ })));
-    return nextZ;
-  }
-
-  function bringSelectionToFront(pieceIds: Set<number>) {
-    const before = piecesNow;
-    const next = bringSelectedPiecesToFront(before, pieceIds);
-    if (next === before) return;
-    piecesNow = next;
-    setPieces(next);
-    const beforeById = new Map(before.map((piece) => [piece.id, piece]));
-    for (const piece of next) {
-      const previous = beforeById.get(piece.id);
-      if (previous && previous.z !== piece.z) {
-        props.broadcast({ type: "piece-front", pieceId: piece.id, z: piece.z, by: props.myId() ?? "local" });
-      }
-    }
-  }
-
   function resetTimer() {
     startedAtMs = null;
     clearedElapsedMsNow = null;
     setClearedElapsedMs(null);
-  }
-
-  function setNewPieces(newLayout: PuzzleLayout) {
-    const nextPieces = createInitialPieces(newLayout);
-    piecesNow = nextPieces;
-    pendingSync = null;
-    clearMoveHistory(true);
-    resetTimer();
-    setPieces(nextPieces);
-  }
-
-  function receiveImage(nextLayout: PuzzleLayout) {
-    setPieces(() => {
-      const base = createInitialPieces(nextLayout);
-      const pending = pendingSync;
-      pendingSync = null;
-      clearMoveHistory(true);
-      resetTimer();
-      if (!pending) {
-        piecesNow = base;
-        return base;
-      }
-      const constrained = pending.map((p) => {
-        const { x, y } = constrainPosition(p.id, p.x, p.y);
-        return { ...p, x, y };
-      });
-      const next = mergeSyncedPieces(base, constrained);
-      piecesNow = next;
-      return next;
-    });
-  }
-
-  function applySyncedPieces(synced: SyncedPiece[]) {
-    const constrained = synced.map((p) => {
-      const { x, y } = constrainPosition(p.id, p.x, p.y);
-      return { ...p, x, y };
-    });
-    setPieces((cur) => {
-      if (!cur.length) {
-        pendingSync = constrained;
-        return cur;
-      }
-      pendingSync = null;
-      const next = mergeSyncedPieces(cur, constrained);
-      piecesNow = next;
-      return next;
-    });
-  }
-
-  function organizePieces(currentLayout: PuzzleLayout) {
-    setPieces((cur) => {
-      clearMoveHistory();
-      const next = arrangeLoosePieces(cur, currentLayout);
-      piecesNow = next;
-      const synced = next.map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
-      props.broadcast({
-        type: "state-sync",
-        pieces: synced,
-        lockedCount: countLockedPieces(synced),
-        by: props.myId() ?? "local",
-        startedAtMs,
-      });
-      return next;
-    });
   }
 
   function handlePointerDown(
@@ -355,7 +259,7 @@ export function usePuzzle(props: Props) {
     const basePieceIds = nextSelection.pieceIds.size ? nextSelection.pieceIds : new Set([piece.id]);
     const currentLayout = props.layout();
     const activePieceIds = currentLayout && !piece.locked
-      ? getConnectedLoosePieceIds(piecesNow, basePieceIds, currentLayout)
+      ? getConnectedLoosePieceIds(getPieces(), basePieceIds, currentLayout)
       : basePieceIds;
     if (activePieceIds.size > 1) bringSelectionToFront(activePieceIds);
     else {
@@ -371,7 +275,7 @@ export function usePuzzle(props: Props) {
     const pointer = getPoint(event);
     if (!pointer) return;
     const startPieces = new Map<number, BoardPiece>();
-    const pieceById = new Map(piecesNow.map((currentPiece) => [currentPiece.id, currentPiece]));
+    const pieceById = new Map(getPieces().map((currentPiece) => [currentPiece.id, currentPiece]));
     for (const id of activePieceIds) {
       const selectedPiece = pieceById.get(id);
       if (selectedPiece) startPieces.set(id, selectedPiece);
@@ -417,7 +321,7 @@ export function usePuzzle(props: Props) {
     const pointer = getPoint(event);
     if (!pointer) return;
     const startPieces = new Map<number, BoardPiece>();
-    const pieceById = new Map(piecesNow.map((currentPiece) => [currentPiece.id, currentPiece]));
+    const pieceById = new Map(getPieces().map((currentPiece) => [currentPiece.id, currentPiece]));
     for (const id of nextSelection.pieceIds) {
       const selectedPiece = pieceById.get(id);
       if (selectedPiece) startPieces.set(id, selectedPiece);
@@ -624,7 +528,7 @@ export function usePuzzle(props: Props) {
     selectionBoxNow = null;
     const rect = { ...worldRect, x: worldRect.x - margin, y: worldRect.y - margin };
     setSelectionBox(null);
-    setSelection(selectByRect(piecesNow, currentLayout, rect, imageOverlayRect));
+    setSelection(selectByRect(getPieces(), currentLayout, rect, imageOverlayRect));
     return true;
   }
 
@@ -685,9 +589,6 @@ export function usePuzzle(props: Props) {
     setRemoteSelections((cur) => cur.filter((s) => s.participantId !== participantId));
   }
 
-  const complete = createMemo(() => isComplete(pieces()));
-  const lockedCount = createMemo(() => countLockedPieces(pieces()));
-
   // 完成判定／開始計時 — ホストのみが時刻を確定する
   createEffect(() => {
     const list = pieces();
@@ -706,7 +607,7 @@ export function usePuzzle(props: Props) {
     if (!props.isHost()) return;
     if (startedAtMs !== null) return;
     startedAtMs = Date.now();
-    const synced = piecesNow.map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
+    const synced = getPieces().map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
     props.broadcast({
       type: "state-sync",
       pieces: synced,
@@ -725,7 +626,7 @@ export function usePuzzle(props: Props) {
     complete,
     clearedElapsedMs,
     lockedCount,
-    getPieces: () => piecesNow,
+    getPieces,
     getStartedAtMs: () => startedAtMs,
     isDragging: () => dragging !== null,
     constrainPosition,
