@@ -1,7 +1,7 @@
 import type { PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import type { ChannelMessage } from "@open-jigsaw-puzzle/shared/protocol";
 import type { RemoteSelection } from "./puzzle/types";
-import { reduceMessage, type SyncCommand } from "./puzzle/message-reducer";
+import { createRealtimeSync } from "./puzzle/realtime-sync";
 import { usePieceStore } from "./puzzle/use-piece-store";
 import { useCompletionTimer } from "./puzzle/use-completion-timer";
 import { usePuzzleHistory } from "./puzzle/use-puzzle-history";
@@ -20,9 +20,10 @@ type Props = {
 };
 
 /**
- * The core puzzle hook: owns the piece array, selection state, drag handling,
- * undo/redo history, and the realtime message dispatcher that keeps every
- * participant's board consistent.
+ * The core puzzle hook. Composes focused sub-hooks — the piece store, the
+ * completion timer, undo/redo history, selection, and the drag FSM — and the
+ * realtime message dispatcher, exposing them behind a single flat API. This
+ * hook is wiring only; behaviour lives in the modules under `./puzzle`.
  */
 export function usePuzzle(props: Props) {
   const timer = useCompletionTimer({
@@ -52,10 +53,8 @@ export function usePuzzle(props: Props) {
   const {
     pieces,
     getPieces,
-    updatePieces,
     constrainPosition,
     bringToFront,
-    bringSelectionToFront,
     setNewPieces,
     receiveImage,
     applySyncedPieces,
@@ -86,39 +85,18 @@ export function usePuzzle(props: Props) {
     rememberMove: history.rememberMove,
   });
 
-  function runSyncCommand(command: SyncCommand) {
-    switch (command.kind) {
-      case "bumpRemoteVersion":
-        history.bumpRemoteVersion();
-        break;
-      case "notifyMoved":
-        props.onPieceMoved?.(command.by);
-        break;
-      case "notifyLocked":
-        props.onPieceLocked?.(command.by);
-        break;
-      case "transformPieces":
-        updatePieces(command.transform);
-        break;
-      case "applySynced":
-        applySyncedPieces(command.pieces);
-        break;
-      case "setStartedAtMs":
-        timer.setStartedAtMsIfUnset(command.startedAtMs);
-        break;
-      case "upsertRemoteSelection":
-        selection.upsertRemoteSelection(command.selection);
-        break;
-      case "markCleared":
-        timer.markCleared(command.elapsedMs);
-        break;
-    }
-  }
-
-  function handleMessage(_from: string, msg: ChannelMessage) {
-    const commands = reduceMessage(msg, { myId: props.myId(), constrain: constrainPosition });
-    for (const command of commands) runSyncCommand(command);
-  }
+  const { handleMessage } = createRealtimeSync({
+    myId: props.myId,
+    constrainPosition: store.constrainPosition,
+    updatePieces: store.updatePieces,
+    applySyncedPieces: store.applySyncedPieces,
+    bumpRemoteVersion: history.bumpRemoteVersion,
+    onPieceMoved: props.onPieceMoved,
+    onPieceLocked: props.onPieceLocked,
+    setStartedAtMsIfUnset: timer.setStartedAtMsIfUnset,
+    markCleared: timer.markCleared,
+    upsertRemoteSelection: selection.upsertRemoteSelection,
+  });
 
   return {
     pieces,
