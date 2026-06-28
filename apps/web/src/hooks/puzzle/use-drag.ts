@@ -13,12 +13,12 @@ import {
   type SelectionState,
 } from "../../utils/puzzle-ops";
 import {
-  TOUCH_DRAG_THRESHOLD_PX,
   type BatchedPieceLock,
   type BatchedPieceMove,
   type DragState,
   type PendingDragMove,
 } from "./types";
+import { TOUCH_DRAG_THRESHOLD_PX } from "./constants";
 
 type Pointer = { x: number; y: number };
 type GetPoint = (e: PointerEvent) => Pointer | null;

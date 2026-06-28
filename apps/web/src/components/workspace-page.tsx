@@ -22,6 +22,7 @@ import { sanitizeName } from "@open-jigsaw-puzzle/shared/rooms";
 import { useSignaling } from "../hooks/use-signaling";
 import { useImageTransfer } from "../hooks/use-image-transfer";
 import { usePuzzle } from "../hooks/use-puzzle";
+import { SNAP_THRESHOLD_RATIO } from "../hooks/puzzle/constants";
 import { useViewport, ZOOM_STEP } from "../hooks/use-viewport";
 import { useRemoteCursors } from "../hooks/use-remote-cursors";
 import { useImageOverlay } from "../hooks/use-image-overlay";
@@ -307,7 +308,7 @@ export function WorkspacePage(props: Props) {
     if (viewport.handlePanEnd(e.pointerId)) return;
     imageOverlay.handleDragEnd(e.pointerId);
     if (!l) return;
-    const threshold = Math.min(l.pieceWidth, l.pieceHeight) * 0.22;
+    const threshold = Math.min(l.pieceWidth, l.pieceHeight) * SNAP_THRESHOLD_RATIO;
     puzzle.handleDragEnd(threshold, e.pointerId);
   }
 

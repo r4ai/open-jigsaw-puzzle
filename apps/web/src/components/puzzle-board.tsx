@@ -67,6 +67,9 @@ type Props = {
   registerPieceElement: (id: number, el: HTMLElement | null) => void;
 };
 
+/** Side length (px, at zoom 1) of the dotted background grid cell. */
+const BACKGROUND_GRID_SIZE = 24;
+
 export function PuzzleBoard(props: Props) {
   let viewportRef: HTMLDivElement | undefined;
 
@@ -101,7 +104,7 @@ export function PuzzleBoard(props: Props) {
       class={`${boardViewport} ${props.panning ? panningCls : ""}`}
       style={{
         "background-position": `${props.pan.x}px ${props.pan.y}px`,
-        "background-size": `${24 * props.zoom}px ${24 * props.zoom}px`,
+        "background-size": `${BACKGROUND_GRID_SIZE * props.zoom}px ${BACKGROUND_GRID_SIZE * props.zoom}px`,
       }}
       onPointerDown={(e) => props.onViewportPointerDown(e)}
       onPointerMove={(e) => props.onPointerMove(e)}

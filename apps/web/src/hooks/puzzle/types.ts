@@ -38,6 +38,3 @@ export type RemoteSelection = {
 
 export type BatchedPieceMove = Extract<ChannelMessage, { type: "piece-moves" }>["moves"][number];
 export type BatchedPieceLock = Extract<ChannelMessage, { type: "piece-locks" }>["locks"][number];
-
-/** Minimum pointer travel (px) before a touch drag is treated as a drag rather than a tap. */
-export const TOUCH_DRAG_THRESHOLD_PX = 6;
