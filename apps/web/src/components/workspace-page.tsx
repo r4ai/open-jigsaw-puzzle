@@ -61,25 +61,17 @@ export function WorkspacePage(props: Props) {
   const [status, setStatus] = createSignal("画像を選ぶとパズルを開始できます");
   let fileInput: HTMLInputElement | undefined;
 
-  const dispatch = {
-    onMessage: (_from: string, _msg: ChannelMessage) => {},
-    onHello: (_myId: string, _p: Participant[], _r: RoomSummary) => {},
-    onPeerJoined: (_p: Participant, _ps: Participant[]) => {},
-    onPeerLeft: (_id: string, _ps: Participant[]) => {},
-    onParticipantUpdated: (_p: Participant, _ps: Participant[]) => {},
-    onConnectionChange: (_n: number) => {},
-    onClose: (_msg: string) => {},
-  };
-
+  // Signaling callbacks reference hooks (puzzle, imageTransfer, …) created
+  // below, so they delegate to hoisted handlers defined later in this scope.
   const signaling = useSignaling(() => props.name, {
-    onMessage: (from, msg) => dispatch.onMessage(from, msg),
-    onHello: (myId, p, r) => dispatch.onHello(myId, p, r),
-    onPeerJoined: (p, ps) => dispatch.onPeerJoined(p, ps),
-    onPeerLeft: (id, ps) => dispatch.onPeerLeft(id, ps),
-    onParticipantUpdated: (p, ps) => dispatch.onParticipantUpdated(p, ps),
-    onConnectionChange: (n) => dispatch.onConnectionChange(n),
+    onMessage: (from, msg) => handlePeerMessage(from, msg),
+    onHello: (myId) => handleHello(myId),
+    onPeerJoined: (participant) => handlePeerJoined(participant),
+    onPeerLeft: (participantId) => handlePeerLeft(participantId),
+    onParticipantUpdated: (participant) => handleParticipantUpdated(participant),
+    onConnectionChange: (connected) => handleConnectionChange(connected),
     onError: setError,
-    onClose: (msg) => dispatch.onClose(msg),
+    onClose: (msg) => handleClose(msg),
   });
 
   const imageTransfer = useImageTransfer({
@@ -132,44 +124,44 @@ export function WorkspacePage(props: Props) {
   const viewport = useViewport();
   const imageOverlay = useImageOverlay({ broadcast: signaling.broadcast });
 
-  dispatch.onHello = (myId) => {
+  function handleHello(myId: string) {
     setStatus("接続しました");
     imageTransfer.requestImageFromPeers(myId);
     window.setTimeout(() => imageTransfer.requestImageFromPeers(myId), 400);
-  };
-  dispatch.onPeerJoined = (participant) => {
+  }
+  function handlePeerJoined(participant: Participant) {
     if (isHost() && imageTransfer.getImageData()) {
       imageTransfer.sendSnapshot(participant.id);
     } else {
       imageTransfer.requestImageFromPeers(signaling.myId());
     }
     imageOverlay.broadcastCurrentPosition();
-  };
-  dispatch.onPeerLeft = (participantId) => {
+  }
+  function handlePeerLeft(participantId: string) {
     cursors.removeCursor(participantId);
     puzzle.removeRemoteSelection(participantId);
-  };
-  dispatch.onParticipantUpdated = (participant) => {
+  }
+  function handleParticipantUpdated(participant: Participant) {
     cursors.updateCursorName(participant.id, participant.name);
     if (participant.id === signaling.myId()) {
       props.onNameConfirmed(participant.name);
       setDraftName(participant.name);
     }
-  };
-  dispatch.onConnectionChange = (connected) => {
+  }
+  function handleConnectionChange(connected: number) {
     if (connected > 0) imageTransfer.requestImageFromPeers(signaling.myId());
-  };
-  dispatch.onClose = (msg) => {
+  }
+  function handleClose(msg: string) {
     setError(msg);
     setStatus("接続が切断されました");
-  };
-  dispatch.onMessage = (from, msg) => {
+  }
+  function handlePeerMessage(from: string, msg: ChannelMessage) {
     if (!isAuthorizedPeerMessage(from, msg, hostId())) return;
     imageTransfer.handleMessage(from, msg);
     puzzle.handleMessage(from, msg);
     cursors.handleMessage(from, msg);
     imageOverlay.handleMessage(from, msg);
-  };
+  }
 
   createEffect(() => {
     void signaling.enterRoom(props.roomId);
