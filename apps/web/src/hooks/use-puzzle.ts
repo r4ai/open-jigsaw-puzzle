@@ -1,4 +1,4 @@
-import { createSignal, onCleanup } from "solid-js";
+import { onCleanup } from "solid-js";
 import { snapPiece } from "@open-jigsaw-puzzle/shared/puzzle";
 import type {
   BoardPiece,
@@ -6,10 +6,7 @@ import type {
 } from "@open-jigsaw-puzzle/shared/puzzle";
 import type { ChannelMessage } from "@open-jigsaw-puzzle/shared/protocol";
 import {
-  createEmptySelection,
   getConnectedLoosePieceIds,
-  normalizeRect,
-  selectByRect,
   selectOnlyImageOverlay,
   selectOnlyPiece,
   snapLoosePiecesToNeighbors,
@@ -17,7 +14,7 @@ import {
   togglePieceSelection,
   addPieceRangeSelection,
 } from "../utils/puzzle-ops";
-import type { Rect, SelectionState } from "../utils/puzzle-ops";
+import type { SelectionState } from "../utils/puzzle-ops";
 import {
   TOUCH_DRAG_THRESHOLD_PX,
   type BatchedPieceLock,
@@ -25,12 +22,12 @@ import {
   type DragState,
   type PendingDragMove,
   type RemoteSelection,
-  type SelectionBoxState,
 } from "./puzzle/types";
 import { reduceMessage, type SyncCommand } from "./puzzle/message-reducer";
 import { usePieceStore } from "./puzzle/use-piece-store";
 import { useCompletionTimer } from "./puzzle/use-completion-timer";
 import { usePuzzleHistory } from "./puzzle/use-puzzle-history";
+import { useSelection } from "./puzzle/use-selection";
 
 export type { RemoteSelection };
 
@@ -49,26 +46,14 @@ type Props = {
  * participant's board consistent.
  */
 export function usePuzzle(props: Props) {
-  const [selectedPieceIds, setSelectedPieceIds] = createSignal<Set<number>>(new Set());
-  const [imageOverlaySelected, setImageOverlaySelected] = createSignal(false);
-  const [selectionBox, setSelectionBox] = createSignal<Rect | null>(null);
-  const [remoteSelections, setRemoteSelections] = createSignal<RemoteSelection[]>([]);
-
   let dragging: DragState | null = null;
   let pendingDragMove: PendingDragMove | null = null;
   let dragFrame: number | null = null;
-  let pendingSelectionPresence: { pieceIds: Set<number>; imageOverlaySelected: boolean } | null = null;
-  let selectionPresenceFrame: number | null = null;
   const pieceElements = new Map<number, HTMLElement>();
   const livePieceTransforms = new Map<number, { x: number; y: number }>();
   let dragMargin = 0;
-  let selectedPieceIdsNow = new Set<number>();
-  let imageOverlaySelectedNow = false;
-  let lastSelectedPieceId: number | null = null;
-  let selectionBoxNow: SelectionBoxState | null = null;
   onCleanup(() => {
     if (dragFrame !== null) cancelAnimationFrame(dragFrame);
-    if (selectionPresenceFrame !== null) cancelAnimationFrame(selectionPresenceFrame);
   });
 
   function registerPieceElement(id: number, el: HTMLElement | null) {
@@ -121,28 +106,21 @@ export function usePuzzle(props: Props) {
     lockedCount,
   } = store;
 
-  function publishSelectionNow(pieceIds: Set<number>, imageSelected: boolean) {
-    const participantId = props.myId();
-    if (!participantId) return;
-    props.broadcast({
-      type: "selection-presence",
-      participantId,
-      pieceIds: [...pieceIds].sort((a, b) => a - b),
-      imageOverlaySelected: imageSelected,
-    });
-  }
-
-  function publishSelection(pieceIds = selectedPieceIdsNow, imageSelected = imageOverlaySelectedNow) {
-    pendingSelectionPresence = { pieceIds, imageOverlaySelected: imageSelected };
-    if (selectionPresenceFrame !== null) return;
-    selectionPresenceFrame = requestAnimationFrame(() => {
-      selectionPresenceFrame = null;
-      const pending = pendingSelectionPresence;
-      pendingSelectionPresence = null;
-      if (!pending) return;
-      publishSelectionNow(pending.pieceIds, pending.imageOverlaySelected);
-    });
-  }
+  const selection = useSelection({
+    broadcast: props.broadcast,
+    myId: props.myId,
+    getPieces: () => store.getPieces(),
+  });
+  const {
+    setSelection,
+    clearSelection,
+    currentSelection,
+    handleSelectionBoxPointerDown,
+    handleSelectionBoxMove,
+    handleSelectionBoxEnd,
+    upsertRemoteSelection,
+    removeRemoteSelection,
+  } = selection;
 
   function publishPieceMoves(moves: BatchedPieceMove[]) {
     const by = props.myId() ?? "local";
@@ -164,27 +142,6 @@ export function usePuzzle(props: Props) {
       return;
     }
     props.broadcast({ type: "piece-locks", locks, by });
-  }
-
-  function setSelection(next: SelectionState) {
-    selectedPieceIdsNow = next.pieceIds;
-    imageOverlaySelectedNow = next.imageOverlaySelected;
-    lastSelectedPieceId = next.lastSelectedPieceId;
-    setSelectedPieceIds(next.pieceIds);
-    setImageOverlaySelected(next.imageOverlaySelected);
-    publishSelection(next.pieceIds, next.imageOverlaySelected);
-  }
-
-  function clearSelection() {
-    setSelection(createEmptySelection());
-  }
-
-  function currentSelection(): SelectionState {
-    return {
-      pieceIds: selectedPieceIdsNow,
-      imageOverlaySelected: imageOverlaySelectedNow,
-      lastSelectedPieceId,
-    };
   }
 
   function handlePointerDown(
@@ -449,61 +406,6 @@ export function usePuzzle(props: Props) {
     return true;
   }
 
-  function handleSelectionBoxPointerDown(
-    event: PointerEvent,
-    getPoint: (e: PointerEvent) => { x: number; y: number } | null,
-  ): boolean {
-    if (event.button !== 0 || !event.shiftKey) return false;
-    if (selectionBoxNow) return false;
-    const pointer = getPoint(event);
-    if (!pointer) return false;
-    selectionBoxNow = { pointerId: event.pointerId, start: pointer, end: pointer };
-    setSelectionBox(normalizeRect(pointer, pointer));
-    (event.currentTarget as Element | null)?.setPointerCapture?.(event.pointerId);
-    event.preventDefault();
-    event.stopPropagation();
-    return true;
-  }
-
-  function handleSelectionBoxMove(
-    event: PointerEvent,
-    getPoint: (e: PointerEvent) => { x: number; y: number } | null,
-  ): boolean {
-    if (!selectionBoxNow) return false;
-    if (event.pointerId !== selectionBoxNow.pointerId) return false;
-    const pointer = getPoint(event);
-    if (!pointer) return true;
-    selectionBoxNow.end = pointer;
-    setSelectionBox(normalizeRect(selectionBoxNow.start, selectionBoxNow.end));
-    event.preventDefault();
-    return true;
-  }
-
-  function handleSelectionBoxEnd(
-    currentLayout: PuzzleLayout,
-    imageOverlayRect: Rect | null,
-    margin: number,
-    pointerId?: number,
-  ): boolean {
-    if (!selectionBoxNow) return false;
-    if (pointerId !== undefined && pointerId !== selectionBoxNow.pointerId) return false;
-    const worldRect = normalizeRect(selectionBoxNow.start, selectionBoxNow.end);
-    selectionBoxNow = null;
-    const rect = { ...worldRect, x: worldRect.x - margin, y: worldRect.y - margin };
-    setSelectionBox(null);
-    setSelection(selectByRect(getPieces(), currentLayout, rect, imageOverlayRect));
-    return true;
-  }
-
-  function upsertRemoteSelection(selection: RemoteSelection) {
-    setRemoteSelections((cur) => {
-      const exists = cur.some((s) => s.participantId === selection.participantId);
-      return exists
-        ? cur.map((s) => (s.participantId === selection.participantId ? selection : s))
-        : [...cur, selection];
-    });
-  }
-
   function runSyncCommand(command: SyncCommand) {
     switch (command.kind) {
       case "bumpRemoteVersion":
@@ -538,16 +440,12 @@ export function usePuzzle(props: Props) {
     for (const command of commands) runSyncCommand(command);
   }
 
-  function removeRemoteSelection(participantId: string) {
-    setRemoteSelections((cur) => cur.filter((s) => s.participantId !== participantId));
-  }
-
   return {
     pieces,
-    selectedPieceIds,
-    imageOverlaySelected,
-    selectionBox,
-    remoteSelections,
+    selectedPieceIds: selection.selectedPieceIds,
+    imageOverlaySelected: selection.imageOverlaySelected,
+    selectionBox: selection.selectionBox,
+    remoteSelections: selection.remoteSelections,
     complete,
     clearedElapsedMs: timer.clearedElapsedMs,
     lockedCount,
