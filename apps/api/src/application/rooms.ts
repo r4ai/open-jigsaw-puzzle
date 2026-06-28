@@ -42,7 +42,7 @@ export async function createRoom(
     try {
       row = await rooms.create(id, difficulty, ttlSeconds);
     } catch (error) {
-      if (attempts === 3) throw error;
+      if (attempts === 3 || !isRoomIdCollisionError(error)) throw error;
       continue;
     }
     if (!row) continue;
@@ -50,6 +50,10 @@ export async function createRoom(
     return roomSummary(row);
   }
   return null;
+}
+
+function isRoomIdCollisionError(error: unknown): boolean {
+  return error instanceof Error && /unique constraint failed/i.test(error.message);
 }
 
 export async function getRoom(rooms: RoomRepository, roomId: string, clock: Clock): Promise<"not-found" | "expired" | RoomSummary> {

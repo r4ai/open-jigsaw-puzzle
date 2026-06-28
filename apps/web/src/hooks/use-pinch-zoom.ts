@@ -107,6 +107,15 @@ export function usePinchZoom(props: Props) {
         }
         pinching = false;
         props.onSetPinching(false);
+      } else if (touches.size === 2 && pinching) {
+        if (pinchFrame !== null) {
+          cancelAnimationFrame(pinchFrame);
+          pinchFrame = null;
+        }
+        const { midX, midY, dist } = midAndDist();
+        prevMidX = midX;
+        prevMidY = midY;
+        prevDist = dist;
       }
     }
 

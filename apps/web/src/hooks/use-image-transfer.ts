@@ -164,7 +164,13 @@ export function useImageTransfer(props: Props) {
         const target = incoming.get(msg.imageId);
         if (!target) return;
         const stored = storeIncomingImageChunk(target, msg.index, msg.data);
-        if (!stored) return;
+        if (!stored) {
+          incoming.delete(msg.imageId);
+          setLoadingProgress((cur) =>
+            cur.phase === "receiving" && cur.imageId === msg.imageId ? { phase: "idle" } : cur,
+          );
+          return;
+        }
         setLoadingProgress((cur) => ({
           phase: "receiving",
           imageId: msg.imageId,

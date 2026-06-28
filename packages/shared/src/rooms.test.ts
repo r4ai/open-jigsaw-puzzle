@@ -6,6 +6,9 @@ describe("room rules", () => {
     expect(parseDifficulty(48)).toBe(48);
     expect(parseDifficulty("96")).toBe(96);
     expect(parseDifficulty(64)).toBeNull();
+    expect(parseDifficulty("0x30")).toBeNull();
+    expect(parseDifficulty("48e0")).toBeNull();
+    expect(parseDifficulty("048")).toBeNull();
   });
 
   it("sanitizes display names", () => {

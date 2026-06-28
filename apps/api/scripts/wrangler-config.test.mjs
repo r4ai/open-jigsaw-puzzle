@@ -62,6 +62,11 @@ describe("prepareWranglerConfig", () => {
     })).toThrow("Invalid D1 database_id");
   });
 
+  it("rejects configs without a DB D1 binding", () => {
+    expect(() => prepareWranglerConfig("{}", productionEnv)).toThrow("Missing D1 DB binding");
+    expect(() => prepareWranglerConfig(`{"d1_databases":[{"binding":"OTHER"}]}`, productionEnv)).toThrow("Missing D1 DB binding");
+  });
+
   it("rejects invalid preview custom domain hosts", () => {
     expect(() => prepareWranglerConfig(sourceConfig, {
       ...productionEnv,

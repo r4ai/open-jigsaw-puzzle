@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { MAX_CHANNEL_MESSAGE_BYTES, parseChannelMessage, parseClientSignalMessage, parseSignalEnvelope } from "./protocol";
+import {
+  MAX_CHANNEL_MESSAGE_BYTES,
+  MAX_IMAGE_CHUNK_BYTES,
+  MAX_IMAGE_CHUNKS,
+  parseChannelMessage,
+  parseClientSignalMessage,
+  parseSignalEnvelope,
+} from "./protocol";
 
 describe("channel message validation", () => {
   it("accepts well-formed messages", () => {
@@ -37,6 +44,59 @@ describe("channel message validation", () => {
     expect(parseChannelMessage({ type: "state-sync", pieces: Array.from({ length: 2001 }, (_, id) => ({ id, x: 0, y: 0, z: 0, locked: false })), lockedCount: 0 })).toBeNull();
     expect(parseChannelMessage({ type: "piece-moves", moves: [], by: "peer-1" })).toBeNull();
     expect(parseChannelMessage({ type: "piece-moves", moves: [{ pieceId: 1, x: 0, y: 0, z: 0 }, { pieceId: 1, x: 1, y: 1, z: 1 }], by: "peer-1" })).toBeNull();
+  });
+
+  it("rejects state sync payloads with duplicate pieces or inconsistent lock counts", () => {
+    expect(parseChannelMessage({
+      type: "state-sync",
+      pieces: [
+        { id: 0, x: 0, y: 0, z: 0, locked: false },
+        { id: 0, x: 1, y: 1, z: 1, locked: true },
+      ],
+      lockedCount: 1,
+    })).toBeNull();
+    expect(parseChannelMessage({
+      type: "state-sync",
+      pieces: [{ id: 0, x: 0, y: 0, z: 0, locked: false }],
+      lockedCount: 1,
+    })).toBeNull();
+  });
+
+  it("rejects image transfer metadata that cannot complete", () => {
+    expect(parseChannelMessage({
+      type: "image-meta",
+      imageId: "image-1",
+      mimeType: "image/png",
+      width: 1,
+      height: 1,
+      chunks: 1,
+      byteLength: MAX_IMAGE_CHUNK_BYTES + 1,
+    })).toBeNull();
+    expect(parseChannelMessage({
+      type: "image-meta",
+      imageId: "image-1",
+      mimeType: "image/png",
+      width: 1,
+      height: 1,
+      chunks: 2,
+      byteLength: 1,
+    })).toBeNull();
+    expect(parseChannelMessage({
+      type: "image-chunk",
+      imageId: "image-1",
+      index: MAX_IMAGE_CHUNKS,
+      data: "x",
+    })).toBeNull();
+  });
+
+  it("rejects blank participant names and malformed room ids in signaling envelopes", () => {
+    expect(parseChannelMessage({ type: "presence", participantId: "peer-1", name: "   ", cursor: null })).toBeNull();
+    expect(parseSignalEnvelope({
+      type: "hello",
+      participantId: "peer-1",
+      participants: [],
+      room: { id: "not-a-room", difficulty: 48, expiresAt: 1, participantCount: 0 },
+    })).toBeNull();
   });
 
   it("accepts state sync senders when present", () => {

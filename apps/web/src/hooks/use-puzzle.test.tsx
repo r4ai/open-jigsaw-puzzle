@@ -3,6 +3,7 @@ import { renderHook } from "@solidjs/testing-library";
 import { createPuzzleLayout, type PuzzleLayout } from "@open-jigsaw-puzzle/shared/puzzle";
 import type { ChannelMessage } from "@open-jigsaw-puzzle/shared/protocol";
 import { usePuzzle } from "./use-puzzle";
+import { useImageOverlay } from "./use-image-overlay";
 
 type PuzzleApi = ReturnType<typeof usePuzzle>;
 
@@ -142,6 +143,53 @@ describe("usePuzzle local drag", () => {
     });
   });
 
+  it("rolls back image overlay movement that followed a canceled piece drag", async () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const broadcasts: ChannelMessage[] = [];
+    const { api } = setupPuzzle({ layout, broadcast: (message) => broadcasts.push(message) });
+    const { result: imageOverlay } = renderHook(() =>
+      useImageOverlay({ broadcast: (message) => broadcasts.push(message) }),
+    );
+
+    api.setNewPieces(layout);
+    imageOverlay.initPosition(layout);
+    const overlayStart = imageOverlay.position()!;
+    const { piece } = registerPieceElement(api, 0);
+    const pieceStart = { x: piece.x, y: piece.y };
+
+    api.handleImageOverlayPointerDown(
+      makePointerEvent({ pointerId: 5, clientX: 0, clientY: 0 }),
+      () => overlayStart,
+    );
+    api.handlePointerDown(
+      makePointerEvent({ pointerId: 6, clientX: 0, clientY: 0, ctrlKey: true }),
+      piece,
+      () => ({ x: piece.x, y: piece.y }),
+      50,
+    );
+    api.handlePointerDown(
+      makePointerEvent({ pointerId: 7, clientX: 0, clientY: 0 }),
+      piece,
+      () => ({ x: piece.x, y: piece.y }),
+      50,
+    );
+    api.handleDragMove(
+      makePointerEvent({ pointerId: 7, clientX: 30, clientY: 40 }),
+      () => ({ x: piece.x + 30, y: piece.y + 40 }),
+      50,
+      imageOverlay.moveBy,
+    );
+    await flushAnimationFrames();
+
+    expect(imageOverlay.position()).toEqual({ x: overlayStart.x + 30, y: overlayStart.y + 40 });
+    expect(imageOverlay.cancelDrag()).toBe(false);
+
+    api.cancelDrag(undefined, imageOverlay.moveBy);
+
+    expect(api.pieces()[0]).toMatchObject(pieceStart);
+    expect(imageOverlay.position()).toEqual(overlayStart);
+  });
+
   it("clears piece and image selections when a touch gesture takes over", async () => {
     const layout = createPuzzleLayout(48, 1200, 800);
     const broadcasts: ChannelMessage[] = [];
@@ -210,6 +258,25 @@ describe("usePuzzle state sync", () => {
     api.receiveImage(layout);
 
     expect(api.pieces()).toHaveLength(layout.pieces.length);
+    expect(api.pieces()[0]).toMatchObject({ x: 21, y: 22, z: 23 });
+  });
+
+  it("preserves the synced start time when a buffered sync is applied with the next image", () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const { api } = setupPuzzle({ layout, isHost: false });
+
+    api.handleMessage("peer-1", {
+      type: "state-sync",
+      by: "peer-1",
+      startedAtMs: 999,
+      lockedCount: 0,
+      pieces: [{ id: 0, x: 21, y: 22, z: 23, locked: false }],
+    });
+    expect(api.getStartedAtMs()).toBe(999);
+
+    api.receiveImage(layout);
+
+    expect(api.getStartedAtMs()).toBe(999);
     expect(api.pieces()[0]).toMatchObject({ x: 21, y: 22, z: 23 });
   });
 });
@@ -297,6 +364,23 @@ describe("usePuzzle history", () => {
 
     expect(api.undoLastMove()).toBe("blocked");
   });
+
+  it("blocks undo after a remote piece-front changes z-order", async () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const { api } = setupPuzzle({ layout });
+
+    api.setNewPieces(layout);
+    const { piece } = registerPieceElement(api, 0);
+
+    dragPiece(api, piece, { pointerId: 7, startPoint: { x: 0, y: 0 }, nextPoint: { x: 30, y: 40 }, margin: 50 });
+    await flushAnimationFrames();
+    api.handleDragEnd(1, 7);
+
+    api.handleMessage("peer-1", { type: "piece-front", by: "peer-1", pieceId: 0, z: 999 });
+
+    expect(api.undoLastMove()).toBe("blocked");
+    expect(api.pieces()[0]?.z).toBe(999);
+  });
 });
 
 describe("usePuzzle organize", () => {
@@ -364,12 +448,20 @@ function dragPiece(
   );
 }
 
-function makePointerEvent(init: { pointerId: number; pointerType?: "mouse" | "pen" | "touch"; clientX: number; clientY: number }): PointerEvent {
+function makePointerEvent(init: {
+  pointerId: number;
+  pointerType?: "mouse" | "pen" | "touch";
+  clientX: number;
+  clientY: number;
+  shiftKey?: boolean;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+}): PointerEvent {
   return {
     button: 0,
-    shiftKey: false,
-    ctrlKey: false,
-    metaKey: false,
+    shiftKey: init.shiftKey ?? false,
+    ctrlKey: init.ctrlKey ?? false,
+    metaKey: init.metaKey ?? false,
     pointerId: init.pointerId,
     pointerType: init.pointerType ?? "mouse",
     clientX: init.clientX,

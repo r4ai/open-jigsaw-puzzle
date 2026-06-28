@@ -102,8 +102,10 @@ export function usePieceStore(deps: Deps) {
       const pending = pendingSync;
       pendingSync = null;
       deps.clearMoveHistory(true);
-      deps.resetTimer();
-      if (!pending) return base;
+      if (!pending) {
+        deps.resetTimer();
+        return base;
+      }
       const constrained = pending.map((p) => {
         const { x, y } = constrainPosition(p.id, p.x, p.y);
         return { ...p, x, y };

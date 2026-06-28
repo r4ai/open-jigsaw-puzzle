@@ -91,6 +91,37 @@ describe("usePinchZoom", () => {
     expect(onSetPinching).toHaveBeenNthCalledWith(2, false);
   });
 
+  it("rebases the pinch midpoint when a three-finger gesture returns to two fingers", async () => {
+    const onApplyPinch = vi.fn();
+    let viewport: HTMLDivElement | undefined;
+
+    render(() => {
+      usePinchZoom({
+        getElement: () => viewport,
+        onApplyPinch,
+        onSetPinching: () => {},
+      });
+
+      return <div ref={(el) => (viewport = el)} />;
+    });
+
+    viewport!.dispatchEvent(pointerEvent("pointerdown", 1, 0, 0));
+    viewport!.dispatchEvent(pointerEvent("pointerdown", 2, 100, 0));
+    viewport!.dispatchEvent(pointerEvent("pointerdown", 3, 200, 0));
+    viewport!.dispatchEvent(pointerEvent("pointerup", 1, 0, 0));
+    viewport!.dispatchEvent(pointerEvent("pointermove", 3, 220, 0));
+    await flushAnimationFrame();
+
+    expect(onApplyPinch).toHaveBeenCalledTimes(1);
+    expect(onApplyPinch).toHaveBeenCalledWith({
+      distFactor: 1.2,
+      prevMidX: 150,
+      prevMidY: 0,
+      newMidX: 160,
+      newMidY: 0,
+    });
+  });
+
   it("keeps the next one-finger viewport pan available after a one-finger touch", () => {
     let viewport: HTMLDivElement | undefined;
     let api!: ReturnType<typeof useViewport>;

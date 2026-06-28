@@ -30,14 +30,19 @@ export function prepareWranglerConfig(source, env = process.env) {
     }
   }
 
+  let dbBindingCount = 0;
   for (const database of config.d1_databases ?? []) {
     if (database.binding !== "DB") {
       continue;
     }
+    dbBindingCount += 1;
     database.database_id = databaseId;
     if (d1DatabaseName !== undefined && d1DatabaseName !== "") {
       database.database_name = d1DatabaseName;
     }
+  }
+  if (dbBindingCount === 0) {
+    throw new Error("Missing D1 DB binding in wrangler config.");
   }
 
   const customDomainHost = env.OPEN_JIGSAW_PUZZLE_CUSTOM_DOMAIN_HOST;

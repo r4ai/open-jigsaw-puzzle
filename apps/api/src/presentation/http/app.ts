@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import { describeRoute, openAPIRouteHandler, validator } from "hono-openapi";
-import { CreateRoomRequestSchema, ROOM_TTL_SECONDS, RoomIdParamsSchema } from "@open-jigsaw-puzzle/shared/protocol";
+import { CreateRoomRequestSchema, DIFFICULTIES, ROOM_TTL_SECONDS, RoomIdParamsSchema } from "@open-jigsaw-puzzle/shared/protocol";
 import { normalizeRoomId } from "@open-jigsaw-puzzle/shared/rooms";
 import { getIceConfig } from "../../application/ice";
 import { createRoom, getRoom } from "../../application/rooms";
@@ -9,15 +9,27 @@ import { serveAssetOrSpa } from "../../infrastructure/cloudflare/assets";
 import { readEnvPositiveInteger } from "../../infrastructure/cloudflare/env";
 import type { Env } from "../../infrastructure/cloudflare/bindings";
 import { createD1RoomEventRepository, createD1RoomRepository } from "../../infrastructure/d1/rooms-repository";
+import { utf8ByteLength } from "../../infrastructure/http/json";
 import { getClientKey, consumeRateLimit, type RateBucket } from "../../infrastructure/rate-limit/window";
 import { systemClock } from "../../infrastructure/time/clock";
 import { API_CACHE_CONTROL, MAX_CREATE_ROOM_BODY_BYTES, MAX_CREATE_ROOM_REQUESTS_PER_MINUTE, SECURITY_HEADERS } from "./constants";
 import { ERROR_RESPONSES, ICE_RESPONSE_CONTENT, OPENAPI_DOCUMENTATION, ROOM_RESPONSE_CONTENT } from "./openapi";
 
 const createRoomRateLimits = new Map<string, RateBucket>();
+const INVALID_DIFFICULTY_ERROR = `Difficulty must be one of: ${DIFFICULTIES.join(", ")}.`;
+const MALFORMED_JSON_ERROR = "Malformed JSON in request body.";
 
 export function createApp(): Hono<{ Bindings: Env }> {
   const app = new Hono<{ Bindings: Env }>();
+
+  app.onError((error, c) => {
+    if (c.req.path.startsWith("/api/")) {
+      c.header("cache-control", API_CACHE_CONTROL);
+      for (const [header, value] of Object.entries(SECURITY_HEADERS)) c.header(header, value);
+      return c.json({ error: "Internal server error." }, 500);
+    }
+    throw error;
+  });
 
   app.use("*", async (c, next) => {
     await next();
@@ -41,7 +53,7 @@ export function createApp(): Hono<{ Bindings: Env }> {
     }),
     enforceCreateRoomLimits,
     validator("json", CreateRoomRequestSchema, (result, c) => {
-      if (!result.success) return c.json({ error: "Difficulty must be 48, 96, or 192." }, 400);
+      if (!result.success) return c.json({ error: INVALID_DIFFICULTY_ERROR }, 400);
     }),
     async (c) => {
       const body = c.req.valid("json");
@@ -133,6 +145,16 @@ const enforceCreateRoomLimits: MiddlewareHandler<{ Bindings: Env }> = async (c, 
     return c.json({ error: "Request body is too large." }, 413);
   }
   const text = await c.req.raw.clone().text();
-  if (text.length > MAX_CREATE_ROOM_BODY_BYTES) return c.json({ error: "Request body is too large." }, 413);
+  if (utf8ByteLength(text) > MAX_CREATE_ROOM_BODY_BYTES) return c.json({ error: "Request body is too large." }, 413);
+  if (!isValidJsonText(text)) return c.json({ error: MALFORMED_JSON_ERROR }, 400);
   return next();
 };
+
+function isValidJsonText(text: string): boolean {
+  try {
+    JSON.parse(text);
+    return true;
+  } catch {
+    return false;
+  }
+}

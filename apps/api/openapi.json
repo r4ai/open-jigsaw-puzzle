@@ -32,7 +32,9 @@
                       "properties": {
                         "id": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 10,
+                          "maxLength": 10,
+                          "pattern": "^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]+$"
                         },
                         "difficulty": {
                           "enum": [
@@ -228,7 +230,9 @@
                       "properties": {
                         "id": {
                           "type": "string",
-                          "minLength": 1
+                          "minLength": 10,
+                          "maxLength": 10,
+                          "pattern": "^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]+$"
                         },
                         "difficulty": {
                           "enum": [

@@ -399,7 +399,7 @@ export function WorkspacePage(props: Props) {
               viewport.setTouchGestureActive(v);
               if (v) {
                 imageOverlay.cancelDrag();
-                puzzle.cancelDrag();
+                puzzle.cancelDrag(undefined, imageOverlay.moveBy);
                 puzzle.clearSelection();
               }
             },

@@ -324,7 +324,7 @@ export function useDrag(deps: Deps) {
     });
   }
 
-  function cancelDrag(pointerId?: number): boolean {
+  function cancelDrag(pointerId?: number, onImageOverlayDelta?: (deltaX: number, deltaY: number) => void): boolean {
     if (!dragging) return false;
     if (pointerId !== undefined && pointerId !== dragging.pointerId) return false;
     const canceled = dragging;
@@ -344,6 +344,9 @@ export function useDrag(deps: Deps) {
       }
     }
     livePieceTransforms.clear();
+    if (canceled.moveImageOverlay && onImageOverlayDelta && (canceled.lastDeltaX !== 0 || canceled.lastDeltaY !== 0)) {
+      onImageOverlayDelta(-canceled.lastDeltaX, -canceled.lastDeltaY);
+    }
     publishPieceMoves(rollbacks);
     return true;
   }

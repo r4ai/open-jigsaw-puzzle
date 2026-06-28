@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_PARTICIPANTS, ROOM_TTL_SECONDS } from "@open-jigsaw-puzzle/shared/protocol";
+import { DIFFICULTIES, MAX_PARTICIPANTS, ROOM_TTL_SECONDS } from "@open-jigsaw-puzzle/shared/protocol";
 import { assertCanJoin, expiresAt, parseDifficulty } from "@open-jigsaw-puzzle/shared/rooms";
 import { getIceConfig } from "./application/ice";
 import { deleteExpiredRooms } from "./application/maintenance";
@@ -16,6 +16,7 @@ describe("worker room constraints", () => {
     expect(parseDifficulty(48)).toBe(48);
     expect(parseDifficulty(96)).toBe(96);
     expect(parseDifficulty(192)).toBe(192);
+    expect(parseDifficulty(300)).toBe(300);
     expect(parseDifficulty(24)).toBeNull();
   });
 
@@ -49,7 +50,32 @@ describe("worker REST API contract", () => {
 
     expect(response.status).toBe(400);
     expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(await response.json()).toEqual({ error: "Difficulty must be 48, 96, or 192." });
+    expect(await response.json()).toEqual({ error: "Difficulty must be one of: 48, 96, 192, 300, 500, 1000, 2000." });
+  });
+
+  it.each(DIFFICULTIES)("creates rooms for supported difficulty %s", async (difficulty) => {
+    const db = new FakeD1();
+    const response = await createApp().request("/api/rooms", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ difficulty }),
+    }, fakeEnv({ DB: db as unknown as D1Database }));
+    const payload = await response.json() as { room: { difficulty: number } };
+
+    expect(response.status).toBe(201);
+    expect(payload.room.difficulty).toBe(difficulty);
+  });
+
+  it.each(["", "{"])("returns the JSON error shape for malformed JSON room creation bodies %#", async (body) => {
+    const response = await createApp().request("/api/rooms", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+    }, fakeEnv());
+
+    expect(response.status).toBe(400);
+    expect(response.headers.get("content-type")).toContain("application/json");
+    expect(await response.json()).toEqual({ error: "Malformed JSON in request body." });
   });
 
   it("rejects oversized room creation bodies", async () => {
@@ -58,6 +84,17 @@ describe("worker REST API contract", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ difficulty: 48, padding: "x".repeat(2_000) }),
     }, fakeEnv());
+
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({ error: "Request body is too large." });
+  });
+
+  it("rejects room creation bodies whose UTF-8 byte length exceeds the limit", async () => {
+    const response = await createApp().request("/api/rooms", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ difficulty: 48, padding: "🧩".repeat(300) }),
+    }, fakeEnv({ DB: new FakeD1() as unknown as D1Database }));
 
     expect(response.status).toBe(413);
     expect(await response.json()).toEqual({ error: "Request body is too large." });
@@ -77,6 +114,21 @@ describe("worker REST API contract", () => {
     expect(payload.room.difficulty).toBe(96);
     expect(payload.room.participantCount).toBe(0);
     expect(db.events).toHaveLength(1);
+  });
+
+  it("returns the JSON error shape when room creation throws", async () => {
+    const db = new FakeD1();
+    db.failEventWrites = true;
+
+    const response = await createApp().request("/api/rooms", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ difficulty: 48 }),
+    }, fakeEnv({ DB: db as unknown as D1Database }));
+
+    expect(response.status).toBe(500);
+    expect(response.headers.get("content-type")).toContain("application/json");
+    expect(await response.json()).toEqual({ error: "Internal server error." });
   });
 
   it("does not record creation events when room persistence returns no row", async () => {
@@ -130,6 +182,32 @@ describe("worker REST API contract", () => {
     await expect(createRoom(rooms, eventRepository, 48, ROOM_TTL_SECONDS, () => ids.shift()!)).rejects.toThrow("event store unavailable");
 
     expect(createdIds).toEqual(["ABCDEFGHJK", "BCDEFGHJKL"]);
+  });
+
+  it("does not retry non-collision room creation errors", async () => {
+    let createCalls = 0;
+    const rooms: RoomRepository = {
+      async create() {
+        createCalls += 1;
+        throw new Error("D1 unavailable");
+      },
+      async read() {
+        return null;
+      },
+      async touch() {
+        throw new Error("Unexpected touch.");
+      },
+      async deleteExpired() {},
+    };
+    const eventRepository: RoomEventRepository = {
+      async record() {
+        throw new Error("Unexpected event record.");
+      },
+    };
+
+    await expect(createRoom(rooms, eventRepository, 48, ROOM_TTL_SECONDS, () => "ABCDEFGHJK")).rejects.toThrow("D1 unavailable");
+
+    expect(createCalls).toBe(1);
   });
 
   it("handles room lookup errors without changing response shapes", async () => {
@@ -236,6 +314,7 @@ function fakeEnv(overrides: Partial<Env> = {}): Env {
 class FakeD1 {
   readonly rows = new Map<string, { id: string; difficulty: number; expires_at: number; participant_count: number }>();
   readonly events: unknown[][] = [];
+  failEventWrites = false;
 
   prepare(sql: string) {
     const db = this;
@@ -247,7 +326,10 @@ class FakeD1 {
               const [id, difficulty, , expiresAt] = values as [string, number, number, number, number];
               db.rows.set(id, { id, difficulty, expires_at: expiresAt, participant_count: 0 });
             }
-            if (sql.startsWith("INSERT INTO room_events")) db.events.push(values);
+            if (sql.startsWith("INSERT INTO room_events")) {
+              if (db.failEventWrites) throw new Error("event store unavailable");
+              db.events.push(values);
+            }
             if (sql.startsWith("DELETE FROM room_events")) {
               const expiredIds = db.expiredRoomIds(values[0] as number, values[1] as number);
               db.events.splice(0, db.events.length, ...db.events.filter((event) => !expiredIds.has(event[0] as string)));

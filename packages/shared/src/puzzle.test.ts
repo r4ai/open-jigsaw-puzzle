@@ -14,6 +14,13 @@ describe("puzzle geometry", () => {
     expect(factorGrid(48, 900, 1600)).toEqual({ rows: 8, cols: 6 });
   });
 
+  it("rejects non-positive or non-finite image dimensions", () => {
+    expect(() => createPuzzleLayout(48, 0, 800)).toThrow("positive finite");
+    expect(() => createPuzzleLayout(48, -1200, 800)).toThrow("positive finite");
+    expect(() => createPuzzleLayout(48, Number.POSITIVE_INFINITY, 800)).toThrow("positive finite");
+    expect(() => createPuzzleLayout(48, 1200, Number.NaN)).toThrow("positive finite");
+  });
+
   it("creates complementary jigsaw edges between neighboring pieces", () => {
     const layout = createPuzzleLayout(48, 1200, 800);
 
@@ -142,6 +149,24 @@ describe("puzzle geometry", () => {
     expect(pieces.every((piece) => Number.isFinite(piece.x) && Number.isFinite(piece.y))).toBe(true);
     expect(pieces.every((piece) => piece.x >= -margin - layout.pieceWidth && piece.x <= layout.boardWidth + margin)).toBe(true);
     expect(pieces.every((piece) => piece.y >= -margin - layout.pieceHeight && piece.y <= layout.boardHeight + margin)).toBe(true);
+  });
+
+  it.each([
+    [1000, 1, 1280],
+    [1000, 1280, 1],
+    [2000, 1, 1280],
+    [2000, 1280, 1],
+  ] as const)("keeps scattered %s-piece layouts within the workspace margin for %sx%s images", (difficulty, width, height) => {
+    const layout = createPuzzleLayout(difficulty, width, height);
+    const pieces = createInitialPieces(layout);
+    const margin = getWorkspaceMargin(layout);
+
+    expect(pieces.every((piece) =>
+      piece.x >= -margin - layout.pieceWidth &&
+      piece.x <= layout.boardWidth + margin &&
+      piece.y >= -margin - layout.pieceHeight &&
+      piece.y <= layout.boardHeight + margin,
+    )).toBe(true);
   });
 
   it("indexes initial pieces by their id", () => {

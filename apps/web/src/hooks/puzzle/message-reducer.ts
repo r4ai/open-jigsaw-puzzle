@@ -101,6 +101,7 @@ export function reduceMessage(msg: ChannelMessage, ctx: ReducerContext): SyncCom
     }
     case "piece-front":
       return [
+        ...remoteVersionBump(msg.by, ctx.myId),
         {
           kind: "transformPieces",
           transform: (current) =>

@@ -11,7 +11,7 @@ import { roomSummary } from "../../application/rooms";
 import type { Env } from "../../infrastructure/cloudflare/bindings";
 import { readEnvPositiveInteger } from "../../infrastructure/cloudflare/env";
 import { createD1RoomEventRepository, createD1RoomRepository } from "../../infrastructure/d1/rooms-repository";
-import { json, parseJson } from "../../infrastructure/http/json";
+import { json, parseJson, utf8ByteLength } from "../../infrastructure/http/json";
 import { consumeSocketRateLimit, type RateBucket } from "../../infrastructure/rate-limit/window";
 import { systemClock } from "../../infrastructure/time/clock";
 import { MAX_WS_MESSAGES_PER_MINUTE } from "./constants";
@@ -100,7 +100,7 @@ export class PuzzleRoom implements DurableObject {
   async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
     if (typeof message !== "string") return;
     if (message === "ping") return;
-    if (message.length > MAX_SIGNALING_MESSAGE_BYTES || !consumeSocketRateLimit(this.messageRateLimits, socket, MAX_WS_MESSAGES_PER_MINUTE)) {
+    if (utf8ByteLength(message) > MAX_SIGNALING_MESSAGE_BYTES || !consumeSocketRateLimit(this.messageRateLimits, socket, MAX_WS_MESSAGES_PER_MINUTE)) {
       socket.close(1008, "Message limit exceeded.");
       await this.removeSocket(socket);
       return;

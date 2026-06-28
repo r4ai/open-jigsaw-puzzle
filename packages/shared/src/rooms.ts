@@ -2,10 +2,11 @@ import * as v from "valibot";
 import { DIFFICULTIES, DifficultySchema, MAX_PARTICIPANTS, ROOM_ID_ALPHABET, ROOM_ID_LENGTH, ROOM_TTL_SECONDS, type Difficulty } from "./protocol";
 
 const ROOM_ID_PATTERN = new RegExp(`^[${ROOM_ID_ALPHABET}]{${ROOM_ID_LENGTH}}$`);
+const DECIMAL_INTEGER_PATTERN = /^[1-9][0-9]*$/;
 type RandomBytes = (bytes: Uint8Array) => Uint8Array;
 
 export function parseDifficulty(value: unknown): Difficulty | null {
-  const parsed = typeof value === "string" ? Number(value) : value;
+  const parsed = typeof value === "string" && DECIMAL_INTEGER_PATTERN.test(value) ? Number(value) : value;
   const result = v.safeParse(DifficultySchema, parsed);
   return result.success ? result.output : null;
 }

@@ -19,7 +19,6 @@ export const MAX_SIGNALING_MESSAGE_BYTES = 64 * 1024;
 
 export const DifficultySchema = v.picklist(DIFFICULTIES);
 
-const NonEmptyStringSchema = v.pipe(v.string(), v.minLength(1));
 export const RoomIdSchema = v.pipe(
   v.string(),
   v.trim(),
@@ -28,7 +27,7 @@ export const RoomIdSchema = v.pipe(
   v.regex(new RegExp(`^[${ROOM_ID_ALPHABET}]+$`)),
 );
 const ParticipantIdSchema = v.pipe(v.string(), v.minLength(1), v.maxLength(64));
-const SafeNameSchema = v.pipe(v.string(), v.minLength(1), v.maxLength(24));
+const SafeNameSchema = v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(24));
 const ImageIdSchema = v.pipe(v.string(), v.minLength(1), v.maxLength(80));
 const PieceIdSchema = v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(MAX_SYNCED_PIECES - 1));
 const CoordinateSchema = v.pipe(v.number(), v.finite(), v.minValue(-MAX_COORDINATE), v.maxValue(MAX_COORDINATE));
@@ -41,7 +40,7 @@ export const ErrorResponseSchema = v.object({
 });
 
 export const RoomSummarySchema = v.object({
-  id: NonEmptyStringSchema,
+  id: RoomIdSchema,
   difficulty: DifficultySchema,
   expiresAt: NonNegativeIntegerSchema,
   participantCount: NonNegativeIntegerSchema,
@@ -188,7 +187,11 @@ const SelectionPieceIdsSchema = v.pipe(
   v.check((pieceIds) => new Set(pieceIds).size === pieceIds.length, "Piece ids must be unique."),
 );
 
-const SyncedPiecesSchema = v.pipe(v.array(SyncedPieceSchema), v.maxLength(MAX_SYNCED_PIECES));
+const SyncedPiecesSchema = v.pipe(
+  v.array(SyncedPieceSchema),
+  v.maxLength(MAX_SYNCED_PIECES),
+  v.check((pieces) => new Set(pieces.map((piece) => piece.id)).size === pieces.length, "Piece ids must be unique."),
+);
 const PieceMovesSchema = v.pipe(
   v.array(PieceMoveSchema),
   v.minLength(1),
@@ -213,19 +216,23 @@ export const ChannelMessageSchema = v.variant("type", [
     type: v.literal("request-image"),
     participantId: ParticipantIdSchema,
   }),
-  v.object({
-    type: v.literal("image-meta"),
-    imageId: ImageIdSchema,
-    mimeType: v.picklist(["image/jpeg", "image/png"] as const),
-    width: v.pipe(PositiveIntegerSchema, v.maxValue(MAX_IMAGE_EDGE)),
-    height: v.pipe(PositiveIntegerSchema, v.maxValue(MAX_IMAGE_EDGE)),
-    chunks: v.pipe(PositiveIntegerSchema, v.maxValue(MAX_IMAGE_CHUNKS)),
-    byteLength: v.pipe(PositiveIntegerSchema, v.maxValue(MAX_IMAGE_BYTES)),
-  }),
+  v.pipe(
+    v.object({
+      type: v.literal("image-meta"),
+      imageId: ImageIdSchema,
+      mimeType: v.picklist(["image/jpeg", "image/png"] as const),
+      width: v.pipe(PositiveIntegerSchema, v.maxValue(MAX_IMAGE_EDGE)),
+      height: v.pipe(PositiveIntegerSchema, v.maxValue(MAX_IMAGE_EDGE)),
+      chunks: v.pipe(PositiveIntegerSchema, v.maxValue(MAX_IMAGE_CHUNKS)),
+      byteLength: v.pipe(PositiveIntegerSchema, v.maxValue(MAX_IMAGE_BYTES)),
+    }),
+    v.check((message) => message.byteLength >= message.chunks, "Image byte length must contain every chunk."),
+    v.check((message) => message.byteLength <= message.chunks * MAX_IMAGE_CHUNK_BYTES, "Image byte length exceeds chunk capacity."),
+  ),
   v.object({
     type: v.literal("image-chunk"),
     imageId: ImageIdSchema,
-    index: NonNegativeIntegerSchema,
+    index: v.pipe(NonNegativeIntegerSchema, v.maxValue(MAX_IMAGE_CHUNKS - 1)),
     data: v.pipe(v.string(), v.minLength(1), v.maxLength(MAX_IMAGE_CHUNK_BYTES)),
   }),
   v.object({
@@ -274,7 +281,7 @@ export const ChannelMessageSchema = v.variant("type", [
       by: v.optional(ParticipantIdSchema),
       startedAtMs: v.optional(v.union([v.pipe(v.number(), v.finite(), v.minValue(0)), v.null_()])),
     }),
-    v.check((message) => message.lockedCount <= message.pieces.length, "Locked count cannot exceed piece count."),
+    v.check((message) => message.lockedCount === message.pieces.filter((piece) => piece.locked).length, "Locked count must match locked pieces."),
   ),
   v.object({
     type: v.literal("puzzle-completed"),

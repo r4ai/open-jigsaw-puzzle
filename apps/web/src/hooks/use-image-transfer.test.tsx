@@ -90,6 +90,25 @@ describe("useImageTransfer", () => {
       expect.objectContaining({ boardWidth: 640, boardHeight: 480 }),
     );
   });
+
+  it("drops an incoming transfer when the completed data URL is unsafe", () => {
+    const unsafeDataUrl = "data:image/png;base64,!!!!!!!!";
+    const { result } = renderHook(() => setupTransfer());
+
+    result.handleMessage("host", {
+      type: "image-meta",
+      imageId: "image-1",
+      mimeType: "image/png",
+      width: 640,
+      height: 480,
+      chunks: 1,
+      byteLength: unsafeDataUrl.length,
+    });
+    result.handleMessage("host", { type: "image-chunk", imageId: "image-1", index: 0, data: unsafeDataUrl });
+
+    expect(result.getImageData()).toBeNull();
+    expect(result.loadingProgress()).toEqual({ phase: "idle" });
+  });
 });
 
 const pngDataUrl = "data:image/png;base64,SGVsbG8=";

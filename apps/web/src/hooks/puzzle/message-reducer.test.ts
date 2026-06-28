@@ -75,7 +75,7 @@ describe("reduceMessage", () => {
       { type: "piece-front", by: "peer", pieceId: 0, z: 42 },
       { myId: "me", constrain: identityConstrain },
     );
-    expect(kinds(commands)).toEqual(["transformPieces"]);
+    expect(kinds(commands)).toEqual(["bumpRemoteVersion", "transformPieces"]);
     expect(applyTransforms(commands, [piece(0, { x: 3, y: 4 })])[0]).toMatchObject({ x: 3, y: 4, z: 42 });
   });
 

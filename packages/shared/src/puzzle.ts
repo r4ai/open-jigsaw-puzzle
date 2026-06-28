@@ -55,6 +55,7 @@ export type BoardPiece = SyncedPiece & {
 };
 
 export function factorGrid(count: Difficulty, imageWidth: number, imageHeight: number): { rows: number; cols: number } {
+  assertPositiveFiniteImageDimensions(imageWidth, imageHeight);
   const ratio = imageWidth / imageHeight;
   let best: { rows: number; cols: number; score: number } = { rows: count, cols: 1, score: Number.POSITIVE_INFINITY };
 
@@ -192,7 +193,11 @@ export function createInitialPieces(layout: PuzzleLayout): BoardPiece[] {
   const fallbackRadiusY = layout.boardHeight / 2 + margin * 0.55;
 
   return shuffledPieces.map((piece, index) => {
-    const slot = shuffledSlots[index] ?? createFallbackScatterSlot(index, layout, fallbackRadiusX, fallbackRadiusY, seed);
+    const slot = clampScatterSlot(
+      shuffledSlots[index] ?? createFallbackScatterSlot(index, layout, margin, fallbackRadiusX, fallbackRadiusY, seed),
+      layout,
+      margin,
+    );
     return {
       id: piece.id,
       targetX: piece.targetX,
@@ -315,18 +320,34 @@ function createBandCandidate(index: number, layout: PuzzleLayout, margin: number
   };
 }
 
-function createFallbackScatterSlot(index: number, layout: PuzzleLayout, radiusX: number, radiusY: number, seed: number): { x: number; y: number } {
-  const angle = index * 2.399963229728653 + hashNoise(index, seed) * 0.5;
-  const directionX = Math.cos(angle);
-  const directionY = Math.sin(angle);
-  const frameRadiusX = layout.boardWidth / 2 + layout.pieceWidth / 2;
-  const frameRadiusY = layout.boardHeight / 2 + layout.pieceHeight / 2;
-  const edgeDistance = Math.min(frameRadiusX / Math.max(0.001, Math.abs(directionX)), frameRadiusY / Math.max(0.001, Math.abs(directionY)));
-  const scatterDistance = Math.max(edgeDistance + Math.min(layout.pieceWidth, layout.pieceHeight) * 0.2, Math.min(radiusX, radiusY) * (0.85 + hashNoise(index, seed + 37) * 0.3));
+function createFallbackScatterSlot(index: number, layout: PuzzleLayout, margin: number, radiusX: number, radiusY: number, seed: number): { x: number; y: number } {
+  const laneGap = Math.max(0.001, Math.min(layout.pieceWidth, layout.pieceHeight) * 0.05);
+  const stepX = layout.pieceWidth + layout.tabSize * 2 + laneGap;
+  const stepY = layout.pieceHeight + layout.tabSize * 2 + laneGap;
+  const verticalBandsHaveMoreRoom = radiusY >= radiusX;
 
+  if (verticalBandsHaveMoreRoom) {
+    const lanes = Math.max(1, Math.floor(margin / stepX));
+    const side = index % 2 === 0 ? "left" : "right";
+    const lane = Math.floor(index / 2) % lanes;
+    const row = Math.floor(index / (2 * lanes));
+    return {
+      x: side === "left"
+        ? clamp(-layout.pieceWidth - lane * stepX, -margin - layout.pieceWidth, -layout.pieceWidth)
+        : clamp(layout.boardWidth + lane * stepX, layout.boardWidth, layout.boardWidth + margin),
+      y: clamp(-margin - layout.pieceHeight + row * stepY, -margin - layout.pieceHeight, layout.boardHeight + margin),
+    };
+  }
+
+  const lanes = Math.max(1, Math.floor(margin / stepY));
+  const side = index % 2 === 0 ? "top" : "bottom";
+  const lane = Math.floor(index / 2) % lanes;
+  const col = Math.floor(index / (2 * lanes));
   return {
-    x: layout.boardWidth / 2 - layout.pieceWidth / 2 + directionX * scatterDistance,
-    y: layout.boardHeight / 2 - layout.pieceHeight / 2 + directionY * scatterDistance,
+    x: clamp(-margin - layout.pieceWidth + col * stepX, -margin - layout.pieceWidth, layout.boardWidth + margin),
+    y: side === "top"
+      ? clamp(-layout.pieceHeight - lane * stepY, -margin - layout.pieceHeight, -layout.pieceHeight)
+      : clamp(layout.boardHeight + lane * stepY, layout.boardHeight, layout.boardHeight + margin),
   };
 }
 
@@ -348,6 +369,50 @@ function rectanglesOverlap(a: { x: number; y: number }, b: { x: number; y: numbe
   );
 }
 
+function clampScatterSlot(slot: { x: number; y: number }, layout: PuzzleLayout, margin: number): { x: number; y: number } {
+  const minX = -margin - layout.pieceWidth;
+  const maxX = layout.boardWidth + margin;
+  const minY = -margin - layout.pieceHeight;
+  const maxY = layout.boardHeight + margin;
+
+  if (slot.x + layout.pieceWidth <= 0) {
+    return {
+      x: clamp(slot.x, minX, -layout.pieceWidth),
+      y: clamp(slot.y, minY, maxY),
+    };
+  }
+  if (slot.x >= layout.boardWidth) {
+    return {
+      x: clamp(slot.x, layout.boardWidth, maxX),
+      y: clamp(slot.y, minY, maxY),
+    };
+  }
+  if (slot.y + layout.pieceHeight <= 0) {
+    return {
+      x: clamp(slot.x, minX, maxX),
+      y: clamp(slot.y, minY, -layout.pieceHeight),
+    };
+  }
+  if (slot.y >= layout.boardHeight) {
+    return {
+      x: clamp(slot.x, minX, maxX),
+      y: clamp(slot.y, layout.boardHeight, maxY),
+    };
+  }
+
+  const distances = [
+    { side: "left" as const, value: Math.abs(slot.x + layout.pieceWidth) },
+    { side: "right" as const, value: Math.abs(slot.x - layout.boardWidth) },
+    { side: "top" as const, value: Math.abs(slot.y + layout.pieceHeight) },
+    { side: "bottom" as const, value: Math.abs(slot.y - layout.boardHeight) },
+  ].sort((a, b) => a.value - b.value);
+  const nearest = distances[0]!.side;
+  if (nearest === "left") return { x: -layout.pieceWidth, y: clamp(slot.y, minY, maxY) };
+  if (nearest === "right") return { x: layout.boardWidth, y: clamp(slot.y, minY, maxY) };
+  if (nearest === "top") return { x: clamp(slot.x, minX, maxX), y: -layout.pieceHeight };
+  return { x: clamp(slot.x, minX, maxX), y: layout.boardHeight };
+}
+
 function layeredNoise(value: number, seed: number): number {
   return valueNoise(value, seed) * 0.6 + valueNoise(value * 0.5 + 17.3, seed + 83) * 0.3 + valueNoise(value * 0.25 + 41.9, seed + 191) * 0.1;
 }
@@ -366,6 +431,16 @@ function hashNoise(value: number, seed: number): number {
 
 function lerp(start: number, end: number, amount: number): number {
   return start + (end - start) * amount;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function assertPositiveFiniteImageDimensions(imageWidth: number, imageHeight: number): void {
+  if (!Number.isFinite(imageWidth) || !Number.isFinite(imageHeight) || imageWidth <= 0 || imageHeight <= 0) {
+    throw new Error("Image dimensions must be positive finite numbers.");
+  }
 }
 
 export function shouldSnap(piece: Pick<BoardPiece, "x" | "y" | "targetX" | "targetY">, threshold: number): boolean {
