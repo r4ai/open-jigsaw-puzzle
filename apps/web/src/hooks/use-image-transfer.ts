@@ -21,7 +21,7 @@ type Props = {
   room: () => RoomSummary | null;
   getPieces: () => BoardPiece[];
   getStartedAtMs: () => number | null;
-  onImageComplete: (dataUrl: string, width: number, height: number, layout: PuzzleLayout) => void;
+  onImageComplete: (dataUrl: string, width: number, height: number, layout: PuzzleLayout, initialPieces?: BoardPiece[]) => void;
 };
 
 /**
@@ -130,7 +130,7 @@ export function useImageTransfer(props: Props) {
     const nextLayout = createPuzzleLayout(currentRoom.difficulty, resized.width, resized.height);
     const nextPieces = createInitialPieces(nextLayout);
     setImage(resized.dataUrl, resized.width, resized.height);
-    props.onImageComplete(resized.dataUrl, resized.width, resized.height, nextLayout);
+    props.onImageComplete(resized.dataUrl, resized.width, resized.height, nextLayout, nextPieces);
     sendSnapshot(undefined, nextPieces);
   }
 

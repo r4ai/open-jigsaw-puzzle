@@ -123,7 +123,13 @@ type SetupOptions = {
   send?: (to: string, message: ChannelMessage) => void;
   broadcast?: (message: ChannelMessage) => void;
   pieces?: BoardPiece[];
-  onImageComplete?: (dataUrl: string, width: number, height: number, layout: ReturnType<typeof createPuzzleLayout>) => void;
+  onImageComplete?: (
+    dataUrl: string,
+    width: number,
+    height: number,
+    layout: ReturnType<typeof createPuzzleLayout>,
+    initialPieces?: BoardPiece[],
+  ) => void;
 };
 
 function setupTransfer(options: SetupOptions = {}) {

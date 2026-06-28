@@ -96,9 +96,9 @@ export function usePieceStore(deps: Deps) {
     updatePieces(() => nextPieces);
   }
 
-  function receiveImage(nextLayout: PuzzleLayout) {
+  function receiveImage(nextLayout: PuzzleLayout, initialPieces?: BoardPiece[]) {
     updatePieces(() => {
-      const base = createInitialPieces(nextLayout);
+      const base = initialPieces ?? createInitialPieces(nextLayout);
       const pending = pendingSync;
       pendingSync = null;
       deps.clearMoveHistory(true);

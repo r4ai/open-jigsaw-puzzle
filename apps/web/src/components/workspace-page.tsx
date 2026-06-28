@@ -80,9 +80,9 @@ export function WorkspacePage(props: Props) {
     room: signaling.room,
     getPieces: () => puzzle.getPieces(),
     getStartedAtMs: () => puzzle.getStartedAtMs(),
-    onImageComplete: (_dataUrl, _w, _h, nextLayout) => {
+    onImageComplete: (_dataUrl, _w, _h, nextLayout, initialPieces) => {
       setCompletionDismissed(false);
-      puzzle.receiveImage(nextLayout);
+      puzzle.receiveImage(nextLayout, initialPieces);
     },
   });
 

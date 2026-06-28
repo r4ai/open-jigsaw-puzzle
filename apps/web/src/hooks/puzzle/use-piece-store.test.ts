@@ -44,6 +44,25 @@ describe("usePieceStore", () => {
     expect(store.pieces()[0]).toMatchObject({ x: 12, y: 34, z: 5, locked: true });
   });
 
+  it("uses provided initial pieces when receiving a locally uploaded image", () => {
+    const layout = createPuzzleLayout(48, 1200, 800);
+    const store = setup();
+    const initialPieces = layout.pieces.map((piece, index) => ({
+      id: piece.id,
+      targetX: piece.targetX,
+      targetY: piece.targetY,
+      x: 10_000 + index,
+      y: 20_000 + index,
+      z: index + 1,
+      locked: false,
+    }));
+
+    store.receiveImage(layout, initialPieces);
+
+    expect(store.pieces()).toBe(initialPieces);
+    expect(store.pieces()[0]).toMatchObject({ x: 10_000, y: 20_000 });
+  });
+
   it("broadcasts a state-sync when organizing loose pieces", () => {
     const layout = createPuzzleLayout(48, 1200, 800);
     const broadcast = vi.fn();
