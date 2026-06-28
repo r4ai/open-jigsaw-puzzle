@@ -1,4 +1,4 @@
-import { createEffect, createSignal, onCleanup } from "solid-js";
+import { createSignal, onCleanup } from "solid-js";
 import { snapPiece } from "@open-jigsaw-puzzle/shared/puzzle";
 import type {
   BoardPiece,
@@ -37,6 +37,7 @@ import {
 } from "./puzzle/types";
 import { reduceMessage, type SyncCommand } from "./puzzle/message-reducer";
 import { usePieceStore } from "./puzzle/use-piece-store";
+import { useCompletionTimer } from "./puzzle/use-completion-timer";
 
 export type { RemoteSelection };
 
@@ -59,10 +60,7 @@ export function usePuzzle(props: Props) {
   const [imageOverlaySelected, setImageOverlaySelected] = createSignal(false);
   const [selectionBox, setSelectionBox] = createSignal<Rect | null>(null);
   const [remoteSelections, setRemoteSelections] = createSignal<RemoteSelection[]>([]);
-  const [clearedElapsedMs, setClearedElapsedMs] = createSignal<number | null>(null);
 
-  let startedAtMs: number | null = null;
-  let clearedElapsedMsNow: number | null = null;
   let dragging: DragState | null = null;
   let pendingDragMove: PendingDragMove | null = null;
   let dragFrame: number | null = null;
@@ -94,11 +92,20 @@ export function usePuzzle(props: Props) {
     el.style.transform = `translate3d(${dragMargin + x}px, ${dragMargin + y}px, 0)`;
   }
 
+  const timer = useCompletionTimer({
+    broadcast: props.broadcast,
+    myId: props.myId,
+    isHost: props.isHost,
+    pieces: () => store.pieces(),
+    complete: () => store.complete(),
+    getPieces: () => store.getPieces(),
+  });
+
   const store = usePieceStore({
     broadcast: props.broadcast,
     myId: props.myId,
-    getStartedAtMs: () => startedAtMs,
-    resetTimer,
+    getStartedAtMs: timer.getStartedAtMs,
+    resetTimer: timer.resetTimer,
     clearMoveHistory,
   });
   const {
@@ -183,7 +190,7 @@ export function usePuzzle(props: Props) {
         pieces: synced,
         lockedCount: countLockedPieces(synced),
         by: props.myId() ?? "local",
-        startedAtMs,
+        startedAtMs: timer.getStartedAtMs(),
       });
       return next;
     });
@@ -216,12 +223,6 @@ export function usePuzzle(props: Props) {
       imageOverlaySelected: imageOverlaySelectedNow,
       lastSelectedPieceId,
     };
-  }
-
-  function resetTimer() {
-    startedAtMs = null;
-    clearedElapsedMsNow = null;
-    setClearedElapsedMs(null);
   }
 
   function handlePointerDown(
@@ -541,16 +542,6 @@ export function usePuzzle(props: Props) {
     });
   }
 
-  function setStartedAtMsIfUnset(ms: number) {
-    if (startedAtMs === null) startedAtMs = ms;
-  }
-
-  function markCleared(elapsedMs: number) {
-    if (clearedElapsedMsNow !== null) return;
-    clearedElapsedMsNow = elapsedMs;
-    setClearedElapsedMs(elapsedMs);
-  }
-
   function runSyncCommand(command: SyncCommand) {
     switch (command.kind) {
       case "bumpRemoteVersion":
@@ -569,13 +560,13 @@ export function usePuzzle(props: Props) {
         applySyncedPieces(command.pieces);
         break;
       case "setStartedAtMs":
-        setStartedAtMsIfUnset(command.startedAtMs);
+        timer.setStartedAtMsIfUnset(command.startedAtMs);
         break;
       case "upsertRemoteSelection":
         upsertRemoteSelection(command.selection);
         break;
       case "markCleared":
-        markCleared(command.elapsedMs);
+        timer.markCleared(command.elapsedMs);
         break;
     }
   }
@@ -589,34 +580,6 @@ export function usePuzzle(props: Props) {
     setRemoteSelections((cur) => cur.filter((s) => s.participantId !== participantId));
   }
 
-  // 完成判定／開始計時 — ホストのみが時刻を確定する
-  createEffect(() => {
-    const list = pieces();
-    const done = complete();
-    if (list.length === 0) return;
-    if (done) {
-      if (!props.isHost()) return;
-      if (clearedElapsedMsNow !== null) return;
-      if (startedAtMs === null) return;
-      const elapsedMs = Math.max(0, Date.now() - startedAtMs);
-      clearedElapsedMsNow = elapsedMs;
-      setClearedElapsedMs(elapsedMs);
-      props.broadcast({ type: "puzzle-completed", elapsedMs, by: props.myId() ?? "local" });
-      return;
-    }
-    if (!props.isHost()) return;
-    if (startedAtMs !== null) return;
-    startedAtMs = Date.now();
-    const synced = getPieces().map(({ id, x, y, z, locked }) => ({ id, x, y, z, locked }));
-    props.broadcast({
-      type: "state-sync",
-      pieces: synced,
-      lockedCount: countLockedPieces(synced),
-      by: props.myId() ?? "local",
-      startedAtMs,
-    });
-  });
-
   return {
     pieces,
     selectedPieceIds,
@@ -624,10 +587,10 @@ export function usePuzzle(props: Props) {
     selectionBox,
     remoteSelections,
     complete,
-    clearedElapsedMs,
+    clearedElapsedMs: timer.clearedElapsedMs,
     lockedCount,
     getPieces,
-    getStartedAtMs: () => startedAtMs,
+    getStartedAtMs: timer.getStartedAtMs,
     isDragging: () => dragging !== null,
     constrainPosition,
     bringToFront,
