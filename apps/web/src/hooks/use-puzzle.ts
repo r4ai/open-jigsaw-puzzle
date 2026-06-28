@@ -38,37 +38,17 @@ import {
   type HistoryResult,
   type PieceHistorySnapshot,
 } from "../utils/puzzle-history";
+import {
+  TOUCH_DRAG_THRESHOLD_PX,
+  type BatchedPieceLock,
+  type BatchedPieceMove,
+  type DragState,
+  type PendingDragMove,
+  type RemoteSelection,
+  type SelectionBoxState,
+} from "./puzzle/types";
 
-type DragState = {
-  pointerId: number;
-  pointerType: string;
-  startClient: { x: number; y: number };
-  pieceIds: number[];
-  startPointer: { x: number; y: number };
-  startPieces: Map<number, BoardPiece>;
-  committed: boolean;
-  lastDeltaX: number;
-  lastDeltaY: number;
-  moveImageOverlay: boolean;
-};
-type PendingDragMove = {
-  deltaX: number;
-  deltaY: number;
-  onImageOverlayDelta?: (deltaX: number, deltaY: number) => void;
-};
-type SelectionBoxState = {
-  pointerId: number;
-  start: { x: number; y: number };
-  end: { x: number; y: number };
-};
-export type RemoteSelection = {
-  participantId: string;
-  pieceIds: number[];
-  imageOverlaySelected: boolean;
-};
-type BatchedPieceMove = Extract<ChannelMessage, { type: "piece-moves" }>["moves"][number];
-type BatchedPieceLock = Extract<ChannelMessage, { type: "piece-locks" }>["locks"][number];
-const TOUCH_DRAG_THRESHOLD_PX = 6;
+export type { RemoteSelection };
 
 type Props = {
   broadcast: (msg: ChannelMessage) => void;
