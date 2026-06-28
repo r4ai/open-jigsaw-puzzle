@@ -40,16 +40,18 @@ describe("PuzzleBoard image overlay toolbar", () => {
         onToggleImageLock={() => {}}
         onChangeImageOpacity={() => {}}
         onImageOverlayPointerDown={() => {}}
-        onPiecePointerDown={() => {}}
-        onPointerMove={() => {}}
-        onPointerUp={() => {}}
-        onPointerCancel={() => {}}
-        onPointerLeave={() => {}}
-        onViewportPointerDown={() => {}}
-        onWheel={() => {}}
-        onApplyPinch={() => {}}
-        onSetPinching={() => {}}
-        registerPieceElement={() => {}}
+        interaction={{
+          onPiecePointerDown: () => {},
+          onPointerMove: () => {},
+          onPointerUp: () => {},
+          onPointerCancel: () => {},
+          onPointerLeave: () => {},
+          onViewportPointerDown: () => {},
+          onWheel: () => {},
+          onApplyPinch: () => {},
+          onSetPinching: () => {},
+          registerPieceElement: () => {},
+        }}
       />
     ));
 

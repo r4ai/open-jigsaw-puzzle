@@ -379,31 +379,31 @@ export function WorkspacePage(props: Props) {
             if (!imageOverlay.locked())
               imageOverlay.handlePointerDown(e, viewport.getWorkspacePoint);
           }}
-          onPiecePointerDown={(e, piece) => {
-            if (viewport.getIsPinching()) {
-              e.preventDefault();
-              e.stopPropagation();
-              return;
-            }
-            puzzle.handlePointerDown(e, piece, viewport.getWorkspacePoint, margin());
-          }}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          onPointerLeave={() => cursors.publishCursor(null, true)}
-          onViewportPointerDown={handleViewportPointerDown}
-          onWheel={viewport.handleWheel}
-          onApplyPinch={(f, px, py, nx, ny) =>
-            viewport.applyPinch(f, px, py, nx, ny)
-          }
-          registerPieceElement={puzzle.registerPieceElement}
-          onSetPinching={(v) => {
-            viewport.setTouchGestureActive(v);
-            if (v) {
-              imageOverlay.cancelDrag();
-              puzzle.cancelDrag();
-              puzzle.clearSelection();
-            }
+          interaction={{
+            onPiecePointerDown: (e, piece) => {
+              if (viewport.getIsPinching()) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+              }
+              puzzle.handlePointerDown(e, piece, viewport.getWorkspacePoint, margin());
+            },
+            onPointerMove: handlePointerMove,
+            onPointerUp: handlePointerUp,
+            onPointerCancel: handlePointerUp,
+            onPointerLeave: () => cursors.publishCursor(null, true),
+            onViewportPointerDown: handleViewportPointerDown,
+            onWheel: viewport.handleWheel,
+            onApplyPinch: (f, px, py, nx, ny) => viewport.applyPinch(f, px, py, nx, ny),
+            onSetPinching: (v) => {
+              viewport.setTouchGestureActive(v);
+              if (v) {
+                imageOverlay.cancelDrag();
+                puzzle.cancelDrag();
+                puzzle.clearSelection();
+              }
+            },
+            registerPieceElement: puzzle.registerPieceElement,
           }}
         />
       </Show>

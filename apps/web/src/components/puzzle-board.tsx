@@ -24,6 +24,26 @@ import {
   selectionBox as selectionBoxCls,
 } from "./puzzle-board.styles";
 
+/** Stable pointer/gesture callbacks for the interactive canvas. */
+export type CanvasInteraction = {
+  onPiecePointerDown: (e: PointerEvent, piece: BoardPiece) => void;
+  onPointerMove: (e: PointerEvent) => void;
+  onPointerUp: (e: PointerEvent) => void;
+  onPointerCancel: (e: PointerEvent) => void;
+  onPointerLeave: () => void;
+  onViewportPointerDown: (e: PointerEvent) => void;
+  onWheel: (e: WheelEvent) => void;
+  onApplyPinch: (
+    distFactor: number,
+    prevMidX: number,
+    prevMidY: number,
+    newMidX: number,
+    newMidY: number,
+  ) => void;
+  onSetPinching: (pinching: boolean) => void;
+  registerPieceElement: (id: number, el: HTMLElement | null) => void;
+};
+
 type Props = {
   layout: PuzzleLayout;
   imageDataUrl: string;
@@ -49,22 +69,7 @@ type Props = {
   onToggleImageLock: () => void;
   onChangeImageOpacity: (value: number) => void;
   onImageOverlayPointerDown: (e: PointerEvent) => void;
-  onPiecePointerDown: (e: PointerEvent, piece: BoardPiece) => void;
-  onPointerMove: (e: PointerEvent) => void;
-  onPointerUp: (e: PointerEvent) => void;
-  onPointerCancel: (e: PointerEvent) => void;
-  onPointerLeave: () => void;
-  onViewportPointerDown: (e: PointerEvent) => void;
-  onWheel: (e: WheelEvent) => void;
-  onApplyPinch: (
-    distFactor: number,
-    prevMidX: number,
-    prevMidY: number,
-    newMidX: number,
-    newMidY: number,
-  ) => void;
-  onSetPinching: (pinching: boolean) => void;
-  registerPieceElement: (id: number, el: HTMLElement | null) => void;
+  interaction: CanvasInteraction;
 };
 
 /** Side length (px, at zoom 1) of the dotted background grid cell. */
@@ -76,8 +81,8 @@ export function PuzzleBoard(props: Props) {
   usePinchZoom({
     getElement: () => viewportRef,
     onApplyPinch: (e) =>
-      props.onApplyPinch(e.distFactor, e.prevMidX, e.prevMidY, e.newMidX, e.newMidY),
-    onSetPinching: props.onSetPinching,
+      props.interaction.onApplyPinch(e.distFactor, e.prevMidX, e.prevMidY, e.newMidX, e.newMidY),
+    onSetPinching: props.interaction.onSetPinching,
   });
 
   const myColor = () => (props.myId ? participantColor(props.myId) : null);
@@ -106,12 +111,12 @@ export function PuzzleBoard(props: Props) {
         "background-position": `${props.pan.x}px ${props.pan.y}px`,
         "background-size": `${BACKGROUND_GRID_SIZE * props.zoom}px ${BACKGROUND_GRID_SIZE * props.zoom}px`,
       }}
-      onPointerDown={(e) => props.onViewportPointerDown(e)}
-      onPointerMove={(e) => props.onPointerMove(e)}
-      onPointerUp={(e) => props.onPointerUp(e)}
-      onPointerCancel={(e) => props.onPointerCancel(e)}
-      onPointerLeave={() => props.onPointerLeave()}
-      onWheel={(e) => props.onWheel(e)}
+      onPointerDown={(e) => props.interaction.onViewportPointerDown(e)}
+      onPointerMove={(e) => props.interaction.onPointerMove(e)}
+      onPointerUp={(e) => props.interaction.onPointerUp(e)}
+      onPointerCancel={(e) => props.interaction.onPointerCancel(e)}
+      onPointerLeave={() => props.interaction.onPointerLeave()}
+      onWheel={(e) => props.interaction.onWheel(e)}
       onAuxClick={(e) => {
         if (e.button === 1) e.preventDefault();
       }}
@@ -166,8 +171,8 @@ export function PuzzleBoard(props: Props) {
             selectedPieceIds={props.selectedPieceIds}
             myColor={myColor()}
             remotePieceColors={colorMaps().remotePieceColors}
-            onPiecePointerDown={props.onPiecePointerDown}
-            registerPieceElement={props.registerPieceElement}
+            onPiecePointerDown={props.interaction.onPiecePointerDown}
+            registerPieceElement={props.interaction.registerPieceElement}
           />
           <Show when={props.selectionBox}>
             {(box) => (
